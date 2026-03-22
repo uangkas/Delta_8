@@ -1,0 +1,72 @@
+name: Deploy Google Apps Script
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "gas_fix/**"
+      - ".github/workflows/deploy-gas.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install clasp
+        run: npm install --global @google/clasp
+
+      - name: Write clasp credentials
+        env:
+          CLASP_CREDENTIALS_JSON: ${{ secrets.CLASP_CREDENTIALS_JSON }}
+        run: |
+          if [ -z "$CLASP_CREDENTIALS_JSON" ]; then
+            echo "Secret CLASP_CREDENTIALS_JSON belum diisi."
+            exit 1
+          fi
+          printf '%s' "$CLASP_CREDENTIALS_JSON" > "$HOME/.clasprc.json"
+
+      - name: Write Apps Script config
+        env:
+          GAS_SCRIPT_ID: ${{ secrets.GAS_SCRIPT_ID }}
+        run: |
+          if [ -z "$GAS_SCRIPT_ID" ]; then
+            echo "Secret GAS_SCRIPT_ID belum diisi."
+            exit 1
+          fi
+          cat > gas_fix/.clasp.json <<EOF
+          {
+            "scriptId": "$GAS_SCRIPT_ID",
+            "rootDir": "."
+          }
+          EOF
+
+      - name: Push source to Apps Script
+        working-directory: gas_fix
+        run: clasp push --force
+
+      - name: Create new version
+        id: version
+        working-directory: gas_fix
+        run: |
+          VERSION_OUTPUT="$(clasp version "GitHub Actions ${GITHUB_SHA}")"
+          echo "$VERSION_OUTPUT"
+          VERSION_NUMBER="$(printf '%s' "$VERSION_OUTPUT" | sed -n 's/.*Created version \([0-9][0-9]*\).*/\1/p')"
+          if [ -z "$VERSION_NUMBER" ]; then
+            echo "Gagal membaca version number dari output clasp."
+            exit 1
+          fi
+          echo "number=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Redeploy web app URL existing
+        working-directory: gas_fix
+        run: clasp deploy --deploymentId AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg --versionNumber ${{ steps.version.outputs.number }} --description "GitHub Actions ${GITHUB_SHA}"

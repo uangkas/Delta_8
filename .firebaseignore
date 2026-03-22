@@ -1,0 +1,7 @@
+node_modules
+.git
+.firebase
+firebase-debug.log
+firebase-debug.*.log
+Code.gs
+*.gs

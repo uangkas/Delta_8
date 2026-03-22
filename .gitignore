@@ -1,0 +1,13 @@
+node_modules/
+.firebase/
+.vscode/
+tmp_gas/
+
+firebase-debug.log
+
+.clasp.json
+.clasprc.json
+gas_fix/.clasp.json
+
+.DS_Store
+Thumbs.db
