@@ -74,6 +74,7 @@ function doGet(e) {
     if (action === "fixHeaders") return handleFixHeaders_(e);
     if (action === "backupYear") return handleBackupYear_(e);
     if (action === "verifyAuth") return handleVerifyAuth_(e);
+    if (action === "adminHealth") return handleAdminHealth_(e);
     if (action === "backupConfig") return handleBackupConfig_();
     if (action === "setBackupArchive") return handleSetBackupArchive_(e);
     if (action === "installBackupTrigger") return handleInstallBackupTrigger_(e);
@@ -104,6 +105,9 @@ function doPost(e) {
 
     if (payload.action === "saveFcmToken") {
       return handleSaveFcmToken_(payload, e);
+    }
+    if (payload.action === "adminSetScriptProperties") {
+      return handleAdminSetScriptProperties_(payload, e);
     }
 
     validateWriteAuth_(payload, e);
@@ -717,6 +721,16 @@ function handleBackupConfig_() {
     keepCount: BACKUP_KEEP_COUNT,
     triggerInstalled: isBackupTriggerInstalled_()
   });
+}
+
+function handleAdminHealth_(e) {
+  validateActionAuth_(e);
+  return jsonResponse_(adminGetHealthSummary_());
+}
+
+function handleAdminSetScriptProperties_(payload, e) {
+  validateWriteAuth_(payload, e);
+  return jsonResponse_(adminSetScriptProperties_(payload && payload.entries));
 }
 
 function handleSetBackupArchive_(e) {
