@@ -134,19 +134,22 @@ function doPost(e) {
 function maybeBroadcastFcmAfterWrite_(beforeData, afterData, payload, year) {
   try {
     var latestLog = getLatestLogEntry_(beforeData, afterData);
-    var title = "Aktivitas Aplikasi";
-    var body = "Ada aktivitas baru di aplikasi.";
+    var meta = buildActivityNotificationMeta_(latestLog);
+    var title = meta.title;
+    var body = meta.body;
     var editor = String((payload && payload.editor) || "").trim().toUpperCase();
 
     if (latestLog) {
-      title = normalizeNotificationText_(latestLog.aksi || "Aktivitas Aplikasi", 80);
-      body = normalizeNotificationText_(latestLog.ket || "Ada aktivitas baru di aplikasi.", 180);
       if (!editor && latestLog.editor) {
         editor = String(latestLog.editor || "").trim().toUpperCase();
       }
-    } else if (didClearLogs_(beforeData, afterData)) {
-      title = "SYSTEM";
-      body = "BERSIHKAN SEMUA LOG";
+    } else if (didClearLogs_(beforeData, afterData) && !meta.isFromLog) {
+      meta = buildActivityNotificationMeta_({
+        aksi: "SYSTEM",
+        ket: "BERSIHKAN SEMUA LOG"
+      });
+      title = meta.title;
+      body = meta.body;
     }
 
     if (editor) body += " Oleh " + editor + ".";
@@ -156,6 +159,9 @@ function maybeBroadcastFcmAfterWrite_(beforeData, afterData, payload, year) {
       type: "activity_log",
       action: latestLog && latestLog.aksi ? String(latestLog.aksi) : "",
       detail: latestLog && latestLog.ket ? String(latestLog.ket) : body,
+      title: title,
+      body: body,
+      tag: meta.tag,
       url: DEFAULT_WEB_APP_URL
     });
   } catch (err) {}
@@ -190,6 +196,70 @@ function normalizeNotificationText_(value, maxLen) {
   if (!text) return "";
   if (text.length <= maxLen) return text;
   return text.slice(0, Math.max(0, maxLen - 3)).trim() + "...";
+}
+
+function buildActivityNotificationMeta_(logEntry) {
+  var aksi = String((logEntry && logEntry.aksi) || "").trim().toUpperCase();
+  var ket = normalizeNotificationText_(
+    (logEntry && logEntry.ket) || "Ada aktivitas baru di aplikasi.",
+    180
+  );
+
+  var meta = {
+    title: "🔔 Aktivitas Aplikasi",
+    body: ket || "Ada aktivitas baru di aplikasi.",
+    tag: "delta8-activity-general",
+    isFromLog: !!logEntry
+  };
+
+  if (!aksi) return meta;
+
+  if (aksi === "TAMBAH TRANSAKSI") {
+    meta.title = "💸 Tambah Transaksi";
+    meta.tag = "delta8-activity-transaksi-add";
+    return meta;
+  }
+  if (aksi === "EDIT TRANSAKSI") {
+    meta.title = "📝 Edit Transaksi";
+    meta.tag = "delta8-activity-transaksi-edit";
+    return meta;
+  }
+  if (aksi === "HAPUS TRANSAKSI") {
+    meta.title = "🗑️ Hapus Transaksi";
+    meta.tag = "delta8-activity-transaksi-delete";
+    return meta;
+  }
+  if (aksi === "TAMBAH ANGGOTA") {
+    meta.title = "👥 Tambah Anggota";
+    meta.tag = "delta8-activity-member-add";
+    return meta;
+  }
+  if (aksi === "EDIT ANGGOTA") {
+    meta.title = "🪪 Edit Anggota";
+    meta.tag = "delta8-activity-member-edit";
+    return meta;
+  }
+  if (aksi === "HAPUS ANGGOTA") {
+    meta.title = "❌ Hapus Anggota";
+    meta.tag = "delta8-activity-member-delete";
+    return meta;
+  }
+  if (aksi === "IURAN") {
+    meta.title =
+      ket.indexOf("LUNAS") !== -1 ? "✅ Iuran Lunas" : "💰 Update Iuran";
+    meta.tag = "delta8-activity-iuran";
+    return meta;
+  }
+  if (aksi === "SYSTEM") {
+    meta.title =
+      ket.indexOf("BERSIHKAN") !== -1 ? "🧹 Bersihkan Log" : "⚙️ Aktivitas Sistem";
+    meta.tag = "delta8-activity-system";
+    return meta;
+  }
+
+  meta.title = "🔔 " + normalizeNotificationText_(aksi, 70);
+  meta.tag = "delta8-activity-custom";
+  return meta;
 }
 
 function ensureBootstrapConfig_() {
@@ -344,7 +414,7 @@ function sendFcmToToken_(projectId, accessToken, token, title, body, dataObj) {
         notification: {
           icon: DEFAULT_WEB_APP_URL + "/favicon.ico",
           badge: DEFAULT_WEB_APP_URL + "/favicon.ico",
-          tag: String(cleanData.type || "delta8-notif"),
+          tag: String(cleanData.tag || cleanData.type || "delta8-notif"),
           renotify: true,
           requireInteraction: false
         },

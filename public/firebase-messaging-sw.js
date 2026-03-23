@@ -22,11 +22,14 @@ messaging.onBackgroundMessage((payload) => {
     const body = notification.body || data.body || 'Ada pembaruan baru untuk aplikasi kas.';
     const icon = notification.icon || data.icon || '/favicon.ico';
     const link = data.link || data.url || self.location.origin;
+    const tag = data.tag || 'delta8-statusbar';
 
     self.registration.showNotification(title, {
         body,
         icon,
         badge: icon,
+        tag,
+        renotify: true,
         data: { link }
     });
 });
