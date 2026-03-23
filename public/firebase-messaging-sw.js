@@ -21,13 +21,14 @@ messaging.onBackgroundMessage((payload) => {
     const title = notification.title || data.title || 'Notifikasi Delta 8';
     const body = notification.body || data.body || 'Ada pembaruan baru untuk aplikasi kas.';
     const icon = notification.icon || data.icon || '/favicon.ico';
+    const badge = notification.badge || data.badge || icon;
     const link = data.link || data.url || self.location.origin;
     const tag = data.tag || 'delta8-statusbar';
 
     self.registration.showNotification(title, {
         body,
         icon,
-        badge: icon,
+        badge,
         tag,
         renotify: true,
         data: { link }

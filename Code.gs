@@ -363,24 +363,21 @@ function sendFcmToToken_(projectId, accessToken, token, title, body, dataObj) {
     encodeURIComponent(projectId) +
     "/messages:send";
   var cleanData = toStringMap_(dataObj || {});
+  cleanData.title = String(title || "Notifikasi");
+  cleanData.body = String(body || "");
+  cleanData.icon = String(cleanData.icon || DEFAULT_WEB_APP_URL + "/favicon.ico");
+  cleanData.badge = String(cleanData.badge || cleanData.icon);
+  cleanData.tag = String(cleanData.tag || cleanData.type || "delta8-notif");
+  cleanData.link = String(
+    cleanData.link || cleanData.url || DEFAULT_WEB_APP_URL
+  );
   var payload = {
     message: {
       token: token,
-      notification: {
-        title: String(title || "Notifikasi"),
-        body: String(body || "")
-      },
       data: cleanData,
       webpush: {
-        notification: {
-          icon: DEFAULT_WEB_APP_URL + "/favicon.ico",
-          badge: DEFAULT_WEB_APP_URL + "/favicon.ico",
-          tag: String(cleanData.tag || cleanData.type || "delta8-notif"),
-          renotify: true,
-          requireInteraction: false
-        },
         fcm_options: {
-          link: String(cleanData.url || DEFAULT_WEB_APP_URL)
+          link: String(cleanData.link || DEFAULT_WEB_APP_URL)
         }
       }
     }
