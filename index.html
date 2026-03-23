@@ -756,25 +756,6 @@ body.tab-transaksi .nav-tabs {
                     onclick="enableNotifications()">
                     AKTIFKAN NOTIFIKASI
                 </button>
-                <button
-                    id="btn-copy-token"
-                    class="btn-luxe"
-                    style="max-width: 320px; width: 100%; display: none;"
-                    onclick="copyNotificationToken()">
-                    SALIN TOKEN PERANGKAT
-                </button>
-                <div
-                    id="notif-status"
-                    class="small fw-bold text-uppercase"
-                    style="letter-spacing: 2px; color: var(--text-muted); font-size: 10px;">
-                    NOTIFIKASI BELUM AKTIF
-                </div>
-                <div
-                    id="notif-token-preview"
-                    class="small"
-                    style="max-width: 320px; color: var(--text-muted); font-size: 10px; display: none;">
-                    Token perangkat belum tersedia.
-                </div>
             </div>
         </div>
 
@@ -1019,72 +1000,17 @@ body.tab-transaksi .nav-tabs {
             showNotif(value ? 'Write token disimpan' : 'Write token dikosongkan', 'info');
         };
 
-        function getStoredFcmToken() {
-            return localStorage.getItem(FCM_TOKEN_KEY) || '';
-        }
-
-        function maskFcmToken(token) {
-            const value = String(token || '').trim();
-            if (!value) return 'Token perangkat belum tersedia.';
-            if (value.length <= 24) return value;
-            return `${value.slice(0, 12)}...${value.slice(-12)}`;
-        }
-
         function updateNotificationUI(state = {}) {
             const button = document.getElementById('btn-enable-notif');
-            const copyButton = document.getElementById('btn-copy-token');
-            const status = document.getElementById('notif-status');
-            const preview = document.getElementById('notif-token-preview');
-            const token = state.token !== undefined ? state.token : getStoredFcmToken();
+            const token = state.token !== undefined ? state.token : (localStorage.getItem(FCM_TOKEN_KEY) || '');
             const permission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
             const isActive = permission === 'granted' && !!token;
 
             if (button) {
-                button.innerText = isActive ? 'PERBARUI TOKEN NOTIFIKASI' : 'AKTIFKAN NOTIFIKASI';
-            }
-
-            if (copyButton) {
-                copyButton.style.display = token ? 'block' : 'none';
-            }
-
-            if (status) {
-                if (state.message) {
-                    status.innerText = state.message;
-                } else if (permission === 'unsupported') {
-                    status.innerText = 'BROWSER TIDAK MENDUKUNG NOTIFIKASI';
-                } else if (permission === 'denied') {
-                    status.innerText = 'IZIN NOTIFIKASI DITOLAK';
-                } else if (isActive) {
-                    status.innerText = 'NOTIFIKASI AKTIF DI PERANGKAT INI';
-                } else if (permission === 'granted') {
-                    status.innerText = 'IZIN ADA, TOKEN SEDANG DISIAPKAN';
-                } else {
-                    status.innerText = 'NOTIFIKASI BELUM AKTIF';
-                }
-                status.style.color = state.color || (isActive ? '#10b981' : 'var(--text-muted)');
-            }
-
-            if (preview) {
-                preview.style.display = token ? 'block' : 'none';
-                preview.innerText = token ? `TOKEN: ${maskFcmToken(token)}` : 'Token perangkat belum tersedia.';
+                button.style.display = isActive ? 'none' : 'block';
+                button.innerText = 'AKTIFKAN NOTIFIKASI';
             }
         }
-
-        async function copyNotificationToken() {
-            const token = getStoredFcmToken();
-            if (!token) {
-                showNotif('Token perangkat belum tersedia.', 'error');
-                return;
-            }
-            try {
-                await navigator.clipboard.writeText(token);
-                showNotif('Token perangkat berhasil disalin.', 'success');
-            } catch (err) {
-                showNotif('Gagal menyalin token perangkat.', 'error');
-            }
-        }
-
-        window.copyNotificationToken = copyNotificationToken;
 
         function jsonpRequest(url, timeoutMs = 12000) {
             return new Promise((resolve, reject) => {
