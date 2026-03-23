@@ -2,13 +2,13 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js
 importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
 
 const DEFAULT_FCM_CONFIG = {
-    apiKey: 'AIzaSyAWuaS0RpcxZ_gU0B_4DMmqetkYnKuvlYM',
-    authDomain: 'webkas-843cb.firebaseapp.com',
-    projectId: 'webkas-843cb',
-    storageBucket: 'webkas-843cb.firebasestorage.app',
-    messagingSenderId: '290112385940',
-    appId: '1:290112385940:web:d8fee426bc5bfd4234d581',
-    measurementId: 'G-2VWFPT7X1T'
+    apiKey: 'AIzaSyAIZx9jjiW1uUdXmG-P7ZqQRloFuo4L7G8',
+    authDomain: 'kas-delta-8.firebaseapp.com',
+    projectId: 'kas-delta-8',
+    storageBucket: 'kas-delta-8.firebasestorage.app',
+    messagingSenderId: '971725893634',
+    appId: '1:971725893634:web:79feba7c68d9a72098771b',
+    measurementId: 'G-H5G52PERC0'
 };
 
 firebase.initializeApp(DEFAULT_FCM_CONFIG);

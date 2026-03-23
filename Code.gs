@@ -22,17 +22,17 @@ var BACKUP_KEEP_COUNT = 15;
 var DEFAULT_SPREADSHEET_ID = "10GWGUs4ILzb1Hb3tm3OFy_dcRXCQKHqSQ0zPa3YmfpY";
 var DATA_TYPES = ["driver", "helper", "transaksi", "logs"];
 var DEFAULT_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAWuaS0RpcxZ_gU0B_4DMmqetkYnKuvlYM",
-  authDomain: "webkas-843cb.firebaseapp.com",
-  projectId: "webkas-843cb",
-  storageBucket: "webkas-843cb.firebasestorage.app",
-  messagingSenderId: "290112385940",
-  appId: "1:290112385940:web:d8fee426bc5bfd4234d581",
-  measurementId: "G-2VWFPT7X1T",
-  vapidKey: "BKA9WuJ7CVqbKMSPvGbFcbjpbCKWLcLKfuZF6nRW_FfBNUmRULj5Q30MKYOMUFZP7kZBAyl018E_DDMJq4kc1Q4"
+  apiKey: "AIzaSyAIZx9jjiW1uUdXmG-P7ZqQRloFuo4L7G8",
+  authDomain: "kas-delta-8.firebaseapp.com",
+  projectId: "kas-delta-8",
+  storageBucket: "kas-delta-8.firebasestorage.app",
+  messagingSenderId: "971725893634",
+  appId: "1:971725893634:web:79feba7c68d9a72098771b",
+  measurementId: "G-H5G52PERC0",
+  vapidKey: "BKDg4aP1oAfiuWuXXpb-oggOf2AePd7bLzr7M3skACfKwUoGIxr3ioxiC5C2XmViLdhnJWBGHIudWgFIjPRZyXc"
 };
-var DEFAULT_WEB_APP_URL = "https://webkas-843cb.web.app";
-var DEFAULT_SERVICE_ACCOUNT_EMAIL = "firebase-adminsdk-fbsvc@webkas-843cb.iam.gserviceaccount.com";
+var DEFAULT_WEB_APP_URL = "https://kas-delta-8.web.app";
+var DEFAULT_SERVICE_ACCOUNT_EMAIL = "firebase-adminsdk-fbsvc@kas-delta-8.iam.gserviceaccount.com";
 
 var DRIVER_HELPER_HEADERS = [
   "NO",

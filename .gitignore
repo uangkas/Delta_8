@@ -2,6 +2,10 @@ node_modules/
 .firebase/
 .vscode/
 tmp_gas/
+scripts/*.local.ps1
+firebase-service-account.json
+*.service-account.json
+*.secret.json
 
 firebase-debug.log
 
