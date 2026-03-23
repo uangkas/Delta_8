@@ -60,6 +60,10 @@ var TRANSAKSI_HEADERS = [
 ];
 var LOG_HEADERS = ["WAKTU", "EDITOR", "AKSI", "KETERANGAN"];
 
+function authorizeFcm() {
+  return adminAuthorizeFcm_();
+}
+
 function doGet(e) {
   ACTIVE_JSONP_CALLBACK = getJsonpCallback_(e);
   try {
