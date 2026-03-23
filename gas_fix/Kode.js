@@ -166,7 +166,9 @@ function maybeBroadcastFcmAfterWrite_(beforeData, afterData, payload, year) {
       title: title,
       body: body,
       tag: meta.tag,
-      url: DEFAULT_WEB_APP_URL
+      icon: DEFAULT_WEB_APP_URL + "/notification-icon.svg",
+      badge: DEFAULT_WEB_APP_URL + "/notification-badge.svg",
+      url: buildNotificationTargetUrl_(meta.view)
     });
   } catch (err) {}
 }
@@ -213,6 +215,7 @@ function buildActivityNotificationMeta_(logEntry) {
     title: "🔔 Aktivitas Aplikasi",
     body: ket || "Ada aktivitas baru di aplikasi.",
     tag: "delta8-activity-general",
+    view: "transaksi",
     isFromLog: !!logEntry
   };
 
@@ -236,16 +239,19 @@ function buildActivityNotificationMeta_(logEntry) {
   if (aksi === "TAMBAH ANGGOTA") {
     meta.title = "👥 Tambah Anggota";
     meta.tag = "delta8-activity-member-add";
+    meta.view = "driver";
     return meta;
   }
   if (aksi === "EDIT ANGGOTA") {
     meta.title = "🪪 Edit Anggota";
     meta.tag = "delta8-activity-member-edit";
+    meta.view = "driver";
     return meta;
   }
   if (aksi === "HAPUS ANGGOTA") {
     meta.title = "❌ Hapus Anggota";
     meta.tag = "delta8-activity-member-delete";
+    meta.view = "driver";
     return meta;
   }
   if (aksi === "IURAN") {
@@ -264,6 +270,12 @@ function buildActivityNotificationMeta_(logEntry) {
   meta.title = "🔔 " + normalizeNotificationText_(aksi, 70);
   meta.tag = "delta8-activity-custom";
   return meta;
+}
+
+function buildNotificationTargetUrl_(view) {
+  var targetView = String(view || "").trim().toLowerCase();
+  if (!targetView) return DEFAULT_WEB_APP_URL;
+  return DEFAULT_WEB_APP_URL + "?view=" + encodeURIComponent(targetView);
 }
 
 function ensureBootstrapConfig_() {

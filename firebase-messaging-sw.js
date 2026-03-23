@@ -14,14 +14,16 @@ const DEFAULT_FCM_CONFIG = {
 firebase.initializeApp(DEFAULT_FCM_CONFIG);
 
 const messaging = firebase.messaging();
+const DEFAULT_ICON = '/notification-icon.svg';
+const DEFAULT_BADGE = '/notification-badge.svg';
 
 messaging.onBackgroundMessage((payload) => {
     const notification = payload && payload.notification ? payload.notification : {};
     const data = payload && payload.data ? payload.data : {};
     const title = notification.title || data.title || 'Notifikasi Delta 8';
     const body = notification.body || data.body || 'Ada pembaruan baru untuk aplikasi kas.';
-    const icon = notification.icon || data.icon || '/favicon.ico';
-    const badge = notification.badge || data.badge || icon;
+    const icon = notification.icon || data.icon || DEFAULT_ICON;
+    const badge = notification.badge || data.badge || DEFAULT_BADGE;
     const link = data.link || data.url || self.location.origin;
     const tag = data.tag || 'delta8-statusbar';
 
@@ -31,6 +33,8 @@ messaging.onBackgroundMessage((payload) => {
         badge,
         tag,
         renotify: true,
+        timestamp: Date.now(),
+        vibrate: [120, 60, 120],
         data: { link }
     });
 });
@@ -46,7 +50,9 @@ self.addEventListener('notificationclick', (event) => {
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
             for (const client of clientList) {
                 if ('focus' in client) {
-                    client.navigate(targetUrl);
+                    if (client.url !== targetUrl && 'navigate' in client) {
+                        client.navigate(targetUrl);
+                    }
                     return client.focus();
                 }
             }
