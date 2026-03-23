@@ -21,6 +21,7 @@ var BACKUP_ARCHIVE_ID_KEY = "backup_archive_spreadsheet_id";
 var BACKUP_KEEP_COUNT = 15;
 var DEFAULT_SPREADSHEET_ID = "10GWGUs4ILzb1Hb3tm3OFy_dcRXCQKHqSQ0zPa3YmfpY";
 var DATA_TYPES = ["driver", "helper", "transaksi", "logs"];
+var DEFAULT_APP_PIN = "0000";
 var DEFAULT_FIREBASE_CONFIG = {
   apiKey: "AIzaSyAIZx9jjiW1uUdXmG-P7ZqQRloFuo4L7G8",
   authDomain: "kas-delta-8.firebaseapp.com",
