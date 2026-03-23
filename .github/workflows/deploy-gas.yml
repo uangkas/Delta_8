@@ -31,13 +31,13 @@ jobs:
 
       - name: Write clasp credentials
         env:
-          CLASP_CREDENTIALS_JSON: ${{ secrets.CLASP_CREDENTIALS_JSON }}
+          CLASP_CREDENTIALS_JSON_B64: ${{ secrets.CLASP_CREDENTIALS_JSON_B64 }}
         run: |
-          if [ -z "$CLASP_CREDENTIALS_JSON" ]; then
-            echo "Secret CLASP_CREDENTIALS_JSON belum diisi."
+          if [ -z "$CLASP_CREDENTIALS_JSON_B64" ]; then
+            echo "Secret CLASP_CREDENTIALS_JSON_B64 belum diisi."
             exit 1
           fi
-          printf '%s' "$CLASP_CREDENTIALS_JSON" > "$HOME/.clasprc.json"
+          printf '%s' "$CLASP_CREDENTIALS_JSON_B64" | base64 --decode > "$HOME/.clasprc.json"
 
       - name: Write Apps Script config
         env:

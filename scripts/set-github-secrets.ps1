@@ -47,6 +47,23 @@ function Resolve-RequiredPath {
     return (Resolve-Path -LiteralPath $PathValue).Path
 }
 
+function Get-SecretBodyFromFile {
+    param([Parameter(Mandatory = $true)][string]$FilePath)
+
+    $body = Get-Content -Raw -LiteralPath $FilePath
+    $extension = [System.IO.Path]::GetExtension($FilePath)
+
+    if ($extension -ieq ".json") {
+        try {
+            return ($body | ConvertFrom-Json | ConvertTo-Json -Compress -Depth 20)
+        } catch {
+            return $body
+        }
+    }
+
+    return $body
+}
+
 function Set-SecretFromFile {
     param(
         [Parameter(Mandatory = $true)][string]$Name,
@@ -55,7 +72,7 @@ function Set-SecretFromFile {
     )
 
     Write-Host "Setting secret $Name dari $FilePath"
-    $body = Get-Content -Raw -LiteralPath $FilePath
+    $body = Get-SecretBodyFromFile -FilePath $FilePath
     if ($RepoName) {
         Invoke-GitHubCli secret set $Name --repo $RepoName --body $body
     } else {
@@ -103,6 +120,7 @@ $script:GitHubCli = Resolve-GitHubCli
 $firebaseJson = Resolve-RequiredPath -PathValue $FirebaseServiceAccountPath
 $claspJson = Resolve-RequiredPath -PathValue $ClaspCredentialsPath
 $resolvedGasScriptId = Resolve-GasScriptId -ExplicitValue $GasScriptId -ConfigPath $ClaspConfigPath
+$claspBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-Content -Raw -LiteralPath $claspJson)))
 
 $firebaseConfig = Get-Content -Raw -LiteralPath $firebaseJson | ConvertFrom-Json
 if ($firebaseConfig.project_id -ne "kas-delta-8") {
@@ -111,11 +129,11 @@ if ($firebaseConfig.project_id -ne "kas-delta-8") {
 
 Write-Host "Memasang GitHub Secrets untuk repo ini..."
 Set-SecretFromFile -Name "FIREBASE_SERVICE_ACCOUNT" -FilePath $firebaseJson -RepoName $Repo
-Set-SecretFromFile -Name "CLASP_CREDENTIALS_JSON" -FilePath $claspJson -RepoName $Repo
+Set-SecretFromValue -Name "CLASP_CREDENTIALS_JSON_B64" -Value $claspBase64 -RepoName $Repo
 Set-SecretFromValue -Name "GAS_SCRIPT_ID" -Value $resolvedGasScriptId -RepoName $Repo
 
 Write-Host ""
 Write-Host "Selesai. Secret yang terpasang:"
 Write-Host "- FIREBASE_SERVICE_ACCOUNT"
-Write-Host "- CLASP_CREDENTIALS_JSON"
+Write-Host "- CLASP_CREDENTIALS_JSON_B64"
 Write-Host "- GAS_SCRIPT_ID"

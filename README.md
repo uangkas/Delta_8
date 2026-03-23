@@ -7,7 +7,7 @@ CI/CD project ini sekarang memakai GitHub Actions untuk 2 jalur deploy:
 
 Secret GitHub yang wajib diisi:
 
-- `CLASP_CREDENTIALS_JSON`: isi file kredensial `~/.clasprc.json` untuk `clasp`
+- `CLASP_CREDENTIALS_JSON_B64`: isi Base64 dari file kredensial `~/.clasprc.json` untuk `clasp`
 - `GAS_SCRIPT_ID`: Script ID Google Apps Script tujuan
 - `FIREBASE_SERVICE_ACCOUNT`: JSON service account Firebase Hosting untuk project `kas-delta-8`
 
