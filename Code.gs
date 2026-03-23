@@ -130,32 +130,63 @@ function doPost(e) {
 
 function maybeBroadcastFcmAfterWrite_(beforeData, afterData, payload, year) {
   try {
-    var oldTrans = (beforeData && beforeData.transaksi && beforeData.transaksi.length) || 0;
-    var newTrans = (afterData && afterData.transaksi && afterData.transaksi.length) || 0;
-    var oldDriver = (beforeData && beforeData.driver && beforeData.driver.length) || 0;
-    var newDriver = (afterData && afterData.driver && afterData.driver.length) || 0;
-    var oldHelper = (beforeData && beforeData.helper && beforeData.helper.length) || 0;
-    var newHelper = (afterData && afterData.helper && afterData.helper.length) || 0;
+    var latestLog = getLatestLogEntry_(beforeData, afterData);
+    var title = "Aktivitas Aplikasi";
+    var body = "Ada aktivitas baru di aplikasi.";
+    var editor = String((payload && payload.editor) || "").trim().toUpperCase();
 
-    var title = "Update Data KAS";
-    var body = "Ada perubahan data.";
-    if (newTrans > oldTrans) {
-      title = "Transaksi Baru";
-      body = "Ada " + String(newTrans - oldTrans) + " transaksi baru.";
-    } else if (newDriver !== oldDriver || newHelper !== oldHelper) {
-      title = "Update Anggota";
-      body = "Daftar anggota diperbarui.";
+    if (latestLog) {
+      title = normalizeNotificationText_(latestLog.aksi || "Aktivitas Aplikasi", 80);
+      body = normalizeNotificationText_(latestLog.ket || "Ada aktivitas baru di aplikasi.", 180);
+      if (!editor && latestLog.editor) {
+        editor = String(latestLog.editor || "").trim().toUpperCase();
+      }
+    } else if (didClearLogs_(beforeData, afterData)) {
+      title = "SYSTEM";
+      body = "BERSIHKAN SEMUA LOG";
     }
 
-    var editor = String((payload && payload.editor) || "").trim().toUpperCase();
     if (editor) body += " Oleh " + editor + ".";
 
     sendFcmToAllDevices_(title, body, {
       year: String(year || ""),
-      type: "data_sync",
+      type: "activity_log",
+      action: latestLog && latestLog.aksi ? String(latestLog.aksi) : "",
+      detail: latestLog && latestLog.ket ? String(latestLog.ket) : body,
       url: DEFAULT_WEB_APP_URL
     });
   } catch (err) {}
+}
+
+function getLatestLogEntry_(beforeData, afterData) {
+  var afterLogs = (afterData && afterData.logs) || [];
+  var beforeLogs = (beforeData && beforeData.logs) || [];
+
+  if (!afterLogs.length) return null;
+  if (!beforeLogs.length) return afterLogs[0];
+
+  var latest = afterLogs[0] || {};
+  var previous = beforeLogs[0] || {};
+  var changed =
+    String(latest.time || "") !== String(previous.time || "") ||
+    String(latest.editor || "") !== String(previous.editor || "") ||
+    String(latest.aksi || "") !== String(previous.aksi || "") ||
+    String(latest.ket || "") !== String(previous.ket || "");
+
+  return changed ? latest : null;
+}
+
+function didClearLogs_(beforeData, afterData) {
+  var beforeLogs = (beforeData && beforeData.logs) || [];
+  var afterLogs = (afterData && afterData.logs) || [];
+  return !!beforeLogs.length && !afterLogs.length;
+}
+
+function normalizeNotificationText_(value, maxLen) {
+  var text = String(value || "").replace(/\s+/g, " ").trim();
+  if (!text) return "";
+  if (text.length <= maxLen) return text;
+  return text.slice(0, Math.max(0, maxLen - 3)).trim() + "...";
 }
 
 function sendFcmToAllDevices_(title, body, dataObj) {
