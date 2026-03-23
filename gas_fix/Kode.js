@@ -687,6 +687,17 @@ function handleTestFcm_(e) {
   return handleFcmHealth_();
 }
 
+function adminAuthorizeFcm_() {
+  var resp = UrlFetchApp.fetch("https://www.googleapis.com/generate_204", {
+    method: "get",
+    muteHttpExceptions: true
+  });
+  return {
+    ok: resp.getResponseCode() >= 200 && resp.getResponseCode() < 400,
+    code: resp.getResponseCode()
+  };
+}
+
 function upsertFcmTokenRows_(rows, token, editor) {
   var now = new Date().toISOString();
   var found = false;

@@ -1333,6 +1333,9 @@ body.tab-transaksi .nav-tabs {
                     if (test && test.ok) {
                         showNotif('Push notification aktif dan tes kirim berhasil.', 'success');
                         updateNotificationUI({ token, message: 'FCM AKTIF DAN TES KIRIM BERHASIL', color: '#10b981' });
+                    } else if (test && test.error) {
+                        showNotif(`Token tersimpan, tapi backend belum bisa kirim popup: ${test.error}`, 'info');
+                        updateNotificationUI({ token, message: 'TOKEN TERSIMPAN, BACKEND BELUM BISA KIRIM POPUP', color: '#f59e0b' });
                     } else {
                         showNotif('Push notification aktif di perangkat ini.', 'success');
                         updateNotificationUI({ token, message: 'FCM AKTIF DI PERANGKAT INI', color: '#10b981' });
