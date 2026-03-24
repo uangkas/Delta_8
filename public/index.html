@@ -666,6 +666,35 @@ body.tab-transaksi .nav-tabs {
     }
 }
 
+@media (max-width: 767px) {
+
+    #member-toolbar {
+        flex-wrap: wrap;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    #member-toolbar #search-member {
+        flex: 1 1 calc(100% - 103px);
+        width: calc(100% - 103px) !important;
+        min-width: 0;
+        margin-right: 0 !important;
+    }
+
+    #member-toolbar #tahun-wrap {
+        flex: 0 0 95px;
+        width: 95px;
+        min-width: 95px;
+    }
+
+    #member-toolbar .btn-luxe {
+        flex: 1 0 100%;
+        width: 100% !important;
+        margin-left: 0 !important;
+        justify-content: center;
+    }
+}
+
 /* ===== DESKTOP TRANSAKSI SEJAJAR ===== */
 @media (min-width: 768px) {
 
