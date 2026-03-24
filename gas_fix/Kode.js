@@ -278,6 +278,20 @@ function buildNotificationTargetUrl_(view) {
   return DEFAULT_WEB_APP_URL + "?view=" + encodeURIComponent(targetView);
 }
 
+function buildNotificationId_(title, body, dataObj) {
+  var seedParts = [
+    (dataObj && dataObj.type) || "",
+    (dataObj && dataObj.action) || "",
+    (dataObj && dataObj.year) || "",
+    title || "",
+    body || "",
+    new Date().getTime()
+  ];
+  var raw = seedParts.join("-").toLowerCase();
+  var normalized = raw.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return normalized ? normalized.slice(0, 120) : "delta8-notif-" + new Date().getTime();
+}
+
 function ensureBootstrapConfig_() {
   var props = PropertiesService.getScriptProperties();
 
@@ -423,6 +437,12 @@ function sendFcmToToken_(projectId, accessToken, token, title, body, dataObj) {
   cleanData.icon = String(cleanData.icon || DEFAULT_WEB_APP_URL + "/favicon.ico");
   cleanData.badge = String(cleanData.badge || cleanData.icon);
   cleanData.tag = String(cleanData.tag || cleanData.type || "delta8-notif");
+  cleanData.groupKey = String(cleanData.groupKey || "delta8-statusbar");
+  cleanData.groupTitle = String(cleanData.groupTitle || "Delta 8");
+  cleanData.summaryTag = String(cleanData.summaryTag || cleanData.groupKey + "-group");
+  cleanData.notificationId = String(
+    cleanData.notificationId || buildNotificationId_(title, body, cleanData)
+  );
   cleanData.link = String(
     cleanData.link || cleanData.url || DEFAULT_WEB_APP_URL
   );
