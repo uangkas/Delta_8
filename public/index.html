@@ -1552,6 +1552,23 @@ body.tab-transaksi .nav-tabs {
             }
         }
 
+        function closeAuthModalAndExecute() {
+            const modalEl = document.getElementById('modalVerifyAuth');
+            const modal = bootstrap.Modal.getInstance('#modalVerifyAuth') || bootstrap.Modal.getOrCreateInstance('#modalVerifyAuth');
+            if (!modalEl || !modal) {
+                executeAction();
+                return;
+            }
+
+            const runAction = () => {
+                modalEl.removeEventListener('hidden.bs.modal', runAction);
+                executeAction();
+            };
+
+            modalEl.addEventListener('hidden.bs.modal', runAction, { once: true });
+            modal.hide();
+        }
+
         function handlePinInput(input) {
             const value = String(input && input.value ? input.value : '').replace(/\D/g, '').slice(0, 4);
             if (input.value !== value) input.value = value;
@@ -1603,8 +1620,7 @@ body.tab-transaksi .nav-tabs {
                     issuedAt: Date.now(),
                     expiresAt: Date.now() + ((Number(data.expiresInSec || 0) || 0) * 1000)
                 });
-                bootstrap.Modal.getInstance('#modalVerifyAuth').hide();
-                executeAction();
+                closeAuthModalAndExecute();
             } catch (err) {
                 showNotif((err && err.message) ? err.message : 'Tidak bisa verifikasi ke backend', 'error');
             } finally {
