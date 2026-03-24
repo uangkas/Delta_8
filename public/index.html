@@ -968,6 +968,8 @@ body.tab-transaksi .nav-tabs {
         };
         const DEFAULT_VAPID_KEY = 'BKDg4aP1oAfiuWuXXpb-oggOf2AePd7bLzr7M3skACfKwUoGIxr3ioxiC5C2XmViLdhnJWBGHIudWgFIjPRZyXc';
         const FCM_TOKEN_KEY = 'delta8_fcm_token';
+        const DEVICE_ID_KEY = 'delta8_device_id';
+        const AUTH_SESSION_KEY = 'delta8_auth_session';
         let DB_DRIVER = [], DB_HELPER = [], DB_TRANSAKSI = [], DB_LOGS = [];
         const YEAR_CACHE = {};
         let loadToken = 0;
@@ -1017,14 +1019,93 @@ body.tab-transaksi .nav-tabs {
             };
         }
 
+        function createDeviceId() {
+            try {
+                if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                    return window.crypto.randomUUID().replace(/-/g, '');
+                }
+            } catch (err) {}
+            return `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+        }
+
+        function getDeviceId() {
+            let value = String(localStorage.getItem(DEVICE_ID_KEY) || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+            if (!value) {
+                value = createDeviceId();
+                localStorage.setItem(DEVICE_ID_KEY, value);
+            }
+            return value;
+        }
+
+        function getAuthSession() {
+            try {
+                const raw = localStorage.getItem(AUTH_SESSION_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === 'object') {
+                        return {
+                            editor: String(parsed.editor || '').trim().toUpperCase(),
+                            writeToken: String(parsed.writeToken || '').trim(),
+                            deviceId: String(parsed.deviceId || getDeviceId()).trim(),
+                            issuedAt: Number(parsed.issuedAt || 0) || 0,
+                            expiresAt: Number(parsed.expiresAt || 0) || 0
+                        };
+                    }
+                }
+            } catch (err) {}
+
+            const legacyToken = String(localStorage.getItem('delta8_write_token') || '').trim();
+            const legacyEditor = String(localStorage.getItem('delta8_editor') || '').trim().toUpperCase();
+            if (!legacyToken && !legacyEditor) return null;
+
+            const migrated = {
+                editor: legacyEditor,
+                writeToken: legacyToken,
+                deviceId: getDeviceId(),
+                issuedAt: 0,
+                expiresAt: 0
+            };
+            localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(migrated));
+            return migrated;
+        }
+
+        function saveAuthSession(session, notify = false) {
+            const next = {
+                editor: String((session && session.editor) || '').trim().toUpperCase(),
+                writeToken: String((session && session.writeToken) || '').trim(),
+                deviceId: String((session && session.deviceId) || getDeviceId()).trim(),
+                issuedAt: Number((session && session.issuedAt) || 0) || 0,
+                expiresAt: Number((session && session.expiresAt) || 0) || 0
+            };
+            localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(next));
+            localStorage.setItem('delta8_editor', next.editor);
+            localStorage.setItem('delta8_write_token', next.writeToken);
+            if (notify) {
+                showNotif(next.writeToken ? 'Write token disimpan' : 'Write token dikosongkan', 'info');
+            }
+            return next;
+        }
+
+        function getActiveEditor() {
+            const session = getAuthSession();
+            return session && session.editor ? session.editor : String(localStorage.getItem('delta8_editor') || '').trim().toUpperCase();
+        }
+
         function getWriteToken() {
-            return localStorage.getItem('delta8_write_token') || '';
+            const session = getAuthSession();
+            return session && session.writeToken ? session.writeToken : (localStorage.getItem('delta8_write_token') || '');
         }
 
         window.setWriteToken = function(token) {
             const value = String(token || '').trim();
-            localStorage.setItem('delta8_write_token', value);
-            showNotif(value ? 'Write token disimpan' : 'Write token dikosongkan', 'info');
+            const current = getAuthSession() || {};
+            saveAuthSession({
+                editor: current.editor || getActiveEditor(),
+                writeToken: value,
+                deviceId: current.deviceId || getDeviceId(),
+                issuedAt: current.issuedAt || Date.now(),
+                expiresAt: current.expiresAt || 0
+            }, true);
         };
 
         function updateNotificationUI(state = {}) {
@@ -1236,21 +1317,25 @@ body.tab-transaksi .nav-tabs {
         }
 
         async function saveFcmToken(token) {
-            const writeToken = getWriteToken();
+            const session = getAuthSession();
+            const writeToken = session && session.writeToken ? session.writeToken : '';
             if (!writeToken) {
                 return { saved: false, reason: 'missing_write_token' };
             }
 
-            const editor = localStorage.getItem('delta8_editor') || '';
+            const editor = session && session.editor ? session.editor : getActiveEditor();
+            const deviceId = session && session.deviceId ? session.deviceId : getDeviceId();
             const payload = {
                 action: 'saveFcmToken',
                 authToken: writeToken,
                 token: token,
-                editor: editor
+                editor: editor,
+                deviceId: deviceId,
+                userAgent: navigator.userAgent || ''
             };
 
             try {
-                const url = `${CLOUD_URL}?action=saveFcmToken&authToken=${encodeURIComponent(writeToken)}&token=${encodeURIComponent(token)}&editor=${encodeURIComponent(editor)}`;
+                const url = `${CLOUD_URL}?action=saveFcmToken&authToken=${encodeURIComponent(writeToken)}&token=${encodeURIComponent(token)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
                 const data = await fetchJson(url);
                 return { saved: !!(data && data.saved), data };
             } catch (err) {
@@ -1260,12 +1345,15 @@ body.tab-transaksi .nav-tabs {
         }
 
         async function sendFcmTest(token) {
-            const writeToken = getWriteToken();
+            const session = getAuthSession();
+            const writeToken = session && session.writeToken ? session.writeToken : '';
             if (!writeToken) {
                 throw new Error('Write token belum ada.');
             }
 
-            const url = `${CLOUD_URL}?action=testFcm&authToken=${encodeURIComponent(writeToken)}&token=${encodeURIComponent(token)}&title=${encodeURIComponent('Tes Notifikasi Delta 8')}&body=${encodeURIComponent('Kalau pesan ini masuk, FCM sudah aktif di perangkat ini.')}`;
+            const deviceId = session && session.deviceId ? session.deviceId : getDeviceId();
+            const editor = session && session.editor ? session.editor : getActiveEditor();
+            const url = `${CLOUD_URL}?action=testFcm&authToken=${encodeURIComponent(writeToken)}&token=${encodeURIComponent(token)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}&title=${encodeURIComponent('Tes Notifikasi Delta 8')}&body=${encodeURIComponent('Kalau pesan ini masuk, FCM sudah aktif di perangkat ini.')}`;
             try {
                 return await fetchJson(url);
             } catch (err) {
@@ -1441,7 +1529,7 @@ body.tab-transaksi .nav-tabs {
             pendingAction = type; pendingParams = params;
             const pinInput = document.getElementById('inputPIN');
             const editorInput = document.getElementById('inputEditorName');
-            const savedEditor = localStorage.getItem('delta8_editor') || "";
+            const savedEditor = getActiveEditor() || "";
             if (pinInput) pinInput.value = "";
             if (editorInput) editorInput.value = savedEditor;
             bootstrap.Modal.getOrCreateInstance('#modalVerifyAuth').show();
@@ -1500,15 +1588,21 @@ body.tab-transaksi .nav-tabs {
 
             authInProgress = true;
             try {
-                const url = `${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}`;
+                const deviceId = getDeviceId();
+                const url = `${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
                 const data = await fetchJson(url);
                 if (!data || !data.ok || !data.writeToken) {
                     showNotif((data && data.error) ? data.error : 'Verifikasi gagal', 'error');
                     return;
                 }
 
-                localStorage.setItem('delta8_editor', data.editor || editor.toUpperCase());
-                setWriteToken(data.writeToken);
+                saveAuthSession({
+                    editor: data.editor || editor.toUpperCase(),
+                    writeToken: data.writeToken,
+                    deviceId: data.deviceId || deviceId,
+                    issuedAt: Date.now(),
+                    expiresAt: Date.now() + ((Number(data.expiresInSec || 0) || 0) * 1000)
+                });
                 bootstrap.Modal.getInstance('#modalVerifyAuth').hide();
                 setTimeout(executeAction, 300);
             } catch (err) {
@@ -1638,7 +1732,8 @@ async function syncAll() {
         // data yang dikirim ke GAS
         const payload = {
             authToken: writeToken,
-            editor: localStorage.getItem('delta8_editor') || '',
+            editor: getActiveEditor(),
+            deviceId: getDeviceId(),
             driver: DB_DRIVER,
             helper: DB_HELPER,
             transaksi: DB_TRANSAKSI,
@@ -1665,7 +1760,7 @@ async function syncAll() {
         function addLog(aksi, ket) {
             const d = new Date(), pad = (n) => n.toString().padStart(2, '0');
             const time = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}.${pad(d.getMinutes())}`;
-            DB_LOGS.unshift({ time, editor: localStorage.getItem('delta8_editor'), aksi: aksi.toUpperCase(), ket: ket });
+            DB_LOGS.unshift({ time, editor: getActiveEditor(), aksi: aksi.toUpperCase(), ket: ket });
         }
 
         function clearLogs() { new bootstrap.Modal('#modalKonfirmasiLog').show(); }
@@ -1882,7 +1977,7 @@ async function syncAll() {
             const doc = new jsPDF('p', 'mm', 'a4');
             const mText = document.getElementById('selMonth').options[document.getElementById('selMonth').selectedIndex].text.toUpperCase();
             const yText = document.getElementById('selYear').value;
-            const editorName = (localStorage.getItem('delta8_editor') || "SUPER ADMIN KAS").toUpperCase();
+            const editorName = getActiveEditor() || "SUPER ADMIN KAS";
 
             const blackBg = [15, 15, 15]; 
             const goldAccent = [212, 175, 55]; 

@@ -647,6 +647,8 @@ function handleSaveFcmToken_(payload, e) {
   validateWriteAuth_(payload, e);
   var token = String(payload.token || "").trim();
   var editor = String(payload.editor || "").trim();
+  var deviceId = normalizeDeviceId_(payload.deviceId || "");
+  var userAgent = truncateText_(String(payload.userAgent || ""), 180);
   if (token.length < 20) {
     throw new Error("Invalid FCM token.");
   }
@@ -661,7 +663,9 @@ function handleSaveFcmToken_(payload, e) {
     rows = [];
   }
 
-  rows = upsertFcmTokenRows_(rows, token, editor);
+  rows = upsertFcmTokenRows_(rows, token, editor, deviceId, {
+    userAgent: userAgent
+  });
   props.setProperty(FCM_TOKENS_KEY, JSON.stringify(rows));
 
   return jsonResponse_({ ok: true, saved: true, total: rows.length });
@@ -671,7 +675,8 @@ function handleSaveFcmTokenFromGet_(e) {
   var payload = {
     authToken: (e && e.parameter && e.parameter.authToken) || "",
     token: (e && e.parameter && e.parameter.token) || "",
-    editor: (e && e.parameter && e.parameter.editor) || ""
+    editor: (e && e.parameter && e.parameter.editor) || "",
+    deviceId: (e && e.parameter && e.parameter.deviceId) || ""
   };
   return handleSaveFcmToken_(payload, e);
 }
@@ -731,13 +736,23 @@ function adminAuthorizeFcm_() {
   };
 }
 
-function upsertFcmTokenRows_(rows, token, editor) {
+function upsertFcmTokenRows_(rows, token, editor, deviceId, extra) {
   var now = new Date().toISOString();
+  var cleanEditor = normalizeEditorName_(editor);
+  var cleanDeviceId = normalizeDeviceId_(deviceId);
+  var cleanUserAgent = truncateText_(String((extra && extra.userAgent) || ""), 180);
   var found = false;
   for (var i = 0; i < rows.length; i++) {
-    if (rows[i] && rows[i].token === token) {
+    if (
+      rows[i] &&
+      (rows[i].token === token ||
+        (cleanDeviceId && normalizeDeviceId_(rows[i].deviceId || "") === cleanDeviceId))
+    ) {
+      rows[i].token = token;
       rows[i].updatedAt = now;
-      if (editor) rows[i].editor = editor.toUpperCase();
+      if (cleanEditor) rows[i].editor = cleanEditor;
+      if (cleanDeviceId) rows[i].deviceId = cleanDeviceId;
+      if (cleanUserAgent) rows[i].userAgent = cleanUserAgent;
       found = true;
       break;
     }
@@ -745,12 +760,24 @@ function upsertFcmTokenRows_(rows, token, editor) {
   if (!found) {
     rows.unshift({
       token: token,
-      editor: editor ? editor.toUpperCase() : "",
+      editor: cleanEditor,
+      deviceId: cleanDeviceId,
+      userAgent: cleanUserAgent,
       createdAt: now,
       updatedAt: now
     });
   }
-  return rows.slice(0, 300);
+  return rows.filter(function(row, index, arr) {
+    if (!row || !row.token) return false;
+    return arr.findIndex(function(other) {
+      if (!other || !other.token) return false;
+      if (other.token === row.token) return true;
+      if (cleanDeviceId && normalizeDeviceId_(other.deviceId || "") === normalizeDeviceId_(row.deviceId || "")) {
+        return true;
+      }
+      return false;
+    }) === index;
+  }).slice(0, 300);
 }
 
 function setLastFcmSendStatus_(status) {
@@ -877,6 +904,7 @@ function handleBackupYear_(e) {
 function handleVerifyAuth_(e) {
   var pin = (e && e.parameter && e.parameter.pin) || "";
   var editor = (e && e.parameter && e.parameter.editor) || "";
+  var deviceId = normalizeDeviceId_((e && e.parameter && e.parameter.deviceId) || "");
   editor = String(editor || "").trim();
 
   if (editor.length < 2) {
@@ -892,10 +920,11 @@ function handleVerifyAuth_(e) {
     return jsonResponse_({ ok: false, error: "PIN salah." });
   }
 
-  var writeToken = issueWriteSessionToken_(editor.toUpperCase());
+  var writeToken = issueWriteSessionToken_(editor.toUpperCase(), deviceId);
   return jsonResponse_({
     ok: true,
     editor: editor.toUpperCase(),
+    deviceId: deviceId,
     writeToken: writeToken,
     expiresInSec: WRITE_SESSION_TTL_SEC
   });
@@ -946,7 +975,10 @@ function handleInstallBackupTrigger_(e) {
 
 function validateActionAuth_(e) {
   var provided = (e && e.parameter && e.parameter.authToken) || "";
-  validateAuthToken_(provided);
+  validateAuthToken_(provided, {
+    editor: (e && e.parameter && e.parameter.editor) || "",
+    deviceId: (e && e.parameter && e.parameter.deviceId) || ""
+  });
 }
 
 function validateWriteAuth_(payload, e) {
@@ -954,16 +986,25 @@ function validateWriteAuth_(payload, e) {
     (payload && payload.authToken) ||
     (e && e.parameter && e.parameter.authToken) ||
     "";
-  validateAuthToken_(provided);
+  validateAuthToken_(provided, {
+    editor:
+      (payload && payload.editor) ||
+      (e && e.parameter && e.parameter.editor) ||
+      "",
+    deviceId:
+      (payload && payload.deviceId) ||
+      (e && e.parameter && e.parameter.deviceId) ||
+      ""
+  });
 }
 
-function validateAuthToken_(provided) {
+function validateAuthToken_(provided, context) {
   var secret = getApiSecret_();
   var p = String(provided || "").trim();
   if (secret && p === String(secret)) {
     return;
   }
-  if (isValidWriteSessionToken_(p)) {
+  if (isValidWriteSessionToken_(p, context)) {
     return;
   }
   throw new Error("Unauthorized: invalid auth token.");
@@ -973,13 +1014,32 @@ function getApiSecret_() {
   return PropertiesService.getScriptProperties().getProperty(API_SECRET_KEY);
 }
 
-function issueWriteSessionToken_(editor) {
+function normalizeEditorName_(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+function normalizeDeviceId_(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, 80);
+}
+
+function issueWriteSessionToken_(editor, deviceId) {
   try {
     var token =
       Utilities.getUuid().replace(/-/g, "") +
       Utilities.getUuid().replace(/-/g, "");
     var cache = CacheService.getScriptCache();
-    cache.put("wt_" + token, String(editor || "OK"), WRITE_SESSION_TTL_SEC);
+    cache.put(
+      "wt_" + token,
+      JSON.stringify({
+        editor: normalizeEditorName_(editor || "OK"),
+        deviceId: normalizeDeviceId_(deviceId || ""),
+        issuedAt: new Date().toISOString()
+      }),
+      WRITE_SESSION_TTL_SEC
+    );
     return token;
   } catch (err) {
     // Fallback to static API secret if cache service is unavailable.
@@ -987,11 +1047,38 @@ function issueWriteSessionToken_(editor) {
   }
 }
 
-function isValidWriteSessionToken_(token) {
+function isValidWriteSessionToken_(token, context) {
   token = String(token || "").trim();
   if (!token) return false;
   var cache = CacheService.getScriptCache();
-  return !!cache.get("wt_" + token);
+  var raw = cache.get("wt_" + token);
+  if (!raw) return false;
+
+  var meta = null;
+  try {
+    meta = JSON.parse(raw);
+  } catch (err) {
+    meta = {
+      editor: normalizeEditorName_(raw),
+      deviceId: ""
+    };
+  }
+
+  var expectedEditor = normalizeEditorName_((meta && meta.editor) || "");
+  var expectedDeviceId = normalizeDeviceId_((meta && meta.deviceId) || "");
+  var providedEditor = normalizeEditorName_(context && context.editor);
+  var providedDeviceId = normalizeDeviceId_(context && context.deviceId);
+
+  if (expectedEditor && providedEditor && expectedEditor !== providedEditor) {
+    return false;
+  }
+  if (expectedDeviceId && providedDeviceId && expectedDeviceId !== providedDeviceId) {
+    return false;
+  }
+  if (expectedDeviceId && !providedDeviceId) {
+    return false;
+  }
+  return true;
 }
 
 function getYearFromRequest_(e) {
