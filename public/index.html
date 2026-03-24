@@ -970,11 +970,6 @@ body.tab-transaksi .nav-tabs {
         const FCM_TOKEN_KEY = 'delta8_fcm_token';
         let DB_DRIVER = [], DB_HELPER = [], DB_TRANSAKSI = [], DB_LOGS = [];
         const YEAR_CACHE = {};
-        const STATUSBAR_GROUP_KEY = 'delta8-statusbar';
-        const STATUSBAR_GROUP_TAG = 'delta8-statusbar-group';
-        const STATUSBAR_GROUP_TITLE = 'Delta 8';
-        const STATUSBAR_BUNDLE_STORAGE_KEY = 'delta8_statusbar_bundle';
-        const STATUSBAR_BUNDLE_MAX_ITEMS = 5;
         let loadToken = 0;
         let fcmState = { enabled: false, config: null, vapidKey: "", messaging: null, swReg: null };
         let authInProgress = false;
@@ -1005,9 +1000,6 @@ body.tab-transaksi .nav-tabs {
         }
 
         function buildStatusBarNotificationPayload(title, body, options = {}) {
-            const groupKey = String(options.groupKey || STATUSBAR_GROUP_KEY).trim() || STATUSBAR_GROUP_KEY;
-            const summaryTag = String(options.summaryTag || STATUSBAR_GROUP_TAG).trim() || STATUSBAR_GROUP_TAG;
-            const groupTitle = String(options.groupTitle || STATUSBAR_GROUP_TITLE).trim() || STATUSBAR_GROUP_TITLE;
             const baseTag = String(options.tag || 'delta8-statusbar').trim() || 'delta8-statusbar';
             const notificationId = String(options.notificationId || createStatusBarNotificationId(baseTag)).trim() || createStatusBarNotificationId(baseTag);
 
@@ -1020,56 +1012,9 @@ body.tab-transaksi .nav-tabs {
                 timestamp: Date.now(),
                 vibrate: [120, 60, 120],
                 data: {
-                    link: options.link || window.location.href,
-                    groupKey,
-                    groupTitle,
-                    summaryTag,
-                    notificationId,
-                    isSummary: false
+                    link: options.link || window.location.href
                 }
             };
-        }
-
-        async function syncStatusBarGroup(registration, options = {}) {
-            if (!registration || !registration.getNotifications || !registration.showNotification) return;
-
-            const groupKey = String(options.groupKey || STATUSBAR_GROUP_KEY).trim() || STATUSBAR_GROUP_KEY;
-            const summaryTag = String(options.summaryTag || STATUSBAR_GROUP_TAG).trim() || STATUSBAR_GROUP_TAG;
-            const groupTitle = String(options.groupTitle || STATUSBAR_GROUP_TITLE).trim() || STATUSBAR_GROUP_TITLE;
-            const notifications = await registration.getNotifications();
-            const summaryNotifications = notifications.filter((item) => item && item.tag === summaryTag);
-            const groupedNotifications = notifications.filter((item) => {
-                if (!item || item.tag === summaryTag) return false;
-                const data = item.data || {};
-                return String(data.groupKey || STATUSBAR_GROUP_KEY) === groupKey;
-            });
-
-            if (groupedNotifications.length < 2) {
-                summaryNotifications.forEach((item) => item.close());
-                return;
-            }
-
-            const latest = groupedNotifications
-                .slice()
-                .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))[0];
-            const link = options.link || (latest && latest.data && latest.data.link) || window.location.href;
-
-            await registration.showNotification(groupTitle, {
-                body: `${groupedNotifications.length} notifikasi aktif`,
-                icon: options.icon || '/notification-icon.svg',
-                badge: options.badge || '/notification-badge.svg',
-                tag: summaryTag,
-                renotify: false,
-                silent: true,
-                timestamp: latest && latest.timestamp ? latest.timestamp : Date.now(),
-                data: {
-                    link,
-                    groupKey,
-                    groupTitle,
-                    summaryTag,
-                    isSummary: true
-                }
-            });
         }
 
         function getWriteToken() {
@@ -1243,9 +1188,6 @@ body.tab-transaksi .nav-tabs {
                 const icon = notification.icon || data.icon || '/notification-icon.svg';
                 const badge = notification.badge || data.badge || '/notification-badge.svg';
                 const tag = data.tag || 'delta8-statusbar';
-                const groupKey = data.groupKey || STATUSBAR_GROUP_KEY;
-                const groupTitle = data.groupTitle || STATUSBAR_GROUP_TITLE;
-                const summaryTag = data.summaryTag || STATUSBAR_GROUP_TAG;
                 const notificationId = data.notificationId || '';
                 showNotif(body ? `${title} - ${body}` : title, 'info');
                 showStatusBarNotification(title, body, {
@@ -1253,9 +1195,6 @@ body.tab-transaksi .nav-tabs {
                     icon,
                     badge,
                     tag,
-                    groupKey,
-                    groupTitle,
-                    summaryTag,
                     notificationId
                 });
             });
@@ -1268,39 +1207,10 @@ body.tab-transaksi .nav-tabs {
                 if (Notification.permission !== 'granted') return;
                 const registration = fcmState.swReg || await navigator.serviceWorker.getRegistration('./firebase-messaging-sw.js') || await navigator.serviceWorker.ready;
                 if (!registration || !registration.showNotification) return;
-                const safeTitle = String(title || 'Notifikasi Delta 8').trim() || 'Notifikasi Delta 8';
-                const safeBody = String(body || '').trim();
-                const itemText = safeBody ? `${safeTitle} - ${safeBody}` : safeTitle;
-                const raw = localStorage.getItem(STATUSBAR_BUNDLE_STORAGE_KEY);
-                let store = { count: 0, items: [] };
-
-                try {
-                    const parsed = raw ? JSON.parse(raw) : null;
-                    if (parsed && Array.isArray(parsed.items)) {
-                        store = {
-                            count: Number(parsed.count || 0) || 0,
-                            items: parsed.items
-                        };
-                    }
-                } catch (err) {}
-
-                const nextItems = [itemText].concat(store.items || []).slice(0, STATUSBAR_BUNDLE_MAX_ITEMS);
-                const nextCount = store.count + 1;
-                localStorage.setItem(STATUSBAR_BUNDLE_STORAGE_KEY, JSON.stringify({
-                    count: nextCount,
-                    items: nextItems
-                }));
-
-                await registration.showNotification(`Delta 8 (${nextCount})`, {
-                    body: nextItems.map((item, index) => (index === 0 ? item : `* ${item}`)).join('\n'),
-                    icon: options.icon || '/notification-icon.svg',
-                    badge: options.badge || '/notification-badge.svg',
-                    tag: 'delta8-statusbar',
-                    renotify: true,
-                    timestamp: Date.now(),
-                    vibrate: [120, 60, 120],
-                    data: { link: options.link || window.location.href, isBundle: true }
-                });
+                await registration.showNotification(
+                    title || 'Notifikasi Delta 8',
+                    buildStatusBarNotificationPayload(title, body, options)
+                );
             } catch (err) {}
         }
 
