@@ -16,111 +16,140 @@ firebase.initializeApp(DEFAULT_FCM_CONFIG);
 const messaging = firebase.messaging();
 const DEFAULT_ICON = '/notification-icon.svg';
 const DEFAULT_BADGE = '/notification-badge.svg';
-const STATUSBAR_GROUP_KEY = 'delta8-statusbar';
-const STATUSBAR_GROUP_TAG = 'delta8-statusbar-group';
-const STATUSBAR_GROUP_TITLE = 'Delta 8';
+const STATUSBAR_BUNDLE_TAG = 'delta8-statusbar';
+const STATUSBAR_BUNDLE_TITLE = 'Delta 8';
+const STATUSBAR_STORE_CACHE = 'delta8-statusbar-cache-v1';
+const STATUSBAR_STORE_URL = 'https://delta8.local/statusbar-store';
+const STATUSBAR_MAX_ITEMS = 5;
 
-function createNotificationId(seed = '') {
-    const base = String(seed || 'notif')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 48) || 'notif';
-    return `${base}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+async function readStatusBarStore() {
+    try {
+        const cache = await caches.open(STATUSBAR_STORE_CACHE);
+        const response = await cache.match(STATUSBAR_STORE_URL);
+        if (!response) return { count: 0, items: [] };
+        const data = await response.json();
+        return {
+            count: Number(data && data.count ? data.count : 0) || 0,
+            items: Array.isArray(data && data.items) ? data.items : []
+        };
+    } catch (err) {
+        return { count: 0, items: [] };
+    }
 }
 
-function buildNotificationOptions(payload) {
-    const notification = payload && payload.notification ? payload.notification : {};
-    const data = payload && payload.data ? payload.data : {};
-    const baseTag = data.tag || 'delta8-statusbar';
-    const groupKey = data.groupKey || STATUSBAR_GROUP_KEY;
-    const groupTitle = data.groupTitle || STATUSBAR_GROUP_TITLE;
-    const summaryTag = data.summaryTag || STATUSBAR_GROUP_TAG;
-    const notificationId = data.notificationId || createNotificationId(baseTag);
+async function writeStatusBarStore(store) {
+    const cache = await caches.open(STATUSBAR_STORE_CACHE);
+    const payload = JSON.stringify({
+        count: Number(store && store.count ? store.count : 0) || 0,
+        items: Array.isArray(store && store.items) ? store.items : []
+    });
+    await cache.put(
+        STATUSBAR_STORE_URL,
+        new Response(payload, {
+            headers: { 'Content-Type': 'application/json' }
+        })
+    );
+}
+
+async function clearStatusBarStore() {
+    const cache = await caches.open(STATUSBAR_STORE_CACHE);
+    await cache.delete(STATUSBAR_STORE_URL);
+}
+
+function normalizeStatusBarEntry(title, body, options = {}) {
+    const safeTitle = String(title || 'Notifikasi Delta 8').trim() || 'Notifikasi Delta 8';
+    const safeBody = String(body || '').trim();
+    const text = safeBody ? `${safeTitle} - ${safeBody}` : safeTitle;
 
     return {
+        title: safeTitle,
+        body: safeBody,
+        text: text.slice(0, 180),
+        link: String(options.link || self.location.origin),
+        timestamp: Number(options.timestamp || Date.now()) || Date.now(),
+        icon: String(options.icon || DEFAULT_ICON),
+        badge: String(options.badge || DEFAULT_BADGE)
+    };
+}
+
+function buildBundledBody(items) {
+    return items
+        .slice(0, STATUSBAR_MAX_ITEMS)
+        .map((item, index) => (index === 0 ? item.text : `* ${item.text}`))
+        .join('\n');
+}
+
+async function updateBundledNotification(title, body, options = {}) {
+    const entry = normalizeStatusBarEntry(title, body, options);
+    const store = await readStatusBarStore();
+    const nextItems = [entry].concat(store.items || []).slice(0, STATUSBAR_MAX_ITEMS);
+    const nextCount = (Number(store.count || 0) || 0) + 1;
+
+    await writeStatusBarStore({
+        count: nextCount,
+        items: nextItems
+    });
+
+    await self.registration.showNotification(`${STATUSBAR_BUNDLE_TITLE} (${nextCount})`, {
+        body: buildBundledBody(nextItems),
+        icon: entry.icon,
+        badge: entry.badge,
+        tag: STATUSBAR_BUNDLE_TAG,
+        renotify: true,
+        timestamp: entry.timestamp,
+        vibrate: [120, 60, 120],
+        data: {
+            link: entry.link,
+            isBundle: true
+        }
+    });
+}
+
+function extractPayloadData(payload) {
+    const notification = payload && payload.notification ? payload.notification : {};
+    const data = payload && payload.data ? payload.data : {};
+    return {
         title: notification.title || data.title || 'Notifikasi Delta 8',
+        body: notification.body || data.body || 'Ada pembaruan baru untuk aplikasi kas.',
         options: {
-            body: notification.body || data.body || 'Ada pembaruan baru untuk aplikasi kas.',
             icon: notification.icon || data.icon || DEFAULT_ICON,
             badge: notification.badge || data.badge || DEFAULT_BADGE,
-            tag: `${baseTag}-${notificationId}`,
-            renotify: true,
-            timestamp: Date.now(),
-            vibrate: [120, 60, 120],
-            data: {
-                link: data.link || data.url || self.location.origin,
-                groupKey,
-                groupTitle,
-                summaryTag,
-                notificationId,
-                isSummary: false
-            }
+            link: data.link || data.url || self.location.origin,
+            timestamp: Date.now()
         }
     };
 }
 
-async function syncNotificationGroup(registration, options = {}) {
-    if (!registration || !registration.getNotifications || !registration.showNotification) return;
-
-    const groupKey = String(options.groupKey || STATUSBAR_GROUP_KEY);
-    const summaryTag = String(options.summaryTag || STATUSBAR_GROUP_TAG);
-    const groupTitle = String(options.groupTitle || STATUSBAR_GROUP_TITLE);
-    const notifications = await registration.getNotifications();
-    const summaryNotifications = notifications.filter((item) => item && item.tag === summaryTag);
-    const groupedNotifications = notifications.filter((item) => {
-        if (!item || item.tag === summaryTag) return false;
-        const data = item.data || {};
-        return String(data.groupKey || STATUSBAR_GROUP_KEY) === groupKey;
-    });
-
-    if (groupedNotifications.length < 2) {
-        summaryNotifications.forEach((item) => item.close());
-        return;
-    }
-
-    const latest = groupedNotifications
-        .slice()
-        .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))[0];
-    const link = options.link
-        || (latest && latest.data && latest.data.link)
-        || self.location.origin;
-
-    await registration.showNotification(groupTitle, {
-        body: `${groupedNotifications.length} notifikasi aktif`,
-        icon: options.icon || DEFAULT_ICON,
-        badge: options.badge || DEFAULT_BADGE,
-        tag: summaryTag,
-        renotify: false,
-        silent: true,
-        timestamp: latest && latest.timestamp ? latest.timestamp : Date.now(),
-        data: {
-            link,
-            groupKey,
-            groupTitle,
-            summaryTag,
-            isSummary: true
-        }
-    });
-}
-
 messaging.onBackgroundMessage((payload) => {
-    const next = buildNotificationOptions(payload);
-    return self.registration.showNotification(next.title, next.options)
-        .then(() => syncNotificationGroup(self.registration, next.options.data));
+    const next = extractPayloadData(payload);
+    return updateBundledNotification(next.title, next.body, next.options);
+});
+
+self.addEventListener('message', (event) => {
+    const data = event && event.data ? event.data : {};
+    if (data.type !== 'delta8-bundle-notification') return;
+
+    const payload = data.payload || {};
+    const title = payload.title || 'Notifikasi Delta 8';
+    const body = payload.body || '';
+    const options = {
+        icon: payload.icon || DEFAULT_ICON,
+        badge: payload.badge || DEFAULT_BADGE,
+        link: payload.link || self.location.origin,
+        timestamp: payload.timestamp || Date.now()
+    };
+
+    event.waitUntil(updateBundledNotification(title, body, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     const notificationData = event.notification && event.notification.data ? event.notification.data : {};
-
-    const targetUrl = notificationData.link
-        ? notificationData.link
-        : self.location.origin;
+    const targetUrl = notificationData.link ? notificationData.link : self.location.origin;
 
     event.waitUntil(
         Promise.all([
-            notificationData.isSummary ? Promise.resolve() : syncNotificationGroup(self.registration, notificationData),
+            clearStatusBarStore(),
             clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
                 for (const client of clientList) {
                     if ('focus' in client) {
@@ -141,7 +170,6 @@ self.addEventListener('notificationclick', (event) => {
 
 self.addEventListener('notificationclose', (event) => {
     const notificationData = event.notification && event.notification.data ? event.notification.data : {};
-    event.waitUntil(
-        notificationData.isSummary ? Promise.resolve() : syncNotificationGroup(self.registration, notificationData)
-    );
+    if (!notificationData.isBundle) return;
+    event.waitUntil(clearStatusBarStore());
 });

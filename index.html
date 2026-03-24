@@ -1267,11 +1267,31 @@ body.tab-transaksi .nav-tabs {
                 const registration = fcmState.swReg || await navigator.serviceWorker.getRegistration('./firebase-messaging-sw.js') || await navigator.serviceWorker.ready;
                 if (!registration || !registration.showNotification) return;
 
-                await registration.showNotification(
-                    title || 'Notifikasi Delta 8',
-                    buildStatusBarNotificationPayload(title, body, options)
-                );
-                await syncStatusBarGroup(registration, options);
+                if (registration.active && registration.active.postMessage) {
+                    registration.active.postMessage({
+                        type: 'delta8-bundle-notification',
+                        payload: {
+                            title: title || 'Notifikasi Delta 8',
+                            body: body || 'Ada aktivitas baru di aplikasi.',
+                            icon: options.icon || '/notification-icon.svg',
+                            badge: options.badge || '/notification-badge.svg',
+                            link: options.link || window.location.href,
+                            timestamp: Date.now()
+                        }
+                    });
+                    return;
+                }
+
+                await registration.showNotification('Delta 8', {
+                    body: body ? `${title} - ${body}` : (title || 'Notifikasi Delta 8'),
+                    icon: options.icon || '/notification-icon.svg',
+                    badge: options.badge || '/notification-badge.svg',
+                    tag: 'delta8-statusbar',
+                    renotify: true,
+                    timestamp: Date.now(),
+                    vibrate: [120, 60, 120],
+                    data: { link: options.link || window.location.href, isBundle: true }
+                });
             } catch (err) {}
         }
 
