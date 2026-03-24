@@ -1604,7 +1604,7 @@ body.tab-transaksi .nav-tabs {
                     expiresAt: Date.now() + ((Number(data.expiresInSec || 0) || 0) * 1000)
                 });
                 bootstrap.Modal.getInstance('#modalVerifyAuth').hide();
-                setTimeout(executeAction, 300);
+                executeAction();
             } catch (err) {
                 showNotif((err && err.message) ? err.message : 'Tidak bisa verifikasi ke backend', 'error');
             } finally {
