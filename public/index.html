@@ -1552,21 +1552,29 @@ body.tab-transaksi .nav-tabs {
             }
         }
 
-        function closeAuthModalAndExecute() {
+        function hideAuthModal() {
             const modalEl = document.getElementById('modalVerifyAuth');
             const modal = bootstrap.Modal.getInstance('#modalVerifyAuth') || bootstrap.Modal.getOrCreateInstance('#modalVerifyAuth');
-            if (!modalEl || !modal) {
-                executeAction();
-                return;
-            }
+            return new Promise((resolve) => {
+                if (!modalEl || !modal || !modalEl.classList.contains('show')) {
+                    resolve();
+                    return;
+                }
 
-            const runAction = () => {
-                modalEl.removeEventListener('hidden.bs.modal', runAction);
-                executeAction();
-            };
+                const done = () => {
+                    modalEl.removeEventListener('hidden.bs.modal', done);
+                    resolve();
+                };
 
-            modalEl.addEventListener('hidden.bs.modal', runAction, { once: true });
-            modal.hide();
+                modalEl.addEventListener('hidden.bs.modal', done, { once: true });
+                modal.hide();
+            });
+        }
+
+        function reopenAuthModal() {
+            const pinInput = document.getElementById('inputPIN');
+            if (pinInput) pinInput.value = '';
+            bootstrap.Modal.getOrCreateInstance('#modalVerifyAuth').show();
         }
 
         function handlePinInput(input) {
@@ -1604,12 +1612,15 @@ body.tab-transaksi .nav-tabs {
             }
 
             authInProgress = true;
+            const hidePromise = hideAuthModal();
             try {
                 const deviceId = getDeviceId();
                 const url = `${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
                 const data = await fetchJson(url);
                 if (!data || !data.ok || !data.writeToken) {
+                    await hidePromise;
                     showNotif((data && data.error) ? data.error : 'Verifikasi gagal', 'error');
+                    reopenAuthModal();
                     return;
                 }
 
@@ -1620,9 +1631,12 @@ body.tab-transaksi .nav-tabs {
                     issuedAt: Date.now(),
                     expiresAt: Date.now() + ((Number(data.expiresInSec || 0) || 0) * 1000)
                 });
-                closeAuthModalAndExecute();
+                await hidePromise;
+                executeAction();
             } catch (err) {
+                await hidePromise;
                 showNotif((err && err.message) ? err.message : 'Tidak bisa verifikasi ke backend', 'error');
+                reopenAuthModal();
             } finally {
                 authInProgress = false;
             }
