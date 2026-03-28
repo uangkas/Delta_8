@@ -755,6 +755,169 @@ body.tab-transaksi .nav-tabs {
         .notify-item.error { border-color: #ef4444; }
         .notify-item.info { border-color: var(--accent-color); }
 
+        .statusbar-notif-host {
+            width: min(420px, 100%);
+            margin: 10px auto 0;
+            position: relative;
+        }
+
+        .statusbar-notif-inline {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .statusbar-notif-chip,
+        .statusbar-notif-toggle {
+            border: 1px solid color-mix(in srgb, var(--accent-color) 65%, transparent);
+            background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+            color: var(--text-main);
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-size: 10px;
+            font-weight: 800;
+            line-height: 1.2;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+            backdrop-filter: blur(12px);
+        }
+
+        .statusbar-notif-chip {
+            max-width: 100%;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .statusbar-notif-chip-title {
+            color: var(--accent-color);
+            letter-spacing: 0.8px;
+        }
+
+        .statusbar-notif-chip-text {
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .statusbar-notif-toggle {
+            width: 100%;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        .statusbar-notif-toggle.show {
+            display: flex;
+        }
+
+        .statusbar-notif-toggle strong {
+            color: var(--accent-color);
+            letter-spacing: 1px;
+        }
+
+        .statusbar-notif-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(420px, calc(100vw - 32px));
+            background: color-mix(in srgb, var(--bg-card) 95%, black 5%);
+            border: 1px solid color-mix(in srgb, var(--accent-color) 55%, transparent);
+            border-radius: 16px;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+            backdrop-filter: blur(18px);
+            padding: 10px;
+            display: none;
+            z-index: 80;
+        }
+
+        .statusbar-notif-dropdown.show {
+            display: block;
+        }
+
+        .statusbar-notif-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 4px 4px 10px;
+            border-bottom: 1px solid color-mix(in srgb, var(--accent-color) 30%, transparent);
+            margin-bottom: 8px;
+        }
+
+        .statusbar-notif-head span {
+            font-size: 10px;
+            font-weight: 900;
+            color: var(--accent-color);
+            letter-spacing: 1.2px;
+        }
+
+        .statusbar-notif-clear {
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+        .statusbar-notif-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .statusbar-notif-entry {
+            width: 100%;
+            border: 1px solid color-mix(in srgb, var(--accent-color) 28%, transparent);
+            border-radius: 12px;
+            background: color-mix(in srgb, var(--bg-main) 55%, var(--bg-card) 45%);
+            color: var(--text-main);
+            padding: 10px 12px;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .statusbar-notif-entry-title {
+            display: block;
+            font-size: 10px;
+            font-weight: 900;
+            color: var(--accent-color);
+            letter-spacing: 0.8px;
+            margin-bottom: 4px;
+        }
+
+        .statusbar-notif-entry-body {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.4;
+        }
+
+        .statusbar-notif-entry-time {
+            display: block;
+            margin-top: 6px;
+            font-size: 9px;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.6px;
+        }
+
+        .statusbar-notif-empty {
+            padding: 18px 10px 10px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
     </style>
 </head>
 
@@ -771,6 +934,20 @@ body.tab-transaksi .nav-tabs {
             <div class="brand-kicker">Driver Helper</div>
             <h3 class="judul-utama">DATA UANG KAS DRIVER HELPER DELTA 8</h3>
             <p id="sync-status" class="small fw-bold" style="color: var(--text-muted); letter-spacing: 3px; margin: 0; font-size: 10px;">☁️ MENGHUBUNGKAN...</p>
+            <div id="statusbar-notif-host" class="statusbar-notif-host" hidden>
+                <div id="statusbar-notif-inline" class="statusbar-notif-inline"></div>
+                <button id="statusbar-notif-toggle" class="statusbar-notif-toggle" type="button" onclick="toggleStatusbarNotifications(event)">
+                    <strong id="statusbar-notif-summary">NOTIFIKASI BARU</strong>
+                    <span id="statusbar-notif-arrow">▼</span>
+                </button>
+                <div id="statusbar-notif-dropdown" class="statusbar-notif-dropdown">
+                    <div class="statusbar-notif-head">
+                        <span>NOTIFIKASI TERBARU</span>
+                        <button type="button" class="statusbar-notif-clear" onclick="clearStatusbarNotifications(event)">BERSIHKAN</button>
+                    </div>
+                    <div id="statusbar-notif-list" class="statusbar-notif-list"></div>
+                </div>
+            </div>
             <div class="theme-container d-flex justify-content-center gap-3 mt-3">
                 <div id="dot-luxury" class="theme-dot active" style="background: #d4af37;" onclick="setTheme('luxury')"></div>
                 <div id="dot-emerald" class="theme-dot" style="background: #10b981;" onclick="setTheme('emerald')"></div>
@@ -1012,6 +1189,10 @@ body.tab-transaksi .nav-tabs {
         let authInProgress = false;
         let pendingAction = null, pendingParams = null, currentContext = { type: '', id: null, idx: null };
         const cloneData = (v) => JSON.parse(JSON.stringify(v));
+        const STATUSBAR_NOTIF_THRESHOLD = 3;
+        const STATUSBAR_NOTIF_LIMIT = 8;
+        let statusbarNotifications = [];
+        let statusbarDropdownOpen = false;
 
         function showNotif(message, type = 'info') {
             const wrap = document.getElementById('notify-wrap');
@@ -1026,6 +1207,148 @@ body.tab-transaksi .nav-tabs {
                 setTimeout(() => item.remove(), 220);
             }, 2400);
         }
+
+        function formatStatusbarNotificationTime(timestamp) {
+            const value = Number(timestamp || 0);
+            if (!value) return '';
+            const diffMs = Math.max(0, Date.now() - value);
+            const diffMin = Math.floor(diffMs / 60000);
+            if (diffMin < 1) return 'BARU SAJA';
+            if (diffMin < 60) return `${diffMin} MENIT LALU`;
+            const diffHour = Math.floor(diffMin / 60);
+            if (diffHour < 24) return `${diffHour} JAM LALU`;
+            const diffDay = Math.floor(diffHour / 24);
+            return `${diffDay} HARI LALU`;
+        }
+
+        function closeStatusbarNotifications() {
+            statusbarDropdownOpen = false;
+            const dropdown = document.getElementById('statusbar-notif-dropdown');
+            const arrow = document.getElementById('statusbar-notif-arrow');
+            if (dropdown) dropdown.classList.remove('show');
+            if (arrow) arrow.innerText = '▼';
+        }
+
+        function handleStatusbarNotificationClick(itemId) {
+            const item = statusbarNotifications.find(entry => entry.id === itemId);
+            closeStatusbarNotifications();
+            if (!item || !item.link) return;
+            if (item.link === window.location.href) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+            window.location.href = item.link;
+        }
+
+        function renderStatusbarNotifications() {
+            const host = document.getElementById('statusbar-notif-host');
+            const inline = document.getElementById('statusbar-notif-inline');
+            const toggle = document.getElementById('statusbar-notif-toggle');
+            const summary = document.getElementById('statusbar-notif-summary');
+            const list = document.getElementById('statusbar-notif-list');
+            if (!host || !inline || !toggle || !summary || !list) return;
+
+            const total = statusbarNotifications.length;
+            host.hidden = total === 0;
+            inline.innerHTML = '';
+            list.innerHTML = '';
+
+            if (!total) {
+                closeStatusbarNotifications();
+                toggle.classList.remove('show');
+                return;
+            }
+
+            if (total < STATUSBAR_NOTIF_THRESHOLD) {
+                toggle.classList.remove('show');
+                closeStatusbarNotifications();
+                statusbarNotifications.forEach((item) => {
+                    const chip = document.createElement('div');
+                    chip.className = 'statusbar-notif-chip';
+
+                    const title = document.createElement('span');
+                    title.className = 'statusbar-notif-chip-title';
+                    title.innerText = item.title || 'NOTIF';
+
+                    const text = document.createElement('span');
+                    text.className = 'statusbar-notif-chip-text';
+                    text.innerText = item.body || item.title || 'Ada aktivitas baru.';
+
+                    chip.appendChild(title);
+                    chip.appendChild(text);
+                    inline.appendChild(chip);
+                });
+                return;
+            }
+
+            toggle.classList.add('show');
+            summary.innerText = `${total} NOTIFIKASI BARU`;
+
+            if (!statusbarDropdownOpen) {
+                closeStatusbarNotifications();
+            }
+
+            statusbarNotifications.forEach((item) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'statusbar-notif-entry';
+                button.onclick = () => handleStatusbarNotificationClick(item.id);
+
+                const title = document.createElement('span');
+                title.className = 'statusbar-notif-entry-title';
+                title.innerText = item.title || 'NOTIFIKASI BARU';
+
+                const body = document.createElement('span');
+                body.className = 'statusbar-notif-entry-body';
+                body.innerText = item.body || item.title || 'Ada aktivitas baru di aplikasi.';
+
+                const time = document.createElement('span');
+                time.className = 'statusbar-notif-entry-time';
+                time.innerText = formatStatusbarNotificationTime(item.timestamp);
+
+                button.appendChild(title);
+                button.appendChild(body);
+                button.appendChild(time);
+                list.appendChild(button);
+            });
+        }
+
+        function pushStatusbarNotification(title, body, options = {}) {
+            const item = {
+                id: String(options.notificationId || createStatusBarNotificationId(title || 'statusbar')).trim(),
+                title: String(title || 'Notifikasi Baru').trim(),
+                body: String(body || '').trim(),
+                link: String(options.link || window.location.href).trim(),
+                timestamp: Number(options.timestamp || Date.now()) || Date.now()
+            };
+
+            statusbarNotifications = [
+                item,
+                ...statusbarNotifications.filter(entry => entry.id !== item.id)
+            ].slice(0, STATUSBAR_NOTIF_LIMIT);
+
+            renderStatusbarNotifications();
+        }
+
+        function toggleStatusbarNotifications(event) {
+            if (event) event.stopPropagation();
+            if (statusbarNotifications.length < STATUSBAR_NOTIF_THRESHOLD) return;
+            statusbarDropdownOpen = !statusbarDropdownOpen;
+            const dropdown = document.getElementById('statusbar-notif-dropdown');
+            const arrow = document.getElementById('statusbar-notif-arrow');
+            if (dropdown) dropdown.classList.toggle('show', statusbarDropdownOpen);
+            if (arrow) arrow.innerText = statusbarDropdownOpen ? '▲' : '▼';
+        }
+
+        function clearStatusbarNotifications(event) {
+            if (event) event.stopPropagation();
+            statusbarNotifications = [];
+            closeStatusbarNotifications();
+            renderStatusbarNotifications();
+        }
+
+        window.toggleStatusbarNotifications = toggleStatusbarNotifications;
+        window.clearStatusbarNotifications = clearStatusbarNotifications;
 
         function createStatusBarNotificationId(seed = '') {
             const base = String(seed || 'notif')
@@ -1306,6 +1629,11 @@ body.tab-transaksi .nav-tabs {
                 const tag = data.tag || 'delta8-statusbar';
                 const notificationId = data.notificationId || '';
                 showNotif(body ? `${title} - ${body}` : title, 'info');
+                pushStatusbarNotification(title, body, {
+                    link,
+                    notificationId,
+                    timestamp: Date.now()
+                });
                 showStatusBarNotification(title, body, {
                     link,
                     icon,
@@ -2409,6 +2737,20 @@ async function syncAll() {
     startAutoSync();
     restoreNotificationState();
     applyLaunchContext();
+
+    document.addEventListener('click', (event) => {
+        if (!statusbarDropdownOpen) return;
+        const host = document.getElementById('statusbar-notif-host');
+        if (host && !host.contains(event.target)) {
+            closeStatusbarNotifications();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && statusbarDropdownOpen) {
+            closeStatusbarNotifications();
+        }
+    });
 };
        let currentSearch = '';
 
