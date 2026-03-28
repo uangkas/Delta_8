@@ -1434,9 +1434,9 @@ body.tab-transaksi .nav-tabs {
                         showNotif('Push notification aktif di perangkat ini.', 'success');
                         updateNotificationUI({ token, message: 'FCM AKTIF DI PERANGKAT INI', color: '#10b981' });
                     }
-                } else if (saveResult && saveResult.reason === 'missing_write_token') {
-                    showNotif('Notifikasi aktif di perangkat. Simpan write token jika ingin backend mengirim tes otomatis.', 'info');
-                    updateNotificationUI({ token, message: 'FCM AKTIF, TOKEN BELUM TERSIMPAN KE BACKEND', color: '#f59e0b' });
+                } else if (saveResult && saveResult.reason === 'missing_authorization') {
+                    showNotif('Notifikasi aktif di perangkat ini, tapi otorisasi tindakan belum aktif untuk tes kirim backend.', 'info');
+                    updateNotificationUI({ token, message: 'FCM AKTIF, TES BACKEND BUTUH OTORISASI', color: '#f59e0b' });
                 } else {
                     showNotif('Notifikasi aktif, tapi backend belum mengonfirmasi penyimpanan token.', 'info');
                     updateNotificationUI({ token, message: 'FCM AKTIF, MENUNGGU BACKEND', color: '#f59e0b' });
@@ -1465,6 +1465,7 @@ body.tab-transaksi .nav-tabs {
                 if (token) {
                     localStorage.setItem(FCM_TOKEN_KEY, token);
                     updateNotificationUI({ token, message: 'FCM SIAP DIGUNAKAN', color: '#10b981' });
+                    await saveFcmToken(token);
                 }
             } catch (err) {
                 updateNotificationUI({ message: 'STATUS FCM BELUM BISA DICEK', color: '#f59e0b' });
