@@ -999,9 +999,15 @@ body.tab-transaksi .nav-tabs {
         const FCM_TOKEN_KEY = 'delta8_fcm_token';
         const DEVICE_ID_KEY = 'delta8_device_id';
         const AUTH_SESSION_KEY = 'delta8_auth_session';
+        const AUTO_SYNC_INTERVAL_MS = 5000;
+        const AUTO_SYNC_SUPPRESS_MS = 5000;
         let DB_DRIVER = [], DB_HELPER = [], DB_TRANSAKSI = [], DB_LOGS = [];
         const YEAR_CACHE = {};
+        const YEAR_SIGNATURES = {};
         let loadToken = 0;
+        let autoSyncTimer = null;
+        let autoSyncInProgress = false;
+        let suppressRemoteRefreshUntil = 0;
         let fcmState = { enabled: false, config: null, vapidKey: "", messaging: null, swReg: null };
         let authInProgress = false;
         let pendingAction = null, pendingParams = null, currentContext = { type: '', id: null, idx: null };
@@ -1545,7 +1551,7 @@ body.tab-transaksi .nav-tabs {
                 ptrIndicator.style.transform = `translateY(70px)`;
                 ptrIcon.innerText = '⏳';
                 ptrIcon.classList.add('ptr-loading');
-                await loadFromCloud();
+                await loadFromCloudSmart(CURRENT_YEAR, { forceRender: true });
                 setTimeout(() => {
                     ptrIcon.classList.remove('ptr-loading');
                     ptrIndicator.style.transform = `translateY(0px)`;
@@ -1828,7 +1834,7 @@ body.tab-transaksi .nav-tabs {
             }
         }
 
-        async function loadFromCloud(year = CURRENT_YEAR) {
+        async function loadFromCloud(year = CURRENT_YEAR, options = {}) {
 
     const token = ++loadToken;
     document.getElementById('sync-status').innerText = "⏳ MEMUAT DATA...";
@@ -1851,6 +1857,7 @@ body.tab-transaksi .nav-tabs {
             transaksi: cloneData(DB_TRANSAKSI),
             logs: cloneData(DB_LOGS)
         };
+        YEAR_SIGNATURES[year] = buildYearSignature(YEAR_CACHE[year]);
 
         render();
 
@@ -1866,6 +1873,113 @@ body.tab-transaksi .nav-tabs {
 
 }
 
+        function buildYearSignature(data) {
+            return JSON.stringify({
+                driver: data.driver || [],
+                helper: data.helper || [],
+                transaksi: data.transaksi || [],
+                logs: data.logs || []
+            });
+        }
+
+        function applyYearData(year, data) {
+            const normalized = {
+                driver: cloneData(data.driver || []),
+                helper: cloneData(data.helper || []),
+                transaksi: cloneData(data.transaksi || []),
+                logs: cloneData(data.logs || [])
+            };
+
+            YEAR_CACHE[year] = normalized;
+            YEAR_SIGNATURES[year] = buildYearSignature(normalized);
+
+            if (Number(year) === Number(CURRENT_YEAR)) {
+                DB_DRIVER = cloneData(normalized.driver);
+                DB_HELPER = cloneData(normalized.helper);
+                DB_TRANSAKSI = cloneData(normalized.transaksi);
+                DB_LOGS = cloneData(normalized.logs);
+                render();
+            }
+
+            return normalized;
+        }
+
+        function hasOpenBlockingModal() {
+            return !!document.querySelector('.modal.show');
+        }
+
+        function shouldAutoSyncCurrentYear() {
+            if (document.hidden) return false;
+            if (authInProgress) return false;
+            if (Date.now() < suppressRemoteRefreshUntil) return false;
+            if (hasOpenBlockingModal()) return false;
+            return true;
+        }
+
+        async function loadFromCloudSmart(year = CURRENT_YEAR, options = {}) {
+            const token = ++loadToken;
+            const silent = !!options.silent;
+            const forceRender = !!options.forceRender;
+            const status = document.getElementById('sync-status');
+            if (!silent && status) status.innerText = "MEMUAT DATA...";
+
+            try {
+                const data = await fetchJson(`${CLOUD_URL}?action=read&year=${year}`);
+                if (token !== loadToken) return { changed: false, ignored: true };
+
+                const normalized = {
+                    driver: data.driver || [],
+                    helper: data.helper || [],
+                    transaksi: data.transaksi || [],
+                    logs: data.logs || []
+                };
+                const nextSignature = buildYearSignature(normalized);
+                const changed = YEAR_SIGNATURES[year] !== nextSignature;
+
+                if (changed || !silent || forceRender || !YEAR_CACHE[year]) {
+                    applyYearData(year, normalized);
+                }
+
+                if (status) status.innerText = "TERHUBUNG";
+                return { changed, ignored: false };
+            } catch (e) {
+                if (token !== loadToken) return { changed: false, ignored: true };
+                if (status) status.innerText = "TERPUTUS";
+                if (!silent && Number(year) === Number(CURRENT_YEAR)) render();
+                return { changed: false, ignored: false, error: e };
+            }
+        }
+
+        async function refreshCurrentYearInBackground(reason = 'interval') {
+            if (autoSyncInProgress) return false;
+            if (!shouldAutoSyncCurrentYear()) return false;
+
+            autoSyncInProgress = true;
+            try {
+                const result = await loadFromCloudSmart(CURRENT_YEAR, { silent: true });
+                return !!(result && result.changed);
+            } finally {
+                autoSyncInProgress = false;
+            }
+        }
+
+        function startAutoSync() {
+            if (autoSyncTimer) clearInterval(autoSyncTimer);
+            autoSyncTimer = setInterval(() => {
+                refreshCurrentYearInBackground('interval').catch(err => console.error('auto sync error:', err));
+            }, AUTO_SYNC_INTERVAL_MS);
+
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    refreshCurrentYearInBackground('visible').catch(err => console.error('auto sync error:', err));
+                }
+            });
+
+            window.addEventListener('focus', () => {
+                refreshCurrentYearInBackground('focus').catch(err => console.error('auto sync error:', err));
+            });
+        }
+
 async function syncAll() {
 
     // render dulu data lokal
@@ -1876,6 +1990,7 @@ async function syncAll() {
         transaksi: cloneData(DB_TRANSAKSI),
         logs: cloneData(DB_LOGS)
     };
+    YEAR_SIGNATURES[CURRENT_YEAR] = buildYearSignature(YEAR_CACHE[CURRENT_YEAR]);
 
         const status = document.getElementById('sync-status');
         status.innerText = "⏳ MENYIMPAN...";
@@ -1904,6 +2019,7 @@ async function syncAll() {
 
         // delay sedikit supaya GAS selesai menulis
         await new Promise(resolve => setTimeout(resolve, 500));
+        suppressRemoteRefreshUntil = Date.now() + AUTO_SYNC_SUPPRESS_MS;
 
         status.innerText = "☁️ TERHUBUNG";
 
@@ -2289,7 +2405,8 @@ async function syncAll() {
     sy.addEventListener('change', () => gantiTahun(sy.value));
 
     updateNotificationUI();
-    loadFromCloud(CURRENT_YEAR);
+    loadFromCloudSmart(CURRENT_YEAR, { forceRender: true });
+    startAutoSync();
     restoreNotificationState();
     applyLaunchContext();
 };
@@ -2394,7 +2511,7 @@ async function gantiTahun(tahun){
     }
 
     // Muat data langsung agar tidak terasa delay
-    loadFromCloud(CURRENT_YEAR);
+    loadFromCloudSmart(CURRENT_YEAR, { forceRender: true });
 
     // ensureYear tetap dijalankan tanpa memblokir UI
     fetchJson(`${CLOUD_URL}?action=ensureYear&year=${CURRENT_YEAR}`)
