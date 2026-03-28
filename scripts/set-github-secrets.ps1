@@ -73,10 +73,16 @@ function Set-SecretFromFile {
 
     Write-Host "Setting secret $Name dari $FilePath"
     $body = Get-SecretBodyFromFile -FilePath $FilePath
-    if ($RepoName) {
-        Invoke-GitHubCli secret set $Name --repo $RepoName --body $body
-    } else {
-        Invoke-GitHubCli secret set $Name --body $body
+    $tempFile = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($tempFile, $body, [System.Text.UTF8Encoding]::new($false))
+        if ($RepoName) {
+            Get-Content -Raw -LiteralPath $tempFile | & $script:GitHubCli secret set $Name --repo $RepoName
+        } else {
+            Get-Content -Raw -LiteralPath $tempFile | & $script:GitHubCli secret set $Name
+        }
+    } finally {
+        Remove-Item -LiteralPath $tempFile -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -88,10 +94,16 @@ function Set-SecretFromValue {
     )
 
     Write-Host "Setting secret $Name"
-    if ($RepoName) {
-        Invoke-GitHubCli secret set $Name --repo $RepoName --body $Value
-    } else {
-        Invoke-GitHubCli secret set $Name --body $Value
+    $tempFile = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText($tempFile, $Value, [System.Text.UTF8Encoding]::new($false))
+        if ($RepoName) {
+            Get-Content -Raw -LiteralPath $tempFile | & $script:GitHubCli secret set $Name --repo $RepoName
+        } else {
+            Get-Content -Raw -LiteralPath $tempFile | & $script:GitHubCli secret set $Name
+        }
+    } finally {
+        Remove-Item -LiteralPath $tempFile -Force -ErrorAction SilentlyContinue
     }
 }
 
