@@ -98,41 +98,6 @@
             to { transform: rotate(360deg); }
         }
 
-        .brand-mark {
-            width: 74px;
-            height: 74px;
-            margin: 0 auto 12px;
-            border-radius: 22px;
-            border: 1px solid rgba(212, 175, 55, 0.45);
-            background:
-                radial-gradient(circle at top, rgba(252, 246, 186, 0.28), transparent 55%),
-                linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.25)),
-                var(--bg-card);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
-        }
-
-        .brand-mark span {
-            background: var(--gradient);
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 1.4rem;
-            font-weight: 900;
-            letter-spacing: 3px;
-        }
-
-        .brand-kicker {
-            color: var(--accent-color);
-            font-size: 0.62rem;
-            font-weight: 700;
-            letter-spacing: 4px;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-
         .judul-utama {
             background: var(--gradient);
             background-clip: text;
@@ -414,22 +379,6 @@
         .copyright-text { margin-top: 2px; font-size: 9px; color: var(--accent-color); opacity: 0.6; letter-spacing: 1px; }
 
         @media (max-width: 576px) {
-            .brand-mark {
-                width: 64px;
-                height: 64px;
-                border-radius: 20px;
-            }
-
-            .brand-mark span {
-                font-size: 1.2rem;
-                letter-spacing: 2px;
-            }
-
-            .brand-kicker {
-                font-size: 0.58rem;
-                letter-spacing: 3px;
-            }
-
             .judul-utama {
                 font-size: 0.85rem;
                 letter-spacing: 0.6px;
@@ -765,10 +714,6 @@ body.tab-transaksi .nav-tabs {
 
     <div class="container-fluid" id="app-content">
         <div id="header-section" class="text-center pt-4 pb-1">
-            <div class="brand-mark" aria-hidden="true">
-                <span>D8</span>
-            </div>
-            <div class="brand-kicker">Driver Helper</div>
             <h3 class="judul-utama">DATA UANG KAS DRIVER HELPER DELTA 8</h3>
             <p id="sync-status" class="small fw-bold" style="color: var(--text-muted); letter-spacing: 3px; margin: 0; font-size: 10px;">☁️ MENGHUBUNGKAN...</p>
             <div class="theme-container d-flex justify-content-center gap-3 mt-3">
