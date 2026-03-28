@@ -644,13 +644,15 @@ function handleFcmSw_() {
 }
 
 function handleSaveFcmToken_(payload, e) {
-  validateWriteAuth_(payload, e);
   var token = String(payload.token || "").trim();
   var editor = String(payload.editor || "").trim();
   var deviceId = normalizeDeviceId_(payload.deviceId || "");
   var userAgent = truncateText_(String(payload.userAgent || ""), 180);
   if (token.length < 20) {
     throw new Error("Invalid FCM token.");
+  }
+  if (!editor) {
+    editor = "PERANGKAT";
   }
 
   var props = PropertiesService.getScriptProperties();
