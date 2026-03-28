@@ -1698,7 +1698,6 @@ body.tab-transaksi .nav-tabs {
             }
 
             authInProgress = true;
-            const hidePromise = hideAuthModal();
             let optimisticToggle = null;
             try {
                 if (action === 'toggle') {
@@ -1709,12 +1708,11 @@ body.tab-transaksi .nav-tabs {
                 const url = `${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
                 const data = await fetchJson(url);
                 if (!data || !data.ok || !data.writeToken) {
-                    await hidePromise;
                     if (optimisticToggle) {
                         executeAction(action, params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
                     }
-                    resetAuthPinFocus(false);
-                    showNotif((data && data.error) ? data.error : 'Verifikasi gagal', 'error');
+                    resetAuthPinFocus();
+                    showNotif((data && data.error) ? data.error : 'PIN salah', 'error');
                     return;
                 }
 
@@ -1727,6 +1725,7 @@ body.tab-transaksi .nav-tabs {
                 });
 
                 if (action === 'toggle') {
+                    const hidePromise = hideAuthModal();
                     if (optimisticToggle) {
                         const mm = params.m.toString().padStart(2, '0');
                         addLog("Iuran", `${params.kat.toUpperCase()} - ${optimisticToggle.person.nama} - ${mm}/${params.y} - [${optimisticToggle.isLunas ? "✅ - LUNAS" : "❌ - BATAL"}]`);
@@ -1734,16 +1733,16 @@ body.tab-transaksi .nav-tabs {
                     } else {
                         executeAction(action, params);
                     }
-                } else {
                     await hidePromise;
+                } else {
+                    await hideAuthModal();
                     executeAction(action, params);
                 }
             } catch (err) {
-                await hidePromise;
                 if (optimisticToggle) {
                     executeAction(action, params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
                 }
-                resetAuthPinFocus(false);
+                resetAuthPinFocus();
                 showNotif((err && err.message) ? err.message : 'Tidak bisa verifikasi ke backend', 'error');
             } finally {
                 authInProgress = false;
