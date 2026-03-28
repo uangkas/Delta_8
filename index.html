@@ -1653,11 +1653,11 @@ body.tab-transaksi .nav-tabs {
             bootstrap.Modal.getOrCreateInstance('#modalVerifyAuth').show();
         }
 
-        function resetAuthPinFocus() {
+        function resetAuthPinFocus(shouldFocus = true) {
             const pinInput = document.getElementById('inputPIN');
             if (pinInput) {
                 pinInput.value = '';
-                focusPinInput();
+                if (shouldFocus) focusPinInput();
             }
         }
 
@@ -1686,6 +1686,8 @@ body.tab-transaksi .nav-tabs {
             if (authInProgress) return;
             const pin = document.getElementById('inputPIN').value.trim();
             const editor = document.getElementById('inputEditorName').value.trim();
+            const action = pendingAction;
+            const params = pendingParams ? { ...pendingParams } : null;
             if (editor.length < 2) {
                 showNotif('Nama editor minimal 2 karakter.', 'error');
                 return;
@@ -1696,13 +1698,23 @@ body.tab-transaksi .nav-tabs {
             }
 
             authInProgress = true;
+            const hidePromise = hideAuthModal();
+            let optimisticToggle = null;
             try {
+                if (action === 'toggle') {
+                    optimisticToggle = executeAction(action, params, { sync: false, log: false });
+                }
+
                 const deviceId = getDeviceId();
                 const url = `${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
                 const data = await fetchJson(url);
                 if (!data || !data.ok || !data.writeToken) {
+                    await hidePromise;
+                    if (optimisticToggle) {
+                        executeAction(action, params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
+                    }
+                    resetAuthPinFocus(false);
                     showNotif((data && data.error) ? data.error : 'Verifikasi gagal', 'error');
-                    resetAuthPinFocus();
                     return;
                 }
 
@@ -1714,16 +1726,25 @@ body.tab-transaksi .nav-tabs {
                     expiresAt: Date.now() + ((Number(data.expiresInSec || 0) || 0) * 1000)
                 });
 
-                if (pendingAction === 'toggle') {
-                    executeAction();
-                    await hideAuthModal();
+                if (action === 'toggle') {
+                    if (optimisticToggle) {
+                        const mm = params.m.toString().padStart(2, '0');
+                        addLog("Iuran", `${params.kat.toUpperCase()} - ${optimisticToggle.person.nama} - ${mm}/${params.y} - [${optimisticToggle.isLunas ? "✅ - LUNAS" : "❌ - BATAL"}]`);
+                        syncAll();
+                    } else {
+                        executeAction(action, params);
+                    }
                 } else {
-                    await hideAuthModal();
-                    executeAction();
+                    await hidePromise;
+                    executeAction(action, params);
                 }
             } catch (err) {
+                await hidePromise;
+                if (optimisticToggle) {
+                    executeAction(action, params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
+                }
+                resetAuthPinFocus(false);
                 showNotif((err && err.message) ? err.message : 'Tidak bisa verifikasi ke backend', 'error');
-                resetAuthPinFocus();
             } finally {
                 authInProgress = false;
             }
@@ -1732,19 +1753,19 @@ body.tab-transaksi .nav-tabs {
         window.submitAuth = submitAuth;
         window.checkAuth = submitAuth;
 
-        function executeAction() {
-            if (pendingAction === 'tambah') { 
+        function executeAction(action = pendingAction, params = pendingParams, options = {}) {
+            if (action === 'tambah') { 
                 document.getElementById('fAdd').reset(); 
                 document.getElementById('editMemberId').value = ""; 
                 bootstrap.Modal.getOrCreateInstance('#modalTambah').show(); 
-            } else if (pendingAction === 'catat') { 
+            } else if (action === 'catat') { 
                 document.getElementById('fTrans').reset(); 
                 document.getElementById('editTransIdx').value = ""; 
                 document.getElementById('trans_date').valueAsDate = new Date(); 
                 bootstrap.Modal.getOrCreateInstance('#modalCatat').show(); 
-            } else if (pendingAction === 'download') {
+            } else if (action === 'download') {
                 downloadFinancialPDF();
-            } else if (pendingAction === 'edit_trigger') {
+            } else if (action === 'edit_trigger') {
                 if (currentContext.type === 'member') {
                     const p = [...DB_DRIVER, ...DB_HELPER].find(x => x.id == currentContext.id);
                     document.getElementById('editMemberId').value = p.id; 
@@ -1761,7 +1782,7 @@ body.tab-transaksi .nav-tabs {
                     document.getElementById('trans_val').value = t.v;
                     bootstrap.Modal.getOrCreateInstance('#modalCatat').show();
                 }
-            } else if (pendingAction === 'delete_trigger') {
+            } else if (action === 'delete_trigger') {
                 if (currentContext.type === 'member') {
                     const isDriver = DB_DRIVER.some(x => x.id == currentContext.id);
                     const kat = isDriver ? 'DRIVER' : 'HELPER';
@@ -1775,14 +1796,27 @@ body.tab-transaksi .nav-tabs {
                     DB_TRANSAKSI.splice(currentContext.idx, 1);
                 }
                 syncAll();
-            } else if (pendingAction === 'toggle') {
-                let p = (pendingParams.kat === 'Driver' ? DB_DRIVER : DB_HELPER).find(x => x.id == pendingParams.id);
-                if (!p.status[pendingParams.y]) p.status[pendingParams.y] = {};
-                p.status[pendingParams.y][pendingParams.m] = !p.status[pendingParams.y][pendingParams.m];
-                const isLunas = p.status[pendingParams.y][pendingParams.m];
-                const mm = pendingParams.m.toString().padStart(2, '0');
-                addLog("Iuran", `${pendingParams.kat.toUpperCase()} - ${p.nama} - ${mm}/${pendingParams.y} - [${isLunas ? "✅ - LUNAS" : "❌ - BATAL"}]`);
-                syncAll();
+            } else if (action === 'toggle') {
+                let p = (params.kat === 'Driver' ? DB_DRIVER : DB_HELPER).find(x => x.id == params.id);
+                if (!p) return null;
+                if (!p.status) p.status = {};
+                if (!p.status[params.y]) p.status[params.y] = {};
+                const previousValue = !!p.status[params.y][params.m];
+                const nextValue = Object.prototype.hasOwnProperty.call(options, 'nextValue') ? !!options.nextValue : !previousValue;
+                p.status[params.y][params.m] = nextValue;
+                const result = { person: p, previousValue, isLunas: nextValue };
+                const shouldLog = options.log !== false;
+                const shouldSync = options.sync !== false;
+                if (shouldLog) {
+                    const mm = params.m.toString().padStart(2, '0');
+                    addLog("Iuran", `${params.kat.toUpperCase()} - ${p.nama} - ${mm}/${params.y} - [${nextValue ? "✅ - LUNAS" : "❌ - BATAL"}]`);
+                }
+                if (shouldSync) {
+                    syncAll();
+                } else {
+                    render();
+                }
+                return result;
             }
         }
 
