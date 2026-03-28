@@ -1332,13 +1332,57 @@ body.tab-transaksi .nav-tabs {
             bootstrap.Tab.getOrCreateInstance(button).show();
         }
 
+        function ensureLaunchPanelOpen(panelId) {
+            const id = String(panelId || '').trim();
+            if (!id) return;
+            const panel = document.getElementById(id);
+            if (!panel || panel.classList.contains('show')) return;
+            panel.classList.add('show');
+            const icon = document.getElementById(`${id.split('-')[0]}-icon`);
+            if (icon) icon.innerText = '▲';
+        }
+
+        function focusLaunchTarget(targetId) {
+            const id = String(targetId || '').trim();
+            if (!id) return;
+            const target = document.getElementById(id);
+            if (!target) return;
+
+            const focusable = target.matches('input, button, select, textarea, a, [tabindex]')
+                ? target
+                : (target.closest('table') || target);
+
+            if (!focusable.hasAttribute('tabindex')) {
+                focusable.setAttribute('tabindex', '-1');
+            }
+
+            focusable.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => {
+                try {
+                    focusable.focus({ preventScroll: true });
+                } catch (err) {
+                    focusable.focus();
+                }
+            }, 180);
+        }
+
         function applyLaunchContext() {
             try {
                 const params = new URLSearchParams(window.location.search);
                 const view = params.get('view');
+                const focusTarget = params.get('focus');
+                const panelId = params.get('panel');
                 if (view) {
                     activateTabByName(view);
+                }
+                if (panelId) ensureLaunchPanelOpen(panelId);
+                if (focusTarget) {
+                    setTimeout(() => focusLaunchTarget(focusTarget), 220);
+                }
+                if (view || focusTarget || panelId) {
                     params.delete('view');
+                    params.delete('focus');
+                    params.delete('panel');
                     const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}${window.location.hash}`;
                     window.history.replaceState({}, '', next);
                 }
