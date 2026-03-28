@@ -1699,8 +1699,10 @@ body.tab-transaksi .nav-tabs {
 
             authInProgress = true;
             let optimisticToggle = null;
+            let hidePromise = null;
             try {
                 if (action === 'toggle') {
+                    hidePromise = hideAuthModal();
                     optimisticToggle = executeAction(action, params, { sync: false, log: false });
                 }
 
@@ -1710,6 +1712,10 @@ body.tab-transaksi .nav-tabs {
                 if (!data || !data.ok || !data.writeToken) {
                     if (optimisticToggle) {
                         executeAction(action, params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
+                    }
+                    if (hidePromise) {
+                        await hidePromise;
+                        reopenAuthModal();
                     }
                     resetAuthPinFocus();
                     showNotif((data && data.error) ? data.error : 'PIN salah', 'error');
@@ -1725,7 +1731,6 @@ body.tab-transaksi .nav-tabs {
                 });
 
                 if (action === 'toggle') {
-                    const hidePromise = hideAuthModal();
                     if (optimisticToggle) {
                         const mm = params.m.toString().padStart(2, '0');
                         addLog("Iuran", `${params.kat.toUpperCase()} - ${optimisticToggle.person.nama} - ${mm}/${params.y} - [${optimisticToggle.isLunas ? "✅ - LUNAS" : "❌ - BATAL"}]`);
@@ -1733,7 +1738,7 @@ body.tab-transaksi .nav-tabs {
                     } else {
                         executeAction(action, params);
                     }
-                    await hidePromise;
+                    if (hidePromise) await hidePromise;
                 } else {
                     await hideAuthModal();
                     executeAction(action, params);
@@ -1741,6 +1746,10 @@ body.tab-transaksi .nav-tabs {
             } catch (err) {
                 if (optimisticToggle) {
                     executeAction(action, params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
+                }
+                if (hidePromise) {
+                    await hidePromise;
+                    reopenAuthModal();
                 }
                 resetAuthPinFocus();
                 showNotif((err && err.message) ? err.message : 'Tidak bisa verifikasi ke backend', 'error');
