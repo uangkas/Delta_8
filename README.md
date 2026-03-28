@@ -19,15 +19,16 @@ Contoh file dan script bantu:
 
 Trigger deploy:
 
-- push ke branch `main` dengan perubahan di `gas_fix/**` akan deploy Apps Script
-- push ke branch `main` dengan perubahan di `public/**`, `firebase.json`, atau `.firebaserc` akan deploy Firebase Hosting live
+- push ke branch `main` dengan perubahan di `Code.gs`, `index.html`, atau `gas_fix/**` akan deploy Apps Script
+- push ke branch `main` dengan perubahan di `index.html`, `firebase-messaging-sw.js`, `public/**`, `firebase.json`, atau `.firebaserc` akan deploy Firebase Hosting live
 - pull request yang mengubah file hosting akan membuat preview channel Firebase
 
 Catatan:
 
-- Source yang benar-benar dideploy ke Firebase ada di folder `public/`
-- Source yang benar-benar dipush ke Apps Script ada di folder `gas_fix/`
-- File root seperti `index.html` dan `Code.gs` tidak dipakai workflow deploy saat ini
+- File root `Code.gs`, `index.html`, dan `firebase-messaging-sw.js` sekarang menjadi source utama yang Anda edit
+- Workflow akan otomatis menyalin source root ke folder deploy `gas_fix/` dan `public/` sebelum deploy berjalan
+- Source yang benar-benar dideploy ke Firebase tetap berasal dari folder `public/`
+- Source yang benar-benar dipush ke Apps Script tetap berasal dari folder `gas_fix/`
 - Fitur FCM web push default sudah memakai `vapidKey` project `kas-delta-8`
 - file rahasia lokal seperti `firebase-service-account.json` sudah di-ignore dari git
 

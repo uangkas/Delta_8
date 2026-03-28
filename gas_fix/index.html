@@ -1,0 +1,2307 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#111111">
+    <title>Data Uang KAS Driver Helper DELTA 8</title>
+    <link rel="icon" href="/notification-icon.svg" type="image/svg+xml">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        :root {
+            --bg-body: #0a0a0a;
+            --bg-card: #151515;
+            --text-main: #ffffff;
+            --accent-color: #d4af37;
+            --border-color: #2a2a2a;
+            --sticky-bg: #151515;
+            --gradient: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728);
+            --log-bg: #151515;
+            --text-muted: #888888;
+            --input-bg: #1a1a1a;
+            --card-inner: #1a1a1a;
+        }
+
+        [data-theme="emerald"] {
+            --bg-body: #05140f; --bg-card: #0a1f18; --text-main: #ffffff; --accent-color: #10b981; --border-color: #064e3b;
+            --sticky-bg: #0a1f18; --gradient: linear-gradient(135deg, #064e3b, #10b981, #065f46);
+            --log-bg: #0a1f18; --text-muted: #94a3b8; --input-bg: #0d2b22; --card-inner: #0d2b22;
+        }
+
+        [data-theme="platinum"] {
+            --bg-body: #f8fafc; --bg-card: #ffffff; --text-main: #1e293b; --accent-color: #475569; --border-color: #e2e8f0;
+            --sticky-bg: #ffffff; --gradient: linear-gradient(135deg, #475569, #94a3b8, #64748b);
+            --log-bg: #ffffff; --text-muted: #64748b; --input-bg: #f1f5f9; --card-inner: #f1f5f9;
+        }
+
+        [data-theme="crystal"] {
+            --bg-body: #f0f9ff; --bg-card: #ffffff; --text-main: #0c4a6e; --accent-color: #0284c7; --border-color: #bae6fd;
+            --sticky-bg: #ffffff; --gradient: linear-gradient(135deg, #0369a1, #0ea5e9, #0284c7);
+            --log-bg: #ffffff; --text-muted: #0ea5e9; --input-bg: #0ef2fe; --card-inner: #e0f2fe;
+        }
+
+        * { 
+            font-family: "Times New Roman", Times, serif !important; 
+            scroll-behavior: smooth !important;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            padding: 15px;
+            overflow-x: hidden;
+            transition: 0.3s;
+            font-size: 12px !important;
+            overscroll-behavior-y: contain; /* Penting untuk pull to refresh custom */
+        }
+
+        /* Pull to Refresh Styles */
+        #ptr-indicator {
+            position: fixed;
+            top: -60px;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            transition: transform 0.2s ease;
+            pointer-events: none;
+        }
+
+        .ptr-circle {
+            width: 35px;
+            height: 35px;
+            background: var(--bg-card);
+            border: 2px solid var(--accent-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            font-size: 16px;
+        }
+
+        .ptr-loading {
+            animation: rotate 1s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .brand-mark {
+            width: 74px;
+            height: 74px;
+            margin: 0 auto 12px;
+            border-radius: 22px;
+            border: 1px solid rgba(212, 175, 55, 0.45);
+            background:
+                radial-gradient(circle at top, rgba(252, 246, 186, 0.28), transparent 55%),
+                linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.25)),
+                var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+        }
+
+        .brand-mark span {
+            background: var(--gradient);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.4rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+        }
+
+        .brand-kicker {
+            color: var(--accent-color);
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .judul-utama {
+            background: var(--gradient);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+            text-align: center;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+
+        .table-responsive {
+            background: var(--accent-color);
+            border-radius: 12px;
+            border: 1px solid var(--accent-color);
+            margin-bottom: 15px;
+            overflow: auto;
+            max-height: 70vh;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table {
+            margin-bottom: 0;
+            color: var(--text-main);
+            min-width: 900px;
+            white-space: nowrap;
+            border-color: var(--accent-color);
+            border-collapse: separate;
+            border-spacing: 0.5px;
+            border-radius: 6px;
+            table-layout: fixed;
+        }
+
+        .table tbody tr td {
+            background-color: var(--bg-card) !important;
+            color: var(--text-main);
+            border-radius: 6px;
+            font-size: 11px !important;
+        }
+
+        .table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 25;
+            background: var(--gradient) !important;
+            color: #000000 !important;
+            font-size: 10px !important;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: 1px solid rgba(0, 0, 0, 0.1) !important;
+            vertical-align: middle;
+            text-align: center !important;
+            border-radius: 6px !important;
+            height: 40px !important;
+            padding-top: 5px !important;
+        }
+
+        #driver .table thead th,
+        #helper .table thead th {
+            font-size: 12px !important;
+        }
+
+        .no-col { width: 45px !important; height: 40px; position: sticky !important; left: 0; z-index: 10; background-color: var(--bg-card) !important; color: var(--text-main) !important; font-size: 11px !important; font-weight: 800; text-align: center; vertical-align: middle !important; border-radius: 7px; }
+        .name-col { width: 180px !important; position: sticky !important; left: 45px; z-index: 9; background-color: var(--accent-color) !important; color: var(--text-main) !important; font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase; vertical-align: middle !important; padding-left: 12px !important; border-right: 2px solid var(--accent-color) !important; border-left: 2px solid var(--accent-color) !important; border-radius: 7px; }
+
+        .status-toggle { background: var(--accent-color); width: 60px !important; border-radius: 7px; text-align: center; vertical-align: middle; cursor: pointer; font-size: 11px !important; }
+        /* ===== ANIMASI HOVER CEKLIST ===== */
+
+.status-toggle {
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Hover efek glow + naik */
+.status-toggle:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 0 10px var(--accent-color);
+    cursor: pointer;
+}
+
+/* Klik efek tekan */
+.status-toggle:active {
+    transform: scale(0.92);
+    box-shadow: 0 0 16px var(--accent-color);
+}
+
+/* Ripple luxury effect */
+.status-toggle::after {
+    content: "";
+    position: absolute;
+    width: 0;
+    height: 0;
+    background: var(--accent-color);
+    opacity: 0.25;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.4s ease, height 0.4s ease, opacity 0.4s ease;
+}
+
+/* Saat hover muncul cahaya */
+.status-toggle:hover::after {
+    width: 120%;
+    height: 120%;
+    opacity: 0;
+}
+        .text-center-force { font-size: 12px; color: var(--text-main) !important; text-align: center; border-radius: 6px; vertical-align: middle !important; width: 60px !important; }
+
+        thead th.no-col { z-index: 40 !important; top: 0; left: 0; background: var(--gradient) !important; }
+        thead th.name-col { z-index: 39 !important; top: 0; left: 45px; background: var(--gradient) !important; }
+
+        .panel-kontrol-utama { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            width: 100%; 
+            padding: 0 2px;
+            margin: 25px 0 10px 0;
+            gap: 10px;
+            margin-top: 12px !important;
+    margin-bottom: 12px !important;
+        }
+        .select-group-mini { 
+            display: flex; 
+            flex: 1;
+            max-width: 80%;
+            width: 48% !important;
+            gap: 5px; 
+            background: transparent; 
+            padding: 0 5px; 
+            border-radius: 8px; 
+            border: 1px solid var(--accent-color); 
+            height: 42px; 
+            align-items: center;
+            justify-content: space-between;
+            border-width: 2px !important;
+        }
+        .custom-select-mini { background: transparent; color: var(--accent-color); border: none; font-size: 11px; font-weight: 900; cursor: pointer; outline: none; text-transform: uppercase; width: 45%; 
+            
+        }
+        
+        .button-group-right { display: flex; flex: 1; justify-content: flex-end; gap: 6px; }
+        .btn-luxe {
+    color: var(--accent-color);
+    background: transparent;
+ border-color: var(--accent-color) !important;
+    font-weight: 800 !important;
+    border-radius: 10px !important;
+    height: 38px;
+    padding: 10px 15px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 5px;
+    transition: all 0.3s ease;
+    white-space: nowrap;      /* paksa 1 baris */
+    overflow: hidden;
+    text-overflow: ellipsis;  /* kalau kepanjangan muncul ... */
+
+     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    height: 42px;              /* tambah tinggi */
+    padding: 0 24px !important; /* jarak kiri kanan lega */
+    line-height: normal;        /* hindari teks kepotong */
+}
+
+        /* Hover effect */
+.btn-luxe:hover {
+    transform: translateY(-2px);
+     border-color: var(--accent-color) !important;
+
+}
+
+/* Active (saat diklik) */
+.btn-luxe:active {
+    transform: scale(0.98);
+    box-shadow: 0 0 18px rgba(0, 230, 118, 0.7);
+}
+        
+        .btn-unduh-final { width: 100%; background: var(--gradient); color: #000; font-weight: 900; border: none; padding: 12px; border-radius: 8px; text-transform: uppercase; font-size: 12px; margin-bottom: 10px; }
+        .btn-hapus-final { width: 100%; background: transparent; color: #ff4d4d; border: 1px solid #ff4d4d; font-weight: bold; padding: 10px; border-radius: 8px; font-size: 11px; }
+        .label-armada { font-weight: 900; color: var(--accent-color); margin: 15px 0 5px 0; display: block; width: 100%; font-size: 12px; }
+        
+        #table-transaksi, #log-list-table { border-collapse: separate !important; border-spacing: 2px 2px; table-layout: fixed; width: 100%; min-width: 800px; border: none; }
+        #table-transaksi thead th, #log-list-table thead th { height: 35px !important; text-align: center !important; font-size: 10px !important; padding-top: 5px !important; position: sticky; top: 0; z-index: 10; }
+        #table-transaksi thead th { font-size: 12px !important; }
+        .col-tgl { width: 85px !important; }
+        .col-tip { width: 120px !important; }
+        .col-sum { width: 200px !important; }
+        .col-ket { width: 210px !important; }
+        .col-nom { width: 120px !important; }
+        .col-aks { width: 45px !important; }
+        #table-transaksi tbody td, #log-list-table tbody td { height: 20px !important; line-height: 1.1 !important; border-radius: 4px; border-bottom: 1px solid var(--accent-color) !important; padding: 2px 8px !important; font-size: 11px !important; vertical-align: middle !important; background-color: var(--bg-card) !important; white-space: nowrap !important; color: var(--text-main) !important; }
+        
+        .transaksi-scroll-area { max-height: 400px; overflow-y: auto; border-radius: 12px; background: var(--accent-color); padding: 1px; -webkit-overflow-scrolling: touch;}
+        
+                  ::placeholder { color: var(--text-main) !important; opacity: 1 !important; }
+        
+        .form-control { background-color: var(--input-bg, #1a1a1a) !important; color: var(--text-main) !important; border: 1px solid var(--accent-color) !important; font-size: 12px !important;}
+        .modal-content { background: var(--bg-card); border: 2px solid var(--accent-color); color: var(--text-main); border-radius: 15px; }
+        .col-aksi-center { text-align: center !important; vertical-align: middle !important; padding: 0 !important; width: 30px; border-radius: 6px !important; }
+        .btn-aksi-trigger { cursor: pointer; color: var(--text-main); font-weight: bold; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: transparent !important; }
+        .card-saldo { background: var(--card-inner); border: 2px solid var(--accent-color); border-radius: 12px; padding: 10px 6px; text-align: center; min-height: 70px; display: flex; flex-direction: column; justify-content: center; }
+        .card-saldo .label { font-size: 12px; font-weight: 900; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+        .card-saldo .value { font-size: 12px; font-weight: 900; color: var(--text-main); }
+        .theme-dot { width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(128, 128, 128, 0.3); }
+        .theme-dot.active { border: 2px solid var(--text-main); transform: scale(1.1); box-shadow: 0 0 10px var(--accent-color); }
+        .luxe-dropdown { width: 100%; background: var(--bg-card); border: 1px solid var(--accent-color); color: var(--accent-color); padding: 12px 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 12px; }
+        .luxe-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: var(--bg-card); border-radius: 0 0 12px 12px; margin-top: -10px; }
+        .luxe-content.show { max-height: 800px; border: 1px solid var(--accent-color); border-top: none; padding: 15px 10px 10px 10px; }
+        .banner-bar { background: var(--gradient); color: #000; padding: 5px; border-radius: 8px; font-weight: 900; text-align: center; margin: 0px 0 10px 0; font-size: 15px; letter-spacing: 2px; }
+        #actionMenu { display: none; position: absolute; z-index: 99999; background: var(--bg-card); border: 1px solid var(--accent-color); border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); min-width: 110px; overflow: hidden; }
+        .menu-item { padding: 8px 15px; cursor: pointer; font-size: 12px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+        
+        .footer-app {
+            margin-top: 30px;
+            padding: 30px 0;
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+            background: linear-gradient(to bottom, transparent 0%, var(--bg-card) 40%, var(--bg-body) 100%);
+            width: 100vw;
+            position: relative;
+            left: 50%;
+            right: 50%;
+            margin-left: -50vw;
+            margin-right: -50vw;
+        }
+
+        /* NAV TABS IKUT BTN-LUXE */
+
+.nav-tabs {
+    border: none !important;
+    gap: 10px;
+    margin-top:10px;
+}
+
+.nav-tabs .nav-item {
+    flex: 1;
+}
+
+/* Pusatkan isi tombol tab */
+
+/* ===== OUTLINE NAV SELARAS TEMA ===== */
+
+.nav-tabs .nav-link {
+    border: 2px solid var(--accent-color) !important;
+    outline: none !important;
+}
+
+/* Hover */
+.nav-tabs .nav-link:hover {
+    border-color: var(--accent-color) !important;
+}
+
+/* Active */
+.nav-tabs .nav-link.active {
+    border-color: var(--accent-color) !important;
+}
+
+/* Focus (hilangkan biru default) */
+.nav-tabs .nav-link:focus {
+    outline: 2px solid var(--accent-color) !important;
+    outline-offset: 2px;
+    box-shadow: 0 0 8px var(--accent-color) !important;
+}
+
+        .footer-logo { font-weight: 900; letter-spacing: 3px; background: var(--gradient); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1rem; margin-bottom: 5px; text-transform: uppercase; }
+        .footer-divider { width: 80px; height: 1.5px; background: var(--gradient); margin: 2px auto; border-radius: 2px; }
+        .footer-tagline { font-size: 0.7rem; color: var(--accent-color); letter-spacing: 2px; text-transform: uppercase; font-weight: 700; margin-bottom: 1px; }
+        .footer-info { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; line-height: 1.8; max-width: 600px; margin: 0 auto; }
+        .copyright-text { margin-top: 2px; font-size: 9px; color: var(--accent-color); opacity: 0.6; letter-spacing: 1px; }
+
+        @media (max-width: 576px) {
+            .brand-mark {
+                width: 64px;
+                height: 64px;
+                border-radius: 20px;
+            }
+
+            .brand-mark span {
+                font-size: 1.2rem;
+                letter-spacing: 2px;
+            }
+
+            .brand-kicker {
+                font-size: 0.58rem;
+                letter-spacing: 3px;
+            }
+
+            .judul-utama {
+                font-size: 0.85rem;
+                letter-spacing: 0.6px;
+            }
+
+            .footer-logo {
+                letter-spacing: 2px;
+                font-size: 0.9rem;
+            }
+        }
+        
+/* Searchbar refinement */
+#search-driver {
+    border-width: 2px !important;     /* outline 2px */
+    position: relative;               /* biar bisa digeser halus */
+    top: -2px;                        /* naik sedikit (ubah ke -3px kalau mau) */
+    left: 0px;          /* geser ke kiri 10px */
+    margin-right: 0px !important;
+}
+
+button.btn-luxe[onclick*="tambah"] {
+    margin-left: 0 !important;
+    padding-left: 34px !important;
+    padding-right: 34px !important;
+}
+
+/* Outline searchbar 2px */
+#search-member {
+    border-width: 2px !important;
+    margin-bottom: 5px;
+}
+
+#tahun-wrap {
+    width: 95px;
+    min-width: 95px;
+    max-width: 95px;
+    height: 42px;
+    min-height: 42px;
+    border-radius: 8px;
+    border: 2px solid var(--accent-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    background: transparent;
+}
+
+#tahun-select {
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: var(--accent-color) !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+#tahun-select:focus {
+    border-color: var(--accent-color) !important;
+    box-shadow: 0 0 8px var(--accent-color) !important;
+    outline: none !important;
+}
+
+#search-driver:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 1px var(--accent-color);
+}
+
+#transaksi.show ~ #member-toolbar {
+    display: none;
+}
+
+/* SEMBUNYIKAN TOOLBAR DI TAB TRANSAKSI */
+body.tab-transaksi #member-toolbar {
+    display: none !important;
+}
+
+/* RAPATKAN LAYOUT KHUSUS TAB TRANSAKSI */
+body.tab-transaksi .panel-kontrol-utama {
+    margin-top: 10px !important;   /* dari 25px → 10px */
+}
+
+body.tab-transaksi .banner-bar {
+    margin-top: 15px !important;   /* dari 35px → 15px */
+}
+
+/* rapikan jarak tab ke kontrol bulan */
+body.tab-transaksi .nav-tabs {
+    margin-bottom: 5px !important;
+}
+
+/* ===== FIX FINAL SPACING TRANSAKSI ===== */
+
+/* Rapatkan jarak tab dengan kontrol */
+#transaksi {
+    padding-top: 0 !important;
+
+}
+
+/* Kontrol dropdown + tombol */
+#transaksi .panel-kontrol-utama {
+    margin: 6px 0 8px 0 !important;
+}
+
+/* Banner rapat dengan kontrol */
+#transaksi .banner-bar {
+    margin-top: 4px !important;
+}
+
+/* ===== MOBILE CLEAN VERSION ===== */
+@media (max-width: 767px) {
+
+    #transaksi .panel-kontrol-utama {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        margin: 6px 0 10px 0 !important;
+    }
+
+    #transaksi .select-group-mini {
+        width: 100% !important;
+    }
+
+    #transaksi .button-group-right {
+        width: 100%;
+        justify-content: center;
+    }
+
+    #transaksi .button-group-right .btn-luxe {
+        width: 100%;
+        margin: 0;
+    }
+}
+
+/* ===== RAPATKAN TAB TRANSAKSI ===== */
+
+/* Hilangkan jarak bawaan bootstrap */
+.tab-content {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+
+/* Kontrol dropdown + tombol */
+#transaksi .panel-kontrol-utama {
+    margin: 4px 0 10px 0 !important;
+    margin-top: 10px !important;
+}
+
+/* ===== SAMAKAN LEBAR DROPDOWN & TOMBOL ===== */
+
+#transaksi .panel-kontrol-utama {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+}
+
+#transaksi .select-group-mini {
+    height: 42px !important;
+    min-height: 42px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+#transaksi .button-group-right {
+    width: 100% !important;
+}
+
+#transaksi .button-group-right .btn-luxe {
+    width: 100% !important;
+    top:4px;
+    position: relative;
+}
+
+#selYear {
+    font-size: 14px !important;
+}
+
+/* ===== TOOLBAR MEMBER FINAL STABLE ===== */
+
+#member-toolbar {
+    display: flex !important;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 10px !important;
+}
+
+#member-toolbar #search-member,
+#member-toolbar #tahun-select,
+#member-toolbar .btn-luxe {
+    height: 42px !important;
+    min-height: 42px !important;
+    margin-bottom: 0 !important;
+    box-sizing: border-box;
+}
+
+#member-toolbar #tahun-select {
+    line-height: 1.2;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+}
+
+/* Search selalu di kiri */
+#search-member {
+    margin-right: auto !important;
+}
+
+/* Tombol selalu mentok kanan */
+#member-toolbar .btn-luxe {
+    margin-left: auto !important;
+}
+
+/* ===== DESKTOP MEMBER TOOLBAR FINAL ===== */
+@media (min-width: 768px) {
+
+    #member-toolbar {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center;
+        width: 100%;
+        gap: 8px;
+    }
+
+    #search-member {
+        margin: 0 !important;
+    }
+
+    #member-toolbar .btn-luxe {
+        margin-left: auto !important;
+    }
+}
+
+@media (max-width: 767px) {
+
+    #member-toolbar {
+        flex-wrap: wrap;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+
+    #member-toolbar #search-member {
+        flex: 1 1 calc(100% - 103px);
+        width: calc(100% - 103px) !important;
+        min-width: 0;
+        margin-right: 0 !important;
+    }
+
+    #member-toolbar #tahun-wrap {
+        flex: 0 0 95px;
+        width: 95px;
+        min-width: 95px;
+    }
+
+    #member-toolbar .btn-luxe {
+        flex: 1 0 100%;
+        width: 100% !important;
+        margin-left: 0 !important;
+        justify-content: center;
+    }
+}
+
+/* ===== DESKTOP TRANSAKSI SEJAJAR ===== */
+@media (min-width: 768px) {
+
+    #transaksi .panel-kontrol-utama {
+        flex-direction: row !important;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    #transaksi .select-group-mini {
+        width: auto !important;
+        max-width: 60%;
+    }
+
+    #transaksi .button-group-right {
+        width: auto !important;
+    }
+
+    #transaksi .button-group-right .btn-luxe {
+        width: auto !important;
+    }
+}
+
+        #notify-wrap {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            z-index: 20000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .notify-item {
+            min-width: 220px;
+            max-width: 340px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-main);
+            font-size: 11px;
+            font-weight: 700;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.35);
+            transform: translateX(120%);
+            opacity: 0;
+            transition: all 0.25s ease;
+        }
+
+        .notify-item.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .notify-item.success { border-color: #10b981; }
+        .notify-item.error { border-color: #ef4444; }
+        .notify-item.info { border-color: var(--accent-color); }
+
+    </style>
+</head>
+
+<body data-theme="luxury">
+    <div id="ptr-indicator">
+        <div class="ptr-circle" id="ptr-icon">⬇️</div>
+    </div>
+
+    <div class="container-fluid" id="app-content">
+        <div id="header-section" class="text-center pt-4 pb-1">
+            <div class="brand-mark" aria-hidden="true">
+                <span>D8</span>
+            </div>
+            <div class="brand-kicker">Driver Helper</div>
+            <h3 class="judul-utama">DATA UANG KAS DRIVER HELPER DELTA 8</h3>
+            <p id="sync-status" class="small fw-bold" style="color: var(--text-muted); letter-spacing: 3px; margin: 0; font-size: 10px;">☁️ MENGHUBUNGKAN...</p>
+            <div class="theme-container d-flex justify-content-center gap-3 mt-3">
+                <div id="dot-luxury" class="theme-dot active" style="background: #d4af37;" onclick="setTheme('luxury')"></div>
+                <div id="dot-emerald" class="theme-dot" style="background: #10b981;" onclick="setTheme('emerald')"></div>
+                <div id="dot-platinum" class="theme-dot" style="background: #64748b;" onclick="setTheme('platinum')"></div>
+                <div id="dot-crystal" class="theme-dot" style="background: #0ea5e9;" onclick="setTheme('crystal')"></div>
+            </div>
+            <div class="d-flex flex-column align-items-center gap-2 mt-3">
+                <button
+                    id="btn-enable-notif"
+                    class="btn-luxe"
+                    style="max-width: 320px; width: 100%;"
+                    onclick="enableNotifications()">
+                    AKTIFKAN NOTIFIKASI
+                </button>
+            </div>
+        </div>
+
+       <!-- Tabs Navigation -->
+<ul class="nav nav-tabs" id="mainTabs" role="tablist">
+
+    <li class="nav-item flex-fill text-center" role="presentation">
+        <button 
+            class="nav-link btn-luxe active w-100"
+            id="driver-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#driver"
+            type="button"
+            role="tab"
+            aria-controls="driver"
+            aria-selected="true">
+            DRIVER
+        </button>
+    </li>
+
+    <li class="nav-item flex-fill text-center" role="presentation">
+        <button 
+            class="nav-link btn-luxe w-100"
+            id="helper-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#helper"
+            type="button"
+            role="tab"
+            aria-controls="helper"
+            aria-selected="false">
+            HELPER
+        </button>
+    </li>
+
+    <li class="nav-item flex-fill text-center" role="presentation">
+        <button 
+            class="nav-link btn-luxe w-100"
+            id="transaksi-tab"
+            data-bs-toggle="tab"
+            data-bs-target="#transaksi"
+            type="button"
+            role="tab"
+            aria-controls="transaksi"
+            aria-selected="false">
+            TRANSAKSI
+        </button>
+    </li>
+
+</ul>
+
+<!-- BLOK GLOBAL -->
+<div id="member-toolbar" class="d-flex align-items-center mt-2 gap-2">
+
+    <input
+        id="search-member"
+        type="text"
+        class="form-control"
+        style="width:200px;height:42px;text-align:center;font-weight:700;"
+        placeholder="Cari anggota..."
+        oninput="filterMember(this.value)"
+    >
+
+  <div id="tahun-wrap">
+    <select
+      id="tahun-select"
+      class="custom-select-mini"
+      onchange="gantiTahun(this.value)">
+    </select>
+  </div>
+
+    <button class="btn-luxe" onclick="askAuth('tambah')">
+        + ANGGOTA
+    </button>
+
+</div>
+        <!-- Tabs Content -->
+        <div class="tab-content" id="mainTabsContent">
+            <!-- DRIVER Tab -->
+            <div class="tab-pane fade show active" id="driver" role="tabpanel" aria-labelledby="driver-tab">
+
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th class="no-col">NO</th><th class="name-col">NAMA ANGGOTA</th>
+                                <th>JAN</th><th>FEB</th><th>MAR</th><th>APR</th><th>MEI</th><th>JUN</th>
+                                <th>JUL</th><th>AGU</th><th>SEP</th><th>OKT</th><th>NOV</th><th>DES</th>
+                                <th class="text-center-force">TOTAL</th><th class="text-center-force">AKSI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="grid-driver"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- HELPER Tab -->
+            <div class="tab-pane fade" id="helper" role="tabpanel" aria-labelledby="helper-tab">
+               
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th class="no-col">NO</th><th class="name-col">NAMA ANGGOTA</th>
+                                <th>JAN</th><th>FEB</th><th>MAR</th><th>APR</th><th>MEI</th><th>JUN</th>
+                                <th>JUL</th><th>AGU</th><th>SEP</th><th>OKT</th><th>NOV</th><th>DES</th>
+                                <th class="text-center-force">TOTAL</th><th class="text-center-force">AKSI</th>
+                            </tr>
+                        </thead>
+                        <tbody id="grid-helper"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TRANSAKSI Tab -->
+            <div class="tab-pane fade" id="transaksi" role="tabpanel" aria-labelledby="transaksi-tab">
+              <div class="panel-kontrol-utama">
+    <div class="select-group-mini">
+        <select id="selMonth" class="custom-select-mini"></select>
+        <span>|</span>
+        <select id="selYear" class="custom-select-mini"></select>
+    </div>
+
+    <div class="button-group-right">
+        <button class="btn-luxe" onclick="askAuth('catat')">+ TRANSAKSI</button>
+    </div>
+</div>
+
+                <div class="banner-bar">LAPORAN KEUANGAN BULANAN</div>
+                <div id="financial-area">
+                    <div class="row g-2 mb-4">
+                        <div class="col-6 col-md-3"><div class="card-saldo"><div class="label">Saldo Awal</div><div id="s-awal" class="value">0</div></div></div>
+                        <div class="col-6 col-md-3"><div class="card-saldo"><div class="label">Saldo Akhir</div><div id="s-akhir" class="value" style="color:var(--accent-color)">0</div></div></div>
+                        <div class="col-4 col-md-2"><div class="card-saldo"><div class="label">Iuran</div><div id="in" class="value text-success">0</div></div></div>
+                        <div class="col-4 col-md-2"><div class="card-saldo"><div class="label">Keluar</div><div id="out" class="value text-danger">0</div></div></div>
+                        <div class="col-4 col-md-2"><div class="card-saldo"><div class="label">Lainnya</div><div id="bal" class="value">0</div></div></div>
+                    </div>
+
+                    <div class="transaksi-scroll-area">
+                        <table class="table" id="table-transaksi">
+                            <thead>
+                                <tr>
+                                    <th class="col-tgl">TANGGAL</th><th class="col-tip">TIPE</th><th class="col-sum">SUMBER/PENERIMA</th>
+                                    <th class="col-ket">KETERANGAN</th><th class="col-nom">NOMINAL</th><th class="col-aks">AKSI</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hist"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="system-area">
+                    <div class="luxe-dropdown" onclick="toggleCol('log-col')"><span>🕒 LOG AKTIVITAS SISTEM</span><span id="log-icon">▼</span></div>
+                    <div id="log-col" class="luxe-content">
+                        <div class="table-responsive" style="max-height: 300px;">
+                            <table class="table" id="log-list-table">
+                                <thead><tr><th style="width: 100px;">WAKTU</th><th style="width: 100px;">EDITOR</th><th style="width: 120px;">AKSI</th><th>KETERANGAN</th></tr></thead>
+                                <tbody id="log-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="luxe-dropdown" onclick="toggleCol('export-col')"><span>📤 DOWNLOAD PDF & HAPUS LOG</span><span id="export-icon">▼</span></div>
+                    <div id="export-col" class="luxe-content">
+                        <button class="btn-unduh-final" onclick="askAuth('download')">📥 UNDUH LAPORAN PDF</button>
+                        <button class="btn-hapus-final" onclick="clearLogs()">HAPUS SEMUA LOG SISTEM</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer-app">
+            <div class="footer-logo">DRIVER HELPER DELTA 8</div>
+            <div class="footer-tagline">Excellence in Logistics</div>
+            <div class="footer-divider"></div>
+            <div class="footer-info">Sistem Manajemen Uang KAS Driver Helper</div>
+            <div class="copyright-text">&copy; 2026 ALL MANAGEMENT MEMBERS.</div>
+            <div style="margin-top: 10px;">
+                <strong style="font-size: 8px; color: var(--accent-color); letter-spacing: 2px;">
+                    ---<{SUPPORTED BY : MANCUNG_168}>---
+                </strong>
+            </div>
+        </footer>
+    </div>
+
+    <div id="actionMenu">
+        <div class="menu-item p-2 px-3" onclick="doEdit()">✏️ Edit</div>
+        <div class="menu-item p-2 px-3 text-danger" onclick="doDelete()">🗑️ Hapus</div>
+    </div>
+    <div class="modal" id="modalVerifyAuth" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">VERIFIKASI OTORITAS</h6><input type="text" id="inputEditorName" class="form-control mb-2 text-center" placeholder="Nama Editor" oninput="handleEditorNameInput(this)" onkeydown="if(event.key==='Enter'){focusPinAfterEditorCheck();}"><input type="password" id="inputPIN" class="form-control mb-3 text-center" maxlength="4" placeholder="PIN 4 DIGIT" inputmode="numeric" oninput="handlePinInput(this)" onkeydown="if(event.key==='Enter'){submitAuth();}"></div></div></div></div>
+    <div class="modal fade" id="modalCatat" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><h6 class="fw-bold mb-3">CATAT TRANSAKSI</h6><form id="fTrans"><input type="hidden" id="editTransIdx"><select name="tp" id="trans_type" class="form-select mb-2"><option value="Pemasukan">Pemasukan</option><option value="Pengeluaran" selected>Pengeluaran</option></select><input type="date" name="d" id="trans_date" class="form-control mb-2" required><input type="text" name="p" id="trans_source" class="form-control mb-2" placeholder="Sumber/Penerima"><input type="text" name="k" id="trans_ket" class="form-control mb-2" placeholder="Keterangan"><input type="number" name="v" id="trans_val" class="form-control mb-3" placeholder="Nominal" required><button type="submit" class="btn btn-warning w-100 fw-bold">SIMPAN</button></form></div></div></div></div>
+    <div class="modal fade" id="modalTambah" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><h6 class="fw-bold mb-3">TAMBAH/EDIT ANGGOTA</h6><form id="fAdd"><input type="hidden" id="editMemberId"><textarea id="n" class="form-control mb-2" style="height:100px" placeholder="Nama Anggota"></textarea><select id="k" class="form-select mb-3"><option value="Driver">Driver</option><option value="Helper">Helper</option></select><button type="submit" class="btn btn-warning w-100 fw-bold">SIMPAN</button></form></div></div></div></div>
+    <div class="modal fade" id="modalKonfirmasiHapus" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><div class="mb-3" style="font-size: 2rem;">⚠️</div><h6 class="fw-bold mb-4">Hapus data ini?</h6><div class="d-flex gap-2"><button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal">BATAL</button><button type="button" class="btn btn-danger w-100" onclick="eksekusiHapus()">HAPUS</button></div></div></div></div></div>
+    <div class="modal fade" id="modalKonfirmasiLog" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><div class="mb-3" style="font-size: 2rem;">🗑️</div><h6 class="fw-bold mb-4">BERSIHKAN LOG?</h6><div class="d-flex gap-2"><button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal">BATAL</button><button type="button" class="btn btn-danger w-100" onclick="eksekusiHapusLog()">HAPUS</button></div></div></div></div></div>
+
+    <div id="notify-wrap"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.10.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.10.0/firebase-messaging-compat.js"></script>
+    <script>
+        const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg/exec';
+        const DEFAULT_FCM_CONFIG = {
+            apiKey: 'AIzaSyAIZx9jjiW1uUdXmG-P7ZqQRloFuo4L7G8',
+            authDomain: 'kas-delta-8.firebaseapp.com',
+            projectId: 'kas-delta-8',
+            storageBucket: 'kas-delta-8.firebasestorage.app',
+            messagingSenderId: '971725893634',
+            appId: '1:971725893634:web:79feba7c68d9a72098771b',
+            measurementId: 'G-H5G52PERC0'
+        };
+        const DEFAULT_VAPID_KEY = 'BKDg4aP1oAfiuWuXXpb-oggOf2AePd7bLzr7M3skACfKwUoGIxr3ioxiC5C2XmViLdhnJWBGHIudWgFIjPRZyXc';
+        const FCM_TOKEN_KEY = 'delta8_fcm_token';
+        const DEVICE_ID_KEY = 'delta8_device_id';
+        const AUTH_SESSION_KEY = 'delta8_auth_session';
+        let DB_DRIVER = [], DB_HELPER = [], DB_TRANSAKSI = [], DB_LOGS = [];
+        const YEAR_CACHE = {};
+        let loadToken = 0;
+        let fcmState = { enabled: false, config: null, vapidKey: "", messaging: null, swReg: null };
+        let authInProgress = false;
+        let pendingAction = null, pendingParams = null, currentContext = { type: '', id: null, idx: null };
+        const cloneData = (v) => JSON.parse(JSON.stringify(v));
+
+        function showNotif(message, type = 'info') {
+            const wrap = document.getElementById('notify-wrap');
+            if (!wrap) return;
+            const item = document.createElement('div');
+            item.className = `notify-item ${type}`;
+            item.innerText = message;
+            wrap.appendChild(item);
+            requestAnimationFrame(() => item.classList.add('show'));
+            setTimeout(() => {
+                item.classList.remove('show');
+                setTimeout(() => item.remove(), 220);
+            }, 2400);
+        }
+
+        function createStatusBarNotificationId(seed = '') {
+            const base = String(seed || 'notif')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '')
+                .slice(0, 48) || 'notif';
+            return `${base}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        }
+
+        function buildStatusBarNotificationPayload(title, body, options = {}) {
+            const baseTag = String(options.tag || 'delta8-statusbar').trim() || 'delta8-statusbar';
+            const notificationId = String(options.notificationId || createStatusBarNotificationId(baseTag)).trim() || createStatusBarNotificationId(baseTag);
+
+            return {
+                body: body || 'Ada aktivitas baru di aplikasi.',
+                icon: options.icon || '/notification-icon.svg',
+                badge: options.badge || '/notification-badge.svg',
+                tag: `${baseTag}-${notificationId}`,
+                renotify: true,
+                timestamp: Date.now(),
+                vibrate: [120, 60, 120],
+                data: {
+                    link: options.link || window.location.href
+                }
+            };
+        }
+
+        function createDeviceId() {
+            try {
+                if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                    return window.crypto.randomUUID().replace(/-/g, '');
+                }
+            } catch (err) {}
+            return `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+        }
+
+        function getDeviceId() {
+            let value = String(localStorage.getItem(DEVICE_ID_KEY) || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+            if (!value) {
+                value = createDeviceId();
+                localStorage.setItem(DEVICE_ID_KEY, value);
+            }
+            return value;
+        }
+
+        function getAuthSession() {
+            try {
+                const raw = localStorage.getItem(AUTH_SESSION_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === 'object') {
+                        return {
+                            editor: String(parsed.editor || '').trim().toUpperCase(),
+                            writeToken: String(parsed.writeToken || '').trim(),
+                            deviceId: String(parsed.deviceId || getDeviceId()).trim(),
+                            issuedAt: Number(parsed.issuedAt || 0) || 0,
+                            expiresAt: Number(parsed.expiresAt || 0) || 0
+                        };
+                    }
+                }
+            } catch (err) {}
+
+            const legacyToken = String(localStorage.getItem('delta8_write_token') || '').trim();
+            const legacyEditor = String(localStorage.getItem('delta8_editor') || '').trim().toUpperCase();
+            if (!legacyToken && !legacyEditor) return null;
+
+            const migrated = {
+                editor: legacyEditor,
+                writeToken: legacyToken,
+                deviceId: getDeviceId(),
+                issuedAt: 0,
+                expiresAt: 0
+            };
+            localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(migrated));
+            return migrated;
+        }
+
+        function saveAuthSession(session, notify = false) {
+            const next = {
+                editor: String((session && session.editor) || '').trim().toUpperCase(),
+                writeToken: String((session && session.writeToken) || '').trim(),
+                deviceId: String((session && session.deviceId) || getDeviceId()).trim(),
+                issuedAt: Number((session && session.issuedAt) || 0) || 0,
+                expiresAt: Number((session && session.expiresAt) || 0) || 0
+            };
+            localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(next));
+            localStorage.setItem('delta8_editor', next.editor);
+            localStorage.setItem('delta8_write_token', next.writeToken);
+            if (notify) {
+                showNotif(next.writeToken ? 'Write token disimpan' : 'Write token dikosongkan', 'info');
+            }
+            return next;
+        }
+
+        function getActiveEditor() {
+            const session = getAuthSession();
+            return session && session.editor ? session.editor : String(localStorage.getItem('delta8_editor') || '').trim().toUpperCase();
+        }
+
+        function getWriteToken() {
+            const session = getAuthSession();
+            return session && session.writeToken ? session.writeToken : (localStorage.getItem('delta8_write_token') || '');
+        }
+
+        window.setWriteToken = function(token) {
+            const value = String(token || '').trim();
+            const current = getAuthSession() || {};
+            saveAuthSession({
+                editor: current.editor || getActiveEditor(),
+                writeToken: value,
+                deviceId: current.deviceId || getDeviceId(),
+                issuedAt: current.issuedAt || Date.now(),
+                expiresAt: current.expiresAt || 0
+            }, true);
+        };
+
+        function updateNotificationUI(state = {}) {
+            const button = document.getElementById('btn-enable-notif');
+            const token = state.token !== undefined ? state.token : (localStorage.getItem(FCM_TOKEN_KEY) || '');
+            const permission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+            const isActive = permission === 'granted' && !!token;
+
+            if (button) {
+                button.style.display = isActive ? 'none' : 'block';
+                button.innerText = 'AKTIFKAN NOTIFIKASI';
+            }
+        }
+
+        function jsonpRequest(url, timeoutMs = 12000) {
+            return new Promise((resolve, reject) => {
+                const callbackName = `delta8_jsonp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                const script = document.createElement('script');
+                const separator = url.includes('?') ? '&' : '?';
+                let settled = false;
+
+                const cleanup = (preserveCallback = false) => {
+                    settled = true;
+                    if (preserveCallback) {
+                        window[callbackName] = () => {};
+                        setTimeout(() => {
+                            try {
+                                delete window[callbackName];
+                            } catch (err) {}
+                        }, 30000);
+                    } else {
+                        delete window[callbackName];
+                    }
+                    script.remove();
+                };
+
+                const timer = setTimeout(() => {
+                    if (settled) return;
+                    cleanup(true);
+                    reject(new Error('Backend tidak merespons.'));
+                }, timeoutMs);
+
+                window[callbackName] = (data) => {
+                    clearTimeout(timer);
+                    cleanup();
+                    resolve(data);
+                };
+
+                script.onerror = () => {
+                    clearTimeout(timer);
+                    cleanup(true);
+                    reject(new Error('Gagal menghubungi backend.'));
+                };
+
+                script.src = `${url}${separator}callback=${encodeURIComponent(callbackName)}`;
+                document.body.appendChild(script);
+            });
+        }
+
+        async function fetchFcmConfig() {
+            try {
+                const data = await jsonpRequest(`${CLOUD_URL}?action=fcmConfig`, 2500);
+                if (!data || !data.ok || !data.enabled) return false;
+                fcmState.enabled = true;
+                fcmState.config = data.config;
+                fcmState.vapidKey = data.vapidKey || '';
+                return true;
+            } catch (err) {
+                fcmState.enabled = true;
+                fcmState.config = DEFAULT_FCM_CONFIG;
+                fcmState.vapidKey = DEFAULT_VAPID_KEY;
+                return true;
+            }
+        }
+
+        async function fetchJson(url) {
+            const data = await jsonpRequest(url);
+            if (!data || data.ok === false) {
+                throw new Error((data && data.error) || 'Request gagal.');
+            }
+            return data;
+        }
+
+        function postToAppsScript(payload) {
+            if (navigator.sendBeacon) {
+                try {
+                    const body = new Blob([JSON.stringify(payload)], {
+                        type: 'text/plain;charset=UTF-8'
+                    });
+                    const queued = navigator.sendBeacon(CLOUD_URL, body);
+                    if (queued) {
+                        return Promise.resolve(true);
+                    }
+                } catch (err) {}
+            }
+
+            return new Promise((resolve, reject) => {
+                const frameName = `gas_sink_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                const iframe = document.createElement('iframe');
+                iframe.name = frameName;
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = CLOUD_URL;
+                form.target = frameName;
+                form.style.display = 'none';
+
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'payload';
+                input.value = JSON.stringify(payload);
+                form.appendChild(input);
+                document.body.appendChild(form);
+
+                const cleanup = () => {
+                    setTimeout(() => {
+                        iframe.remove();
+                        form.remove();
+                    }, 1500);
+                };
+
+                iframe.addEventListener('load', () => {
+                    cleanup();
+                    resolve(true);
+                }, { once: true });
+
+                setTimeout(() => {
+                    cleanup();
+                    resolve(true);
+                }, 4000);
+
+                try {
+                    form.submit();
+                } catch (err) {
+                    cleanup();
+                    reject(err);
+                }
+            });
+        }
+
+        async function initFcm() {
+            if (!('serviceWorker' in navigator) || !('Notification' in window)) return false;
+            if (!window.firebase || !firebase.messaging) return false;
+            if (fcmState.messaging) return true;
+
+            const ok = await fetchFcmConfig();
+            if (!ok) return false;
+
+            if (!firebase.apps.length) firebase.initializeApp(fcmState.config);
+            fcmState.messaging = firebase.messaging();
+                fcmState.swReg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+
+            fcmState.messaging.onMessage((payload) => {
+                const notification = payload && payload.notification ? payload.notification : {};
+                const data = payload && payload.data ? payload.data : {};
+                const title = notification.title || data.title || 'Notifikasi Baru';
+                const body = notification.body || data.body || '';
+                const link = data.link || data.url || window.location.href;
+                const icon = notification.icon || data.icon || '/notification-icon.svg';
+                const badge = notification.badge || data.badge || '/notification-badge.svg';
+                const tag = data.tag || 'delta8-statusbar';
+                const notificationId = data.notificationId || '';
+                showNotif(body ? `${title} - ${body}` : title, 'info');
+                showStatusBarNotification(title, body, {
+                    link,
+                    icon,
+                    badge,
+                    tag,
+                    notificationId
+                });
+            });
+
+            return true;
+        }
+
+        async function showStatusBarNotification(title, body, options = {}) {
+            try {
+                if (Notification.permission !== 'granted') return;
+                const registration = fcmState.swReg || await navigator.serviceWorker.getRegistration('./firebase-messaging-sw.js') || await navigator.serviceWorker.ready;
+                if (!registration || !registration.showNotification) return;
+                await registration.showNotification(
+                    title || 'Notifikasi Delta 8',
+                    buildStatusBarNotificationPayload(title, body, options)
+                );
+            } catch (err) {}
+        }
+
+        function activateTabByName(name) {
+            const normalized = String(name || '').trim().toLowerCase();
+            if (!normalized) return;
+            const button = document.getElementById(`${normalized}-tab`);
+            if (!button) return;
+            bootstrap.Tab.getOrCreateInstance(button).show();
+        }
+
+        function applyLaunchContext() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const view = params.get('view');
+                if (view) {
+                    activateTabByName(view);
+                    params.delete('view');
+                    const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}${window.location.hash}`;
+                    window.history.replaceState({}, '', next);
+                }
+            } catch (err) {}
+        }
+
+        async function saveFcmToken(token) {
+            const session = getAuthSession();
+            const writeToken = session && session.writeToken ? session.writeToken : '';
+            if (!writeToken) {
+                return { saved: false, reason: 'missing_write_token' };
+            }
+
+            const editor = session && session.editor ? session.editor : getActiveEditor();
+            const deviceId = session && session.deviceId ? session.deviceId : getDeviceId();
+            const payload = {
+                action: 'saveFcmToken',
+                authToken: writeToken,
+                token: token,
+                editor: editor,
+                deviceId: deviceId,
+                userAgent: navigator.userAgent || ''
+            };
+
+            try {
+                const url = `${CLOUD_URL}?action=saveFcmToken&authToken=${encodeURIComponent(writeToken)}&token=${encodeURIComponent(token)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
+                const data = await fetchJson(url);
+                return { saved: !!(data && data.saved), data };
+            } catch (err) {
+                await postToAppsScript(payload);
+                return { saved: true, fallback: true };
+            }
+        }
+
+        async function sendFcmTest(token) {
+            const session = getAuthSession();
+            const writeToken = session && session.writeToken ? session.writeToken : '';
+            if (!writeToken) {
+                throw new Error('Write token belum ada.');
+            }
+
+            const deviceId = session && session.deviceId ? session.deviceId : getDeviceId();
+            const editor = session && session.editor ? session.editor : getActiveEditor();
+            const url = `${CLOUD_URL}?action=testFcm&authToken=${encodeURIComponent(writeToken)}&token=${encodeURIComponent(token)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}&title=${encodeURIComponent('Tes Notifikasi Delta 8')}&body=${encodeURIComponent('Kalau pesan ini masuk, FCM sudah aktif di perangkat ini.')}`;
+            try {
+                return await fetchJson(url);
+            } catch (err) {
+                return { ok: false, skipped: true, error: err && err.message ? err.message : 'fetch_failed' };
+            }
+        }
+
+        async function enableNotifications() {
+            try {
+                if (!window.isSecureContext) {
+                    showNotif('Push notification butuh HTTPS.', 'error');
+                    return;
+                }
+
+                const ok = await initFcm();
+                if (!ok) {
+                    showNotif('Konfigurasi Firebase Messaging belum siap.', 'error');
+                    return;
+                }
+
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    showNotif('Izin notifikasi ditolak.', 'error');
+                    return;
+                }
+
+                const token = await fcmState.messaging.getToken({
+                    vapidKey: fcmState.vapidKey,
+                    serviceWorkerRegistration: fcmState.swReg
+                });
+
+                if (!token) {
+                    showNotif('Token perangkat gagal dibuat.', 'error');
+                    updateNotificationUI({ message: 'TOKEN PERANGKAT GAGAL DIBUAT', color: '#ef4444', token: '' });
+                    return;
+                }
+
+                localStorage.setItem(FCM_TOKEN_KEY, token);
+                updateNotificationUI({ token, message: 'TOKEN PERANGKAT BERHASIL DIBUAT', color: '#10b981' });
+
+                const saveResult = await saveFcmToken(token);
+                if (saveResult && saveResult.saved) {
+                    const test = await sendFcmTest(token);
+                    if (test && test.ok) {
+                        showNotif('Push notification aktif dan tes kirim berhasil.', 'success');
+                        updateNotificationUI({ token, message: 'FCM AKTIF DAN TES KIRIM BERHASIL', color: '#10b981' });
+                    } else if (test && test.error) {
+                        showNotif(`Token tersimpan, tapi backend belum bisa kirim popup: ${test.error}`, 'info');
+                        updateNotificationUI({ token, message: 'TOKEN TERSIMPAN, BACKEND BELUM BISA KIRIM POPUP', color: '#f59e0b' });
+                    } else {
+                        showNotif('Push notification aktif di perangkat ini.', 'success');
+                        updateNotificationUI({ token, message: 'FCM AKTIF DI PERANGKAT INI', color: '#10b981' });
+                    }
+                } else if (saveResult && saveResult.reason === 'missing_write_token') {
+                    showNotif('Notifikasi aktif di perangkat. Simpan write token jika ingin backend mengirim tes otomatis.', 'info');
+                    updateNotificationUI({ token, message: 'FCM AKTIF, TOKEN BELUM TERSIMPAN KE BACKEND', color: '#f59e0b' });
+                } else {
+                    showNotif('Notifikasi aktif, tapi backend belum mengonfirmasi penyimpanan token.', 'info');
+                    updateNotificationUI({ token, message: 'FCM AKTIF, MENUNGGU BACKEND', color: '#f59e0b' });
+                }
+            } catch (err) {
+                showNotif(`Gagal notifikasi: ${err && err.message ? err.message : 'unknown error'}`, 'error');
+                updateNotificationUI({ message: 'GAGAL MENGAKTIFKAN NOTIFIKASI', color: '#ef4444' });
+            }
+        }
+
+        window.enableNotifications = enableNotifications;
+
+        async function restoreNotificationState() {
+            updateNotificationUI();
+            if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+            try {
+                const ok = await initFcm();
+                if (!ok) {
+                    updateNotificationUI({ message: 'KONFIGURASI FCM BELUM SIAP', color: '#ef4444' });
+                    return;
+                }
+                const token = await fcmState.messaging.getToken({
+                    vapidKey: fcmState.vapidKey,
+                    serviceWorkerRegistration: fcmState.swReg
+                });
+                if (token) {
+                    localStorage.setItem(FCM_TOKEN_KEY, token);
+                    updateNotificationUI({ token, message: 'FCM SIAP DIGUNAKAN', color: '#10b981' });
+                }
+            } catch (err) {
+                updateNotificationUI({ message: 'STATUS FCM BELUM BISA DICEK', color: '#f59e0b' });
+            }
+        }
+
+        // Pull to Refresh Logic
+        let touchStart = 0, touchDiff = 0, isRefreshing = false;
+        const ptrIndicator = document.getElementById('ptr-indicator');
+        const ptrIcon = document.getElementById('ptr-icon');
+
+        window.addEventListener('touchstart', (e) => {
+            if (window.scrollY === 0) touchStart = e.touches[0].pageY;
+        }, {passive: true});
+
+        window.addEventListener('touchmove', (e) => {
+            if (isRefreshing || window.scrollY > 0) return;
+            touchDiff = e.touches[0].pageY - touchStart;
+            if (touchDiff > 0 && touchDiff < 150) {
+                ptrIndicator.style.transform = `translateY(${touchDiff / 2}px)`;
+                ptrIcon.innerText = touchDiff > 100 ? '🆙' : '⬇️';
+            }
+        }, {passive: true});
+
+        window.addEventListener('touchend', async () => {
+            if (isRefreshing) return;
+            if (touchDiff > 100) {
+                isRefreshing = true;
+                ptrIndicator.style.transform = `translateY(70px)`;
+                ptrIcon.innerText = '⏳';
+                ptrIcon.classList.add('ptr-loading');
+                await loadFromCloud();
+                setTimeout(() => {
+                    ptrIcon.classList.remove('ptr-loading');
+                    ptrIndicator.style.transform = `translateY(0px)`;
+                    isRefreshing = false;
+                }, 500);
+            } else {
+                ptrIndicator.style.transform = `translateY(0px)`;
+            }
+            touchDiff = 0;
+        });
+
+        function setTheme(t) { document.body.setAttribute('data-theme', t); localStorage.setItem('delta8_theme', t); document.querySelectorAll('.theme-dot').forEach(d => d.classList.remove('active')); if (document.getElementById('dot-' + t)) document.getElementById('dot-' + t).classList.add('active'); }
+        function toggleCol(id) { const el = document.getElementById(id); el.classList.toggle('show'); document.getElementById(id.split('-')[0] + '-icon').innerText = el.classList.contains('show') ? '▲' : '▼'; }
+
+        window.onclick = function(e) {
+            const menu = document.getElementById('actionMenu');
+            const btn = e.target.closest('.btn-aksi-trigger');
+            if (btn) {
+                const rect = btn.getBoundingClientRect();
+                currentContext = { type: btn.dataset.type, id: btn.dataset.id || null, idx: btn.dataset.idx || null };
+                menu.style.display = 'block'; menu.style.top = (rect.bottom + window.scrollY) + 'px'; menu.style.left = (rect.left + window.scrollX - 80) + 'px';
+                return;
+            }
+            if (e.target.closest('.status-toggle')) {
+                const tgl = e.target.closest('.status-toggle');
+                askAuth('toggle', { id: tgl.dataset.id, kat: tgl.dataset.kat, y: tgl.dataset.y, m: tgl.dataset.m });
+            }
+            if (!e.target.closest('#actionMenu')) menu.style.display = 'none';
+        };
+
+        function doEdit() { document.getElementById('actionMenu').style.display = 'none'; askAuth('edit_trigger'); }
+        function doDelete() { document.getElementById('actionMenu').style.display = 'none'; new bootstrap.Modal('#modalKonfirmasiHapus').show(); }
+        function eksekusiHapus() { bootstrap.Modal.getInstance('#modalKonfirmasiHapus').hide(); askAuth('delete_trigger'); }
+
+        function focusPinInput() {
+            const pinInput = document.getElementById('inputPIN');
+            if (!pinInput) return;
+            requestAnimationFrame(() => {
+                pinInput.focus();
+                pinInput.select();
+            });
+        }
+
+        function focusPinAfterEditorCheck() {
+            const editorInput = document.getElementById('inputEditorName');
+            const editor = String(editorInput && editorInput.value ? editorInput.value : '').trim();
+            if (editor.length >= 2) {
+                focusPinInput();
+                return true;
+            }
+            showNotif('Nama editor minimal 2 karakter.', 'error');
+            if (editorInput) editorInput.focus();
+            return false;
+        }
+
+        function askAuth(type, params = null) {
+            pendingAction = type; pendingParams = params;
+            const pinInput = document.getElementById('inputPIN');
+            const editorInput = document.getElementById('inputEditorName');
+            const savedEditor = getActiveEditor() || "";
+            if (pinInput) pinInput.value = "";
+            if (editorInput) editorInput.value = savedEditor;
+            bootstrap.Modal.getOrCreateInstance('#modalVerifyAuth').show();
+            requestAnimationFrame(() => {
+                if (savedEditor.trim().length >= 2) {
+                    focusPinInput();
+                } else if (editorInput) {
+                    editorInput.focus();
+                    editorInput.select();
+                }
+            });
+        }
+
+        function handleEditorNameInput(input) {
+            if (!input) return;
+            const value = String(input.value || '').replace(/\s+/g, ' ');
+            if (input.value !== value) input.value = value;
+            if (value.trim().length >= 2) {
+                focusPinInput();
+            }
+        }
+
+        function hideAuthModal() {
+            const modalEl = document.getElementById('modalVerifyAuth');
+            const modal = bootstrap.Modal.getInstance('#modalVerifyAuth') || bootstrap.Modal.getOrCreateInstance('#modalVerifyAuth');
+            return new Promise((resolve) => {
+                if (!modalEl || !modal || !modalEl.classList.contains('show')) {
+                    resolve();
+                    return;
+                }
+
+                const done = () => {
+                    modalEl.removeEventListener('hidden.bs.modal', done);
+                    resolve();
+                };
+
+                modalEl.addEventListener('hidden.bs.modal', done, { once: true });
+                modal.hide();
+            });
+        }
+
+        function reopenAuthModal() {
+            const pinInput = document.getElementById('inputPIN');
+            if (pinInput) pinInput.value = '';
+            bootstrap.Modal.getOrCreateInstance('#modalVerifyAuth').show();
+        }
+
+        function handlePinInput(input) {
+            const value = String(input && input.value ? input.value : '').replace(/\D/g, '').slice(0, 4);
+            if (input.value !== value) input.value = value;
+            const editor = document.getElementById('inputEditorName').value.trim();
+            if (editor.length < 2) return;
+            if (value.length === 4) submitAuth();
+        }
+
+        const authModalEl = document.getElementById('modalVerifyAuth');
+        if (authModalEl) {
+            authModalEl.addEventListener('shown.bs.modal', () => {
+                const editor = (document.getElementById('inputEditorName').value || '').trim();
+                if (editor.length >= 2) {
+                    focusPinInput();
+                } else {
+                    const editorInput = document.getElementById('inputEditorName');
+                    if (editorInput) editorInput.focus();
+                }
+            });
+        }
+
+        async function submitAuth() {
+            if (authInProgress) return;
+            const pin = document.getElementById('inputPIN').value.trim();
+            const editor = document.getElementById('inputEditorName').value.trim();
+            if (editor.length < 2) {
+                showNotif('Nama editor minimal 2 karakter.', 'error');
+                return;
+            }
+            if (pin.length !== 4) {
+                showNotif('PIN harus 4 digit.', 'error');
+                return;
+            }
+
+            authInProgress = true;
+            const hidePromise = hideAuthModal();
+            try {
+                const deviceId = getDeviceId();
+                const url = `${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
+                const data = await fetchJson(url);
+                if (!data || !data.ok || !data.writeToken) {
+                    await hidePromise;
+                    showNotif((data && data.error) ? data.error : 'Verifikasi gagal', 'error');
+                    reopenAuthModal();
+                    return;
+                }
+
+                saveAuthSession({
+                    editor: data.editor || editor.toUpperCase(),
+                    writeToken: data.writeToken,
+                    deviceId: data.deviceId || deviceId,
+                    issuedAt: Date.now(),
+                    expiresAt: Date.now() + ((Number(data.expiresInSec || 0) || 0) * 1000)
+                });
+                await hidePromise;
+                executeAction();
+            } catch (err) {
+                await hidePromise;
+                showNotif((err && err.message) ? err.message : 'Tidak bisa verifikasi ke backend', 'error');
+                reopenAuthModal();
+            } finally {
+                authInProgress = false;
+            }
+        }
+        window.handlePinInput = handlePinInput;
+        window.submitAuth = submitAuth;
+        window.checkAuth = submitAuth;
+
+        function executeAction() {
+            if (pendingAction === 'tambah') { 
+                document.getElementById('fAdd').reset(); 
+                document.getElementById('editMemberId').value = ""; 
+                bootstrap.Modal.getOrCreateInstance('#modalTambah').show(); 
+            } else if (pendingAction === 'catat') { 
+                document.getElementById('fTrans').reset(); 
+                document.getElementById('editTransIdx').value = ""; 
+                document.getElementById('trans_date').valueAsDate = new Date(); 
+                bootstrap.Modal.getOrCreateInstance('#modalCatat').show(); 
+            } else if (pendingAction === 'download') {
+                downloadFinancialPDF();
+            } else if (pendingAction === 'edit_trigger') {
+                if (currentContext.type === 'member') {
+                    const p = [...DB_DRIVER, ...DB_HELPER].find(x => x.id == currentContext.id);
+                    document.getElementById('editMemberId').value = p.id; 
+                    document.getElementById('n').value = p.nama;
+                    document.getElementById('k').value = DB_DRIVER.find(x => x.id == currentContext.id) ? 'Driver' : 'Helper';
+                    bootstrap.Modal.getOrCreateInstance('#modalTambah').show();
+                } else {
+                    const t = DB_TRANSAKSI[currentContext.idx];
+                    document.getElementById('editTransIdx').value = currentContext.idx;
+                    document.getElementById('trans_type').value = t.tp; 
+                    document.getElementById('trans_date').value = t.d;
+                    document.getElementById('trans_source').value = t.p; 
+                    document.getElementById('trans_ket').value = t.k;
+                    document.getElementById('trans_val').value = t.v;
+                    bootstrap.Modal.getOrCreateInstance('#modalCatat').show();
+                }
+            } else if (pendingAction === 'delete_trigger') {
+                if (currentContext.type === 'member') {
+                    const isDriver = DB_DRIVER.some(x => x.id == currentContext.id);
+                    const kat = isDriver ? 'DRIVER' : 'HELPER';
+                    const p = [...DB_DRIVER, ...DB_HELPER].find(x => x.id == currentContext.id);
+                    addLog("Hapus anggota", `${kat} - ${p.nama}`);
+                    DB_DRIVER = DB_DRIVER.filter(x => x.id != currentContext.id); 
+                    DB_HELPER = DB_HELPER.filter(x => x.id != currentContext.id);
+                } else {
+                    const t = DB_TRANSAKSI[currentContext.idx];
+                    addLog("Hapus transaksi", `TRANSAKSI - ${t.tp.toUpperCase()} - ${t.p} - ${t.k || '-'}`);
+                    DB_TRANSAKSI.splice(currentContext.idx, 1);
+                }
+                syncAll();
+            } else if (pendingAction === 'toggle') {
+                let p = (pendingParams.kat === 'Driver' ? DB_DRIVER : DB_HELPER).find(x => x.id == pendingParams.id);
+                if (!p.status[pendingParams.y]) p.status[pendingParams.y] = {};
+                p.status[pendingParams.y][pendingParams.m] = !p.status[pendingParams.y][pendingParams.m];
+                const isLunas = p.status[pendingParams.y][pendingParams.m];
+                const mm = pendingParams.m.toString().padStart(2, '0');
+                addLog("Iuran", `${pendingParams.kat.toUpperCase()} - ${p.nama} - ${mm}/${pendingParams.y} - [${isLunas ? "✅ - LUNAS" : "❌ - BATAL"}]`);
+                syncAll();
+            }
+        }
+
+        async function loadFromCloud(year = CURRENT_YEAR) {
+
+    const token = ++loadToken;
+    document.getElementById('sync-status').innerText = "⏳ MEMUAT DATA...";
+
+    try {
+
+        const data = await fetchJson(`${CLOUD_URL}?action=read&year=${year}`);
+
+        // Abaikan response lama jika user sudah pindah tahun lagi
+        if (token !== loadToken) return;
+
+        DB_DRIVER = data.driver || [];
+        DB_HELPER = data.helper || [];
+        DB_TRANSAKSI = data.transaksi || [];
+        DB_LOGS = data.logs || [];
+
+        YEAR_CACHE[year] = {
+            driver: cloneData(DB_DRIVER),
+            helper: cloneData(DB_HELPER),
+            transaksi: cloneData(DB_TRANSAKSI),
+            logs: cloneData(DB_LOGS)
+        };
+
+        render();
+
+        document.getElementById('sync-status').innerText = "☁️ TERHUBUNG";
+
+    } catch (e) {
+
+        if (token !== loadToken) return;
+        document.getElementById('sync-status').innerText = "☁️ TERPUTUS";
+        render();
+
+    }
+
+}
+
+async function syncAll() {
+
+    // render dulu data lokal
+    render();
+    YEAR_CACHE[CURRENT_YEAR] = {
+        driver: cloneData(DB_DRIVER),
+        helper: cloneData(DB_HELPER),
+        transaksi: cloneData(DB_TRANSAKSI),
+        logs: cloneData(DB_LOGS)
+    };
+
+        const status = document.getElementById('sync-status');
+        status.innerText = "⏳ MENYIMPAN...";
+
+    try {
+        const writeToken = getWriteToken();
+        if (!writeToken) {
+            showNotif('Write token belum tersedia. Verifikasi ulang dulu.', 'error');
+            status.innerText = "⚠️ GAGAL SINKRON";
+            return;
+        }
+
+        // data yang dikirim ke GAS
+        const payload = {
+            authToken: writeToken,
+            editor: getActiveEditor(),
+            deviceId: getDeviceId(),
+            driver: DB_DRIVER,
+            helper: DB_HELPER,
+            transaksi: DB_TRANSAKSI,
+            logs: DB_LOGS
+        };
+
+        // kirim ke Google Apps Script
+        await postToAppsScript(payload);
+
+        // delay sedikit supaya GAS selesai menulis
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        status.innerText = "☁️ TERHUBUNG";
+
+    } catch (err) {
+
+        console.error("SYNC ERROR:", err);
+
+        status.innerText = "⚠️ GAGAL SINKRON";
+
+    }
+}
+
+        function addLog(aksi, ket) {
+            const d = new Date(), pad = (n) => n.toString().padStart(2, '0');
+            const time = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}.${pad(d.getMinutes())}`;
+            DB_LOGS.unshift({ time, editor: getActiveEditor(), aksi: aksi.toUpperCase(), ket: ket });
+        }
+
+        function clearLogs() { new bootstrap.Modal('#modalKonfirmasiLog').show(); }
+        function eksekusiHapusLog() { bootstrap.Modal.getInstance('#modalKonfirmasiLog').hide(); addLog("SYSTEM", "BERSIHKAN SEMUA LOG"); DB_LOGS = []; syncAll(); }
+
+        function render() {
+    const gd = document.getElementById('grid-driver');
+    const gh = document.getElementById('grid-helper');
+    const hi = document.getElementById('hist');
+    const lg = document.getElementById('log-list');
+
+    const m = parseInt(document.getElementById('selMonth').value) || 0;
+    const y = getSelectedYear();
+
+    let cIuran = 0;
+    let cOut = 0;
+    let cLainnya = 0;
+
+    const sAwal = (m === 0)
+        ? calculateOpeningBalanceYear(y)
+        : calculatePastBalance(m, y);
+
+    [...DB_DRIVER, ...DB_HELPER].forEach(p => {
+        const yStatus = p?.status?.[y];
+        if (!yStatus) return;
+
+        Object.keys(yStatus).forEach(mm => {
+            if (yStatus[mm] && (m === 0 || parseInt(mm, 10) === m)) cIuran += 25000;
+        });
+    });
+
+    const drawRows = (list, kat) => {
+        const rows = [];
+        const sorted = [...list].sort((a, b) => a.nama.localeCompare(b.nama));
+
+        sorted.forEach((p, idx) => {
+            if (!p.status) p.status = {};
+            let count = 0;
+            const cellParts = [];
+
+            for (let i = 1; i <= 12; i++) {
+                const s = !!p.status[y]?.[i];
+                if (s) count++;
+
+                cellParts.push(
+                    `<td class="status-toggle ${s ? 'text-success' : 'text-danger'}" data-id="${p.id}" data-kat="${kat}" data-y="${y}" data-m="${i}">${s ? '&#9989;' : '&#10060;'}</td>`
+                );
+            }
+
+            rows.push(
+                `<tr><td class="no-col">${idx + 1}</td><td class="name-col">${p.nama}</td>${cellParts.join('')}<td class="text-center-force">${count}/12</td><td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="member" data-id="${p.id}">&#8942;</div></td></tr>`
+            );
+        });
+
+        return rows.join('');
+    };
+
+    gd.innerHTML = drawRows(DB_DRIVER, 'Driver');
+    gh.innerHTML = drawRows(DB_HELPER, 'Helper');
+
+    const transaksiRows = [];
+    for (let idx = 0; idx < DB_TRANSAKSI.length; idx++) {
+        const x = DB_TRANSAKSI[idx];
+        const yy = parseInt((x.d || '').slice(0, 4), 10);
+        const mm = parseInt((x.d || '').slice(5, 7), 10);
+        const sameYear = yy === y;
+        const sameMonth = (m === 0) || (mm === m);
+
+        if (!sameYear || !sameMonth) continue;
+
+        if (x.tp === 'Pemasukan') cLainnya += x.v;
+        else cOut += x.v;
+
+        transaksiRows.push(
+            `<tr><td class="text-center">${x.d.split('-').reverse().join('/')}</td><td class="fw-bold ${x.tp === 'Pemasukan' ? 'text-success' : 'text-danger'} text-center">${x.tp.toUpperCase()}</td><td>${x.p}</td><td>${x.k || '-'}</td><td class="fw-bold text-end">Rp ${x.v.toLocaleString()}</td><td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="trans" data-idx="${idx}">&#8942;</div></td></tr>`
+        );
+    }
+    hi.innerHTML = transaksiRows.join('');
+
+    const logRows = [];
+    for (let i = 0; i < Math.min(50, DB_LOGS.length); i++) {
+        const l = DB_LOGS[i];
+        logRows.push(
+            `<tr><td>${l.time}</td><td>${l.editor}</td><td><small class="badge bg-dark">${l.aksi}</small></td><td>${l.ket}</td></tr>`
+        );
+    }
+    lg.innerHTML = logRows.join('');
+
+    document.getElementById('s-awal').innerText = "Rp " + sAwal.toLocaleString();
+    document.getElementById('in').innerText = "Rp " + cIuran.toLocaleString();
+    document.getElementById('out').innerText = "Rp " + cOut.toLocaleString();
+    document.getElementById('bal').innerText = "Rp " + cLainnya.toLocaleString();
+    document.getElementById('s-akhir').innerText = "Rp " + (sAwal + cIuran + cLainnya - cOut).toLocaleString();
+
+    const labelSaldoAwal = document.querySelector('#s-awal').closest('.card-saldo').querySelector('.label');
+    const banner = document.querySelector('.banner-bar');
+
+    if (m === 0) {
+        labelSaldoAwal.innerText = `Saldo Awal (${y - 1})`;
+        banner.innerText = `REKAP KEUANGAN TAHUN ${y}`;
+    } else {
+        labelSaldoAwal.innerText = 'Saldo Awal';
+        banner.innerText = 'LAPORAN KEUANGAN BULANAN';
+    }
+}
+        
+        function calculateOpeningBalanceYear(y) {
+    let saldo = 0;
+
+    // IURAN sebelum tahun y
+    [...DB_DRIVER, ...DB_HELPER].forEach(p => {
+        if (!p.status) return;
+
+        Object.keys(p.status).forEach(yy => {
+            if (parseInt(yy) < y) {
+                Object.keys(p.status[yy]).forEach(mm => {
+                    if (p.status[yy][mm]) {
+                        saldo += 25000;
+                    }
+                });
+            }
+        });
+    });
+
+    // TRANSAKSI sebelum tahun y
+    DB_TRANSAKSI.forEach(t => {
+        const yy = parseInt((t.d || '').slice(0, 4), 10);
+        if (yy < y) saldo += (t.tp === 'Pemasukan' ? t.v : -t.v);
+    });
+
+    return saldo;
+}
+
+        function calculatePastBalance(m, y) {
+            let tIn = 0, tOut = 0;
+            [...DB_DRIVER, ...DB_HELPER].forEach(p => {
+                if (!p.status) return;
+                Object.keys(p.status).forEach(sy => {
+                    Object.keys(p.status[sy]).forEach(sm => {
+                        if ((parseInt(sy, 10) < y || (parseInt(sy, 10) === y && parseInt(sm, 10) < m)) && p.status[sy][sm]) tIn += 25000;
+                    });
+                });
+            });
+
+            DB_TRANSAKSI.forEach(x => {
+                const yy = parseInt((x.d || '').slice(0, 4), 10);
+                const mm = parseInt((x.d || '').slice(5, 7), 10);
+                if (yy < y || (yy === y && mm < m)) {
+                    if (x.tp === 'Pemasukan') tIn += x.v;
+                    else tOut += x.v;
+                }
+            });
+            return tIn - tOut;
+        }
+
+        document.getElementById('fAdd').onsubmit = (e) => {
+            e.preventDefault(); const id = document.getElementById('editMemberId').value, kat = document.getElementById('k').value.toUpperCase(), n = document.getElementById('n').value.toUpperCase();
+            if (id) { 
+                let p = [...DB_DRIVER, ...DB_HELPER].find(x => x.id == id);
+                const lama = p.nama;
+                p.nama = n; 
+                addLog("Edit anggota", `${kat} - ${lama} => ${n}`);
+            } else { 
+                n.split('\n').filter(x => x.trim()).forEach(nm => { 
+                    let p = { id: "ID-"+Date.now()+Math.random().toString(36).substr(2,3), nama: nm.trim(), status: {} }; 
+                    if (kat === 'DRIVER') DB_DRIVER.push(p); else DB_HELPER.push(p); 
+                    addLog("Tambah anggota", `${kat} - ${nm.trim()}`); 
+                });
+            }
+            syncAll(); bootstrap.Modal.getInstance('#modalTambah').hide();
+        };
+
+        document.getElementById('fTrans').onsubmit = (e) => {
+    e.preventDefault();
+
+    const f = new FormData(e.target);
+    const idx = document.getElementById('editTransIdx').value;
+
+    const d = {
+        tp: f.get('tp'),
+        d: f.get('d'),
+        p: (f.get('p') || '').toUpperCase(),
+        k: (f.get('k') || '').toUpperCase(),
+        v: parseInt(f.get('v')) || 0
+    };
+
+    if (idx !== "") {
+        const old = DB_TRANSAKSI[idx];
+        if (!old) return;
+
+        let change = "";
+        if (old.tp !== d.tp) change += `Tipe: ${old.tp}=>${d.tp}, `;
+        if (old.p !== d.p) change += `Sumber: ${old.p}=>${d.p}, `;
+        if (old.v !== d.v) change += `Nominal: ${old.v}=>${d.v}, `;
+
+        DB_TRANSAKSI[idx] = d;
+
+        addLog("Edit transaksi",
+            `TRANSAKSI - ${d.tp.toUpperCase()} - ${d.p} - ${change || 'Update Data'}`
+        );
+    } else {
+        DB_TRANSAKSI.push(d);
+        addLog("Tambah transaksi",
+            `TRANSAKSI - ${d.tp.toUpperCase()} - ${d.p} - ${d.k || '-'}`
+        );
+    }
+
+    syncAll();
+    bootstrap.Modal.getInstance('#modalCatat').hide();
+};
+
+        async function downloadFinancialPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const mText = document.getElementById('selMonth').options[document.getElementById('selMonth').selectedIndex].text.toUpperCase();
+            const yText = document.getElementById('selYear').value;
+            const editorName = getActiveEditor() || "SUPER ADMIN KAS";
+
+            const blackBg = [15, 15, 15]; 
+            const goldAccent = [212, 175, 55]; 
+            const whiteText = [255, 255, 255];
+            const borderColor = [0, 0, 0]; 
+            const pureBlack = [0, 0, 0]; 
+            const stampRed = [180, 0, 0]; 
+
+            doc.setFillColor(blackBg[0], blackBg[1], blackBg[2]);
+            doc.rect(0, 0, 210, 45, 'F');
+            doc.setDrawColor(goldAccent[0], goldAccent[1], goldAccent[2]);
+            doc.setLineWidth(1);
+            doc.line(15, 33, 195, 33);
+
+            doc.setTextColor(goldAccent[0], goldAccent[1], goldAccent[2]);
+            doc.setFont("times", "bold"); doc.setFontSize(24);
+            doc.text("DATA RINCIAN UANG KAS", 105, 20, { align: "center" });
+            doc.setTextColor(whiteText[0], whiteText[1], whiteText[2]);
+            doc.setFontSize(12); doc.setFont("times", "normal");
+            doc.text("DRIVER HELPER DELTA8 & LOGISTICS", 105, 28, { align: "center" });
+            doc.setFontSize(11); doc.setFont("times", "italic");
+            doc.text(`Periode: ${mText} ${yText}`, 105, 40, { align: "center" });
+
+            const sAwal = document.getElementById('s-awal').innerText;
+            const sAkhir = document.getElementById('s-akhir').innerText;
+            const iuran = document.getElementById('in').innerText;
+            const keluar = document.getElementById('out').innerText;
+            const lainnya = document.getElementById('bal').innerText;
+
+            const drawCard = (x, y, w, h, title, value, bgColor, txtColor = [0,0,0]) => {
+                doc.setDrawColor(0); doc.setLineWidth(0.5);
+                doc.setFillColor(bgColor[0], bgColor[1], bgColor[2]);
+                doc.roundedRect(x, y, w, h, 3, 3, 'FD'); 
+                doc.setTextColor(txtColor[0], txtColor[1], txtColor[2]);
+                doc.setFontSize(16); doc.setFont("times", "bold");
+                doc.text(title, x + (w / 2), y + 9, { align: "center" });
+                doc.setFontSize(20); doc.setFont("times", "bold");
+                doc.text(value, x + (w / 2), y + 21, { align: "center" });
+            };
+
+            drawCard(15, 60, 88, 30, "Saldo Awal", sAwal, [255, 220, 100]); 
+            drawCard(107, 60, 88, 30, "Total Iuran Anggota (+)", iuran, [180, 230, 180]); 
+            drawCard(15, 95, 88, 30, "Pemasukan Lainnya (+)", lainnya, [180, 230, 180]); 
+            drawCard(107, 95, 88, 30, "Total Pengeluaran (-)", keluar, [255, 180, 180]); 
+            drawCard(15, 130, 180, 35, "SALDO AKHIR (TOTAL BALANCE)", sAkhir, [30, 60, 120], [255, 255, 255]); 
+            
+            doc.setTextColor(pureBlack[0], pureBlack[1], pureBlack[2]);
+            doc.setFontSize(14); doc.setFont("times", "bold");
+            doc.text("RIWAYAT TRANSAKSI", 105, 172, { align: "center" }); 
+
+            const transData = [];
+            document.querySelectorAll('#hist tr').forEach(row => {
+                const cols = row.querySelectorAll('td');
+                if(cols.length > 0) {
+                    transData.push([cols[0].innerText, cols[1].innerText, cols[2].innerText, cols[3].innerText, cols[4].innerText]);
+                }
+            });
+
+            doc.autoTable({
+                startY: 177,
+                margin: { left: 15, right: 15 }, 
+                head: [['TANGGAL', 'TIPE', 'SUMBER/PENERIMA', 'KETERANGAN', 'JUMLAH']],
+                body: transData,
+                theme: 'grid',
+                headStyles: { fillColor: blackBg, textColor: whiteText, fontStyle: 'bold', halign: 'center', lineWidth: 0.2, lineColor: borderColor, fontSize: 10, minCellHeight: 6 },
+                styles: { font: 'times', fontSize: 9, textColor: pureBlack, cellPadding: 0.8, minCellHeight: 4, valign: 'middle', lineWidth: 0.1, lineColor: borderColor },
+                columnStyles: { 0: { halign: 'center' }, 1: { halign: 'center' }, 4: { halign: 'right', fontStyle: 'bold' } },
+                alternateRowStyles: { fillColor: [245, 245, 245] }
+            });
+
+            const finalY = doc.lastAutoTable.finalY + 15;
+            const rightPos = 195; 
+
+            if (finalY < 250) {
+                doc.setTextColor(pureBlack[0], pureBlack[1], pureBlack[2]);
+                doc.setFont("times", "normal"); doc.setFontSize(12);
+                doc.text("Diterbitkan Oleh,", rightPos - 25, finalY + 20, { align: "center" });
+                
+                const sX = rightPos - 45; 
+                const sY = finalY + 30;
+                doc.setDrawColor(stampRed[0], stampRed[1], stampRed[2]);
+                doc.setLineWidth(0.8);
+                doc.circle(sX, sY, 13, 'S'); 
+                doc.setLineWidth(0.3);
+                doc.circle(sX, sY, 11, 'S'); 
+                doc.line(sX - 9, sY - 2, sX + 9, sY - 2); 
+                doc.line(sX - 9, sY + 2.5, sX + 9, sY + 2.5); 
+                
+                doc.setTextColor(stampRed[0], stampRed[1], stampRed[2]);
+                doc.setFontSize(5); doc.setFont("helvetica", "bold");
+                doc.text("PENGURUS  KAS", sX, sY - 4.0, { align: "center" });
+                doc.setFontSize(8);
+                doc.text("SNJ DELTA 8", sX, sY + 1, { align: "center" });
+                doc.setFontSize(5);
+                doc.text("DRIVER HELPER", sX, sY + 5.5, { align: "center" });
+
+                doc.setFont("courier", "bolditalic"); doc.setFontSize(14);
+                doc.setTextColor(20, 40, 100); 
+                doc.text(editorName, rightPos - 25, finalY + 30, { align: "center" });
+
+                doc.setTextColor(pureBlack[0], pureBlack[1], pureBlack[2]);
+                doc.setFont("times", "bold"); doc.setFontSize(11);
+                doc.text("(       Pengurus Uang KAS       )", rightPos, finalY + 40, { align: "right" }); 
+                doc.text("__________________________", rightPos, finalY + 41, { align: "right" }); 
+            }
+
+            const pageCount = doc.internal.getNumberOfPages();
+            for(let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(9); doc.setTextColor(100);
+                doc.text(`Official Document Driver Helper Delta 8 | Dicetak: ${new Date().toLocaleString()} | Halaman ${i} dari ${pageCount}`, 105, 285, { align: "center" } );
+                doc.setFontSize(8); doc.setTextColor(120);
+                doc.text(`--<{SUPPORTED BY : MANCUNG_168}>--`, 105, 290, { align: "center" } );
+            }
+
+            doc.save(`LAPKAS_${editorName}_${mText}.pdf`);
+        }
+        window.onload = () => {
+    setTheme(localStorage.getItem('delta8_theme') || 'luxury');
+    
+    initTahun();
+
+    const sm = document.getElementById('selMonth');
+    const sy = document.getElementById('selYear');
+    const now = new Date();
+
+    const nm = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+    // OPSI SEMUA BULAN
+    sm.innerHTML = `<option value="0">SEMUA BULAN</option>`;
+
+    for (let i = 1; i <= 12; i++) {
+        sm.innerHTML += `<option value="${i}" ${
+            i === (now.getMonth() + 1) ? 'selected' : ''
+        }>${nm[i]}</option>`;
+    }
+
+    for (let i = 2025; i <= 2050; i++) {
+        sy.innerHTML += `<option value="${i}" ${
+            i === now.getFullYear() ? 'selected' : ''
+        }>${i}</option>`;
+    }
+
+    // Samakan tahun toolbar anggota dan transaksi
+    syncYearDropdowns(CURRENT_YEAR);
+
+    // 🔥 INI YANG BIKIN SALDO LANGSUNG UPDATE
+    sm.addEventListener('change', render);
+    sy.addEventListener('change', () => gantiTahun(sy.value));
+
+    updateNotificationUI();
+    loadFromCloud(CURRENT_YEAR);
+    restoreNotificationState();
+    applyLaunchContext();
+};
+       let currentSearch = '';
+
+function filterMember(keyword) {
+    currentSearch = keyword.toLowerCase().trim();
+
+    const gd = document.getElementById('grid-driver');
+    const gh = document.getElementById('grid-helper');
+
+    if (gd) {
+        gd.querySelectorAll('tr').forEach(tr => {
+            const nama = tr.querySelector('.name-col')?.innerText.toLowerCase() || '';
+            tr.style.display = nama.includes(currentSearch) ? '' : 'none';
+        });
+    }
+    if (gh) {
+        gh.querySelectorAll('tr').forEach(tr => {
+            const nama = tr.querySelector('.name-col')?.innerText.toLowerCase() || '';
+            tr.style.display = nama.includes(currentSearch) ? '' : 'none';
+        });
+    }
+}
+
+document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+    tab.addEventListener('shown.bs.tab', () => {
+        const input = document.getElementById('search-member');
+        if (input && currentSearch) {
+            input.value = currentSearch;
+            filterMember(currentSearch);
+        }
+    });
+});
+
+document.addEventListener('shown.bs.tab', function (e) {
+    const target = e.target.getAttribute('data-bs-target');
+
+    // reset dulu
+    document.body.classList.remove('tab-driver','tab-helper','tab-transaksi');
+
+    if (target === '#driver') {
+        document.body.classList.add('tab-driver');
+    } else if (target === '#helper') {
+        document.body.classList.add('tab-helper');
+    } else if (target === '#transaksi') {
+        document.body.classList.add('tab-transaksi');
+    }
+});
+
+let CURRENT_YEAR = new Date().getFullYear();
+
+function getSelectedYear(){
+    const memberYear = Number(document.getElementById("tahun-select")?.value);
+    return memberYear || CURRENT_YEAR;
+}
+
+function syncYearDropdowns(year){
+    const memberYearSelect = document.getElementById("tahun-select");
+    const transaksiYearSelect = document.getElementById("selYear");
+
+    if (memberYearSelect) memberYearSelect.value = String(year);
+    if (transaksiYearSelect) transaksiYearSelect.value = String(year);
+}
+
+function initTahun(){
+
+    const select = document.getElementById("tahun-select");
+    const now = new Date().getFullYear();
+    const startYear = 2025;
+    const endYear = 2050;
+
+    select.innerHTML = "";
+
+    for(let y = startYear; y <= endYear; y++){
+
+        const opt = document.createElement("option");
+        opt.value = y;
+        opt.textContent = y;
+
+        if(y === now) opt.selected = true;
+
+        select.appendChild(opt);
+
+    }
+
+}
+
+async function gantiTahun(tahun){
+
+    CURRENT_YEAR = Number(tahun);
+    syncYearDropdowns(CURRENT_YEAR);
+    document.getElementById('sync-status').innerText = "⏳ MEMUAT DATA...";
+
+    // Tampilkan cepat dari cache jika sudah pernah dibuka
+    if (YEAR_CACHE[CURRENT_YEAR]) {
+        DB_DRIVER = cloneData(YEAR_CACHE[CURRENT_YEAR].driver || []);
+        DB_HELPER = cloneData(YEAR_CACHE[CURRENT_YEAR].helper || []);
+        DB_TRANSAKSI = cloneData(YEAR_CACHE[CURRENT_YEAR].transaksi || []);
+        DB_LOGS = cloneData(YEAR_CACHE[CURRENT_YEAR].logs || []);
+        render();
+    }
+
+    // Muat data langsung agar tidak terasa delay
+    loadFromCloud(CURRENT_YEAR);
+
+    // ensureYear tetap dijalankan tanpa memblokir UI
+    fetchJson(`${CLOUD_URL}?action=ensureYear&year=${CURRENT_YEAR}`)
+        .catch(err => console.error("ensureYear error:", err));
+
+}
+
+    </script>
+</body>
+</html>

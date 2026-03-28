@@ -5,7 +5,10 @@ on:
     branches:
       - main
     paths:
+      - "Code.gs"
+      - "index.html"
       - "gas_fix/**"
+      - "scripts/sync-deploy-sources.ps1"
       - ".github/workflows/deploy-gas.yml"
   workflow_dispatch:
 
@@ -25,6 +28,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Sync root sources into deploy folders
+        shell: pwsh
+        run: ./scripts/sync-deploy-sources.ps1
 
       - name: Install clasp
         run: npm install --global @google/clasp@3.3.0

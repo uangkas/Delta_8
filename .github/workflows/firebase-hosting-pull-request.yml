@@ -7,10 +7,13 @@ on:
       - synchronize
       - reopened
     paths:
+      - "index.html"
+      - "firebase-messaging-sw.js"
       - "public/**"
       - "firebase.json"
       - ".firebaserc"
       - ".firebaseignore"
+      - "scripts/sync-deploy-sources.ps1"
       - ".github/workflows/firebase-hosting-merge.yml"
       - ".github/workflows/firebase-hosting-pull-request.yml"
 
@@ -28,6 +31,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Sync root sources into hosting folder
+        shell: pwsh
+        run: ./scripts/sync-deploy-sources.ps1
 
       - uses: FirebaseExtended/action-hosting-deploy@v0.10.0
         with:

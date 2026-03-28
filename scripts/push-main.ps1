@@ -7,6 +7,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+& (Join-Path $PSScriptRoot "sync-deploy-sources.ps1")
+
 git add .
 
 $status = git status --short
