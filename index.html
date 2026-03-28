@@ -1653,6 +1653,14 @@ body.tab-transaksi .nav-tabs {
             bootstrap.Modal.getOrCreateInstance('#modalVerifyAuth').show();
         }
 
+        function resetAuthPinFocus() {
+            const pinInput = document.getElementById('inputPIN');
+            if (pinInput) {
+                pinInput.value = '';
+                focusPinInput();
+            }
+        }
+
         function handlePinInput(input) {
             const value = String(input && input.value ? input.value : '').replace(/\D/g, '').slice(0, 4);
             if (input.value !== value) input.value = value;
@@ -1688,15 +1696,13 @@ body.tab-transaksi .nav-tabs {
             }
 
             authInProgress = true;
-            const hidePromise = hideAuthModal();
             try {
                 const deviceId = getDeviceId();
                 const url = `${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
                 const data = await fetchJson(url);
                 if (!data || !data.ok || !data.writeToken) {
-                    await hidePromise;
                     showNotif((data && data.error) ? data.error : 'Verifikasi gagal', 'error');
-                    reopenAuthModal();
+                    resetAuthPinFocus();
                     return;
                 }
 
@@ -1707,12 +1713,17 @@ body.tab-transaksi .nav-tabs {
                     issuedAt: Date.now(),
                     expiresAt: Date.now() + ((Number(data.expiresInSec || 0) || 0) * 1000)
                 });
-                await hidePromise;
-                executeAction();
+
+                if (pendingAction === 'toggle') {
+                    executeAction();
+                    await hideAuthModal();
+                } else {
+                    await hideAuthModal();
+                    executeAction();
+                }
             } catch (err) {
-                await hidePromise;
                 showNotif((err && err.message) ? err.message : 'Tidak bisa verifikasi ke backend', 'error');
-                reopenAuthModal();
+                resetAuthPinFocus();
             } finally {
                 authInProgress = false;
             }
