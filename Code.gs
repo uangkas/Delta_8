@@ -644,15 +644,13 @@ function handleFcmSw_() {
 }
 
 function handleSaveFcmToken_(payload, e) {
+  validateWriteAuth_(payload, e);
   var token = String(payload.token || "").trim();
   var editor = String(payload.editor || "").trim();
   var deviceId = normalizeDeviceId_(payload.deviceId || "");
   var userAgent = truncateText_(String(payload.userAgent || ""), 180);
   if (token.length < 20) {
     throw new Error("Invalid FCM token.");
-  }
-  if (!editor) {
-    editor = "PERANGKAT";
   }
 
   var props = PropertiesService.getScriptProperties();
@@ -910,16 +908,16 @@ function handleVerifyAuth_(e) {
   editor = String(editor || "").trim();
 
   if (editor.length < 2) {
-    return jsonResponse_({ ok: false, error: "Nama pencatat minimal 2 karakter." });
+    return jsonResponse_({ ok: false, error: "Nama editor minimal 2 karakter." });
   }
 
   var expectedPin = PropertiesService.getScriptProperties().getProperty(APP_PIN_KEY);
   if (!expectedPin) {
-    return jsonResponse_({ ok: false, error: "PIN otorisasi belum dikonfigurasi di backend." });
+    return jsonResponse_({ ok: false, error: "PIN belum dikonfigurasi di backend." });
   }
 
   if (String(pin) !== String(expectedPin)) {
-    return jsonResponse_({ ok: false, error: "PIN otorisasi salah." });
+    return jsonResponse_({ ok: false, error: "PIN salah." });
   }
 
   var writeToken = issueWriteSessionToken_(editor.toUpperCase(), deviceId);
