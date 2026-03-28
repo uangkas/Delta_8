@@ -908,16 +908,16 @@ function handleVerifyAuth_(e) {
   editor = String(editor || "").trim();
 
   if (editor.length < 2) {
-    return jsonResponse_({ ok: false, error: "Nama editor minimal 2 karakter." });
+    return jsonResponse_({ ok: false, error: "Nama pencatat minimal 2 karakter." });
   }
 
   var expectedPin = PropertiesService.getScriptProperties().getProperty(APP_PIN_KEY);
   if (!expectedPin) {
-    return jsonResponse_({ ok: false, error: "PIN belum dikonfigurasi di backend." });
+    return jsonResponse_({ ok: false, error: "PIN otorisasi belum dikonfigurasi di backend." });
   }
 
   if (String(pin) !== String(expectedPin)) {
-    return jsonResponse_({ ok: false, error: "PIN salah." });
+    return jsonResponse_({ ok: false, error: "PIN otorisasi salah." });
   }
 
   var writeToken = issueWriteSessionToken_(editor.toUpperCase(), deviceId);
