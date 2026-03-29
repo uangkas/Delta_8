@@ -485,10 +485,38 @@ function sendFcmToAllDevices_(title, body, dataObj) {
   var keep = [];
   var delivered = 0;
   var results = [];
+  var requests = [];
+  var requestRows = [];
   for (var i = 0; i < rows.length; i++) {
     var token = rows[i] && rows[i].token ? String(rows[i].token) : "";
     if (!token) continue;
-    var sendResult = sendFcmToToken_(projectId, accessToken, token, title, body, dataObj);
+    requests.push(buildFcmSendRequest_(projectId, accessToken, token, title, body, dataObj));
+    requestRows.push(rows[i]);
+  }
+  if (!requests.length) {
+    setLastFcmSendStatus_({
+      ok: false,
+      reason: "no_valid_tokens",
+      attempted: rows.length,
+      delivered: 0,
+      kept: 0,
+      updatedAt: new Date().toISOString()
+    });
+    return;
+  }
+
+  var responses = [];
+  try {
+    responses = UrlFetchApp.fetchAll(requests);
+  } catch (err) {
+    responses = [];
+    for (var j = 0; j < requests.length; j++) {
+      responses.push(UrlFetchApp.fetch(requests[j].url, toUrlFetchOptions_(requests[j])));
+    }
+  }
+
+  for (var k = 0; k < requestRows.length; k++) {
+    var sendResult = normalizeFcmSendResponse_(responses[k]);
     var code = sendResult.code;
     var txt = sendResult.text;
     // Keep valid tokens, drop invalid/unregistered.
@@ -498,7 +526,7 @@ function sendFcmToAllDevices_(title, body, dataObj) {
       txt.indexOf('"name"') !== -1
     ) {
       delivered++;
-      keep.push(rows[i]);
+      keep.push(requestRows[k]);
       results.push({ ok: true, code: code });
       continue;
     }
@@ -506,7 +534,7 @@ function sendFcmToAllDevices_(title, body, dataObj) {
       txt.indexOf("UNREGISTERED") === -1 &&
       txt.indexOf("INVALID_ARGUMENT") === -1
     ) {
-      keep.push(rows[i]);
+      keep.push(requestRows[k]);
     }
     results.push({
       ok: false,
@@ -526,7 +554,7 @@ function sendFcmToAllDevices_(title, body, dataObj) {
   });
 }
 
-function sendFcmToToken_(projectId, accessToken, token, title, body, dataObj) {
+function buildFcmSendRequest_(projectId, accessToken, token, title, body, dataObj) {
   var url =
     "https://fcm.googleapis.com/v1/projects/" +
     encodeURIComponent(projectId) +
@@ -558,18 +586,49 @@ function sendFcmToToken_(projectId, accessToken, token, title, body, dataObj) {
     }
   };
 
-  var resp = UrlFetchApp.fetch(url, {
+  return {
+    url: url,
     method: "post",
     contentType: "application/json",
     headers: { Authorization: "Bearer " + accessToken },
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
-  });
+  };
+}
 
+function toUrlFetchOptions_(request) {
+  return {
+    method: request.method,
+    contentType: request.contentType,
+    headers: request.headers,
+    payload: request.payload,
+    muteHttpExceptions: request.muteHttpExceptions
+  };
+}
+
+function normalizeFcmSendResponse_(resp) {
+  if (!resp) {
+    return {
+      code: 0,
+      text: "no_response"
+    };
+  }
   return {
     code: resp.getResponseCode(),
     text: resp.getContentText() || ""
   };
+}
+
+function sendFcmToToken_(projectId, accessToken, token, title, body, dataObj) {
+  var request = buildFcmSendRequest_(projectId, accessToken, token, title, body, dataObj);
+  var resp = UrlFetchApp.fetch(request.url, {
+    method: "post",
+    contentType: "application/json",
+    headers: { Authorization: "Bearer " + accessToken },
+    payload: request.payload,
+    muteHttpExceptions: true
+  });
+  return normalizeFcmSendResponse_(resp);
 }
 
 function getFcmAccessToken_(clientEmail, privateKeyRaw) {
