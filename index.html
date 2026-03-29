@@ -1179,6 +1179,19 @@ body.tab-transaksi .nav-tabs {
             return data;
         }
 
+        async function fetchVerifyAuth(url) {
+            try {
+                return await fetchJson(url, 1000);
+            } catch (err) {
+                const message = String((err && err.message) || '').toLowerCase();
+                const isTransient =
+                    message.includes('backend tidak merespons') ||
+                    message.includes('gagal menghubungi backend');
+                if (!isTransient) throw err;
+                return await fetchJson(url, 3000);
+            }
+        }
+
         function postToAppsScript(payload) {
             if (navigator.sendBeacon) {
                 try {
@@ -1680,7 +1693,7 @@ body.tab-transaksi .nav-tabs {
 
                 const deviceId = getDeviceId();
                 const url = `${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
-                const data = await fetchJson(url, 1000);
+                const data = await fetchVerifyAuth(url);
                 if (!data || !data.ok || !data.writeToken) {
                     if (optimisticToggle) {
                         executeAction(action, params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
