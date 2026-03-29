@@ -1776,7 +1776,7 @@ body.tab-transaksi .nav-tabs {
                     DB_HELPER = DB_HELPER.filter(x => x.id != currentContext.id);
                 } else {
                     const t = DB_TRANSAKSI[currentContext.idx];
-                    addLog("Hapus transaksi", `TRANSAKSI - ${t.tp.toUpperCase()} - ${t.p} - ${t.k || '-'}`);
+                    addLog("Hapus transaksi", `${t.tp.toUpperCase()} - ${t.p} - ${t.k || '-'}`);
                     DB_TRANSAKSI.splice(currentContext.idx, 1);
                 }
                 syncAll();
@@ -2270,12 +2270,12 @@ async function syncAll() {
         DB_TRANSAKSI[idx] = d;
 
         addLog("Edit transaksi",
-            `TRANSAKSI - ${d.tp.toUpperCase()} - ${d.p} - ${change || 'Update Data'}`
+            `${d.tp.toUpperCase()} - ${d.p} - ${change || 'Update Data'}`
         );
     } else {
         DB_TRANSAKSI.push(d);
         addLog("Tambah transaksi",
-            `TRANSAKSI - ${d.tp.toUpperCase()} - ${d.p} - ${d.k || '-'}`
+            `${d.tp.toUpperCase()} - ${d.p} - ${d.k || '-'}`
         );
     }
 
