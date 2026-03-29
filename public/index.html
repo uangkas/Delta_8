@@ -930,6 +930,7 @@ body.tab-transaksi .nav-tabs {
     <div class="modal fade" id="modalTambah" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><h6 class="fw-bold mb-3">TAMBAH/EDIT ANGGOTA</h6><form id="fAdd"><input type="hidden" id="editMemberId"><textarea id="n" class="form-control mb-2" style="height:100px" placeholder="Nama Anggota"></textarea><select id="k" class="form-select mb-3"><option value="Driver">Driver</option><option value="Helper">Helper</option></select><button type="submit" class="btn btn-warning w-100 fw-bold">SIMPAN</button></form></div></div></div></div>
     <div class="modal fade" id="modalKonfirmasiHapus" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><div class="mb-3" style="font-size: 2rem;">⚠️</div><h6 class="fw-bold mb-4">Hapus data ini?</h6><div class="d-flex gap-2"><button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal">BATAL</button><button type="button" class="btn btn-danger w-100" onclick="eksekusiHapus()">HAPUS</button></div></div></div></div></div>
     <div class="modal fade" id="modalKonfirmasiLog" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><div class="mb-3" style="font-size: 2rem;">🗑️</div><h6 class="fw-bold mb-4">BERSIHKAN LOG?</h6><div class="d-flex gap-2"><button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal">BATAL</button><button type="button" class="btn btn-danger w-100" onclick="eksekusiHapusLog()">HAPUS</button></div></div></div></div></div>
+    <div class="modal fade" id="modalPdfPreview" tabindex="-1"><div class="modal-dialog modal-fullscreen-sm-down modal-xl modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h6 class="fw-bold mb-0">PREVIEW PDF LAPORAN</h6><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body p-0" style="min-height:70vh"><iframe id="pdf-preview-frame" title="Preview PDF Laporan" style="width:100%;height:70vh;border:0;background:#111"></iframe></div><div class="modal-footer"><button type="button" class="btn btn-dark" data-bs-dismiss="modal">TUTUP</button><button type="button" class="btn btn-warning fw-bold" onclick="downloadPreviewPdf()">DOWNLOAD PDF</button></div></div></div></div>
 
     <div id="notify-wrap"></div>
 
@@ -2285,6 +2286,46 @@ async function syncAll() {
     bootstrap.Modal.getInstance('#modalCatat').hide();
 };
 
+        let currentPdfPreviewUrl = '';
+        let currentPdfPreviewName = '';
+
+        function revokePdfPreviewUrl() {
+            if (!currentPdfPreviewUrl) return;
+            URL.revokeObjectURL(currentPdfPreviewUrl);
+            currentPdfPreviewUrl = '';
+        }
+
+        function showPdfPreview(blob, fileName) {
+            const frame = document.getElementById('pdf-preview-frame');
+            if (!frame || !blob) return;
+
+            revokePdfPreviewUrl();
+            currentPdfPreviewUrl = URL.createObjectURL(blob);
+            currentPdfPreviewName = fileName || 'laporan.pdf';
+            frame.src = currentPdfPreviewUrl;
+            bootstrap.Modal.getOrCreateInstance('#modalPdfPreview').show();
+        }
+
+        function downloadPreviewPdf() {
+            if (!currentPdfPreviewUrl) return;
+            const link = document.createElement('a');
+            link.href = currentPdfPreviewUrl;
+            link.download = currentPdfPreviewName || 'laporan.pdf';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        }
+
+        const pdfPreviewModalEl = document.getElementById('modalPdfPreview');
+        if (pdfPreviewModalEl) {
+            pdfPreviewModalEl.addEventListener('hidden.bs.modal', () => {
+                const frame = document.getElementById('pdf-preview-frame');
+                if (frame) frame.src = 'about:blank';
+                revokePdfPreviewUrl();
+                currentPdfPreviewName = '';
+            });
+        }
+
         async function downloadFinancialPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
@@ -2406,7 +2447,9 @@ async function syncAll() {
                 doc.text(`--<{SUPPORTED BY : MANCUNG_168}>--`, 105, 290, { align: "center" } );
             }
 
-            doc.save(`LAPKAS_${editorName}_${mText}.pdf`);
+            const fileName = `LAPKAS_${editorName}_${mText}.pdf`;
+            const pdfBlob = doc.output('blob');
+            showPdfPreview(pdfBlob, fileName);
         }
         window.onload = () => {
     setTheme(localStorage.getItem('delta8_theme') || 'luxury');
