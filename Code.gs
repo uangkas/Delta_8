@@ -90,6 +90,7 @@ function doGet(e) {
     if (action === "fcmSw") return handleFcmSw_();
     if (action === "saveFcmToken") return handleSaveFcmTokenFromGet_(e);
     if (action === "testFcm") return handleTestFcm_(e);
+    if (action === "allowedEditors") return handleAllowedEditors_();
 
     // Serve index.html for browser UI.
     return HtmlService.createHtmlOutputFromFile("index")
@@ -712,48 +713,12 @@ function handleSaveFcmTokenFromGet_(e) {
   return handleSaveFcmToken_(payload, e);
 }
 
-function handleTestFcm_(e) {
-  validateActionAuth_(e);
-  var props = PropertiesService.getScriptProperties();
-  var token = String((e && e.parameter && e.parameter.token) || "").trim();
-  var title = String((e && e.parameter && e.parameter.title) || "Tes Notifikasi").trim();
-  var body = String((e && e.parameter && e.parameter.body) || "Push notification Delta 8 aktif di perangkat ini.").trim();
-  var projectId = props.getProperty(FCM_PROJECT_ID) || DEFAULT_FIREBASE_CONFIG.projectId;
-  var saEmail = props.getProperty(FCM_SA_CLIENT_EMAIL_KEY) || DEFAULT_SERVICE_ACCOUNT_EMAIL;
-  var saPrivateKey = props.getProperty(FCM_SA_PRIVATE_KEY_KEY) || "";
-
-  if (!projectId || !saEmail || !saPrivateKey) {
-    return jsonResponse_({
-      ok: false,
-      error: "FCM service account belum dikonfigurasi di Script Properties.",
-      hasProjectId: !!projectId,
-      hasClientEmail: !!saEmail,
-      hasPrivateKey: !!saPrivateKey
-    });
-  }
-
-  var accessToken = getFcmAccessToken_(saEmail, saPrivateKey);
-  if (!accessToken) {
-    return jsonResponse_({ ok: false, error: "Gagal membuat access token FCM." });
-  }
-
-  if (token) {
-    var single = sendFcmToToken_(projectId, accessToken, token, title, body, {
-      type: "test_ping",
-      url: DEFAULT_WEB_APP_URL
-    });
-    return jsonResponse_({
-      ok: single.code >= 200 && single.code < 300,
-      code: single.code,
-      response: truncateText_(single.text, 220)
-    });
-  }
-
-  sendFcmToAllDevices_(title, body, {
-    type: "test_broadcast",
-    url: DEFAULT_WEB_APP_URL
+function handleAllowedEditors_() {
+  var editors = getAllowedEditors_();
+  return jsonResponse_({
+    ok: true,
+    editors: editors
   });
-  return handleFcmHealth_();
 }
 
 function adminAuthorizeFcm_() {
