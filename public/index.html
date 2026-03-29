@@ -1182,16 +1182,21 @@ body.tab-transaksi .nav-tabs {
         }
 
         async function fetchVerifyAuth(url) {
-            try {
-                return await fetchJson(url, 1000);
-            } catch (err) {
-                const message = String((err && err.message) || '').toLowerCase();
-                const isTransient =
-                    message.includes('backend tidak merespons') ||
-                    message.includes('gagal menghubungi backend');
-                if (!isTransient) throw err;
-                return await fetchJson(url, 3000);
+            const timeouts = [1000, 3000, 7000];
+            let lastError = null;
+            for (const timeoutMs of timeouts) {
+                try {
+                    return await fetchJson(url, timeoutMs);
+                } catch (err) {
+                    lastError = err;
+                    const message = String((err && err.message) || '').toLowerCase();
+                    const isTransient =
+                        message.includes('backend tidak merespons') ||
+                        message.includes('gagal menghubungi backend');
+                    if (!isTransient) throw err;
+                }
             }
+            throw lastError || new Error('Backend tidak merespons.');
         }
 
         function postToAppsScript(payload) {
