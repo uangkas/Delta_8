@@ -1663,8 +1663,11 @@ body.tab-transaksi .nav-tabs {
                 if (action === 'toggle') {
                     hidePromise = hideAuthModal();
                     optimisticToggle = executeAction(action, params, { sync: false, log: false });
-                } else if (action === 'catat') {
+                } else {
                     hidePromise = hideAuthModal();
+                }
+
+                if (action === 'catat') {
                     hidePromise.then(() => {
                         if (optimisticActionOpened) executeAction(action, params);
                     });
@@ -1711,7 +1714,11 @@ body.tab-transaksi .nav-tabs {
                 } else if (action === 'catat') {
                     if (hidePromise) await hidePromise;
                 } else {
-                    await hideAuthModal();
+                    if (hidePromise) {
+                        await hidePromise;
+                    } else {
+                        await hideAuthModal();
+                    }
                     executeAction(action, params);
                 }
             } catch (err) {
