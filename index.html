@@ -2028,26 +2028,32 @@ body.tab-transaksi .nav-tabs {
         }
 
         async function waitForRemoteYearSignature(year, expectedSignature, options = {}) {
-            const timeoutMs = Number(options.timeoutMs || 8000);
+            const timeoutMs = Number(options.timeoutMs || 15000);
             const intervalMs = Number(options.intervalMs || 400);
             const startedAt = Date.now();
             let lastData = null;
+            let lastError = null;
 
             while ((Date.now() - startedAt) < timeoutMs) {
-                const data = await fetchJson(`${CLOUD_URL}?action=read&year=${year}`);
-                lastData = {
-                    driver: data.driver || [],
-                    helper: data.helper || [],
-                    transaksi: data.transaksi || [],
-                    logs: data.logs || []
-                };
-
-                if (buildYearSignature(lastData) === expectedSignature) {
-                    return {
-                        ok: true,
-                        data: lastData,
-                        elapsedMs: Date.now() - startedAt
+                try {
+                    const data = await fetchJson(`${CLOUD_URL}?action=read&year=${year}`);
+                    lastData = {
+                        driver: data.driver || [],
+                        helper: data.helper || [],
+                        transaksi: data.transaksi || [],
+                        logs: data.logs || []
                     };
+                    lastError = null;
+
+                    if (buildYearSignature(lastData) === expectedSignature) {
+                        return {
+                            ok: true,
+                            data: lastData,
+                            elapsedMs: Date.now() - startedAt
+                        };
+                    }
+                } catch (err) {
+                    lastError = err;
                 }
 
                 await new Promise(resolve => setTimeout(resolve, intervalMs));
@@ -2056,7 +2062,8 @@ body.tab-transaksi .nav-tabs {
             return {
                 ok: false,
                 data: lastData,
-                elapsedMs: Date.now() - startedAt
+                elapsedMs: Date.now() - startedAt,
+                error: lastError && lastError.message ? lastError.message : ''
             };
         }
 
@@ -2140,11 +2147,11 @@ async function syncAll() {
         await postToAppsScript(payload);
         status.innerText = "⏳ MEMVERIFIKASI...";
         const verification = await waitForRemoteYearSignature(CURRENT_YEAR, YEAR_SIGNATURES[CURRENT_YEAR], {
-            timeoutMs: 8000,
+            timeoutMs: 15000,
             intervalMs: 400
         });
         if (!verification.ok) {
-            throw new Error('Spreadsheet belum mengonfirmasi data terbaru.');
+            throw new Error(verification.error || 'Spreadsheet belum mengonfirmasi data terbaru.');
         }
         if (verification.data) {
             applyYearData(CURRENT_YEAR, verification.data);
