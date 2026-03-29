@@ -21,6 +21,8 @@ var BACKUP_ARCHIVE_ID_KEY = "backup_archive_spreadsheet_id";
 var BACKUP_KEEP_COUNT = 15;
 var ALLOWED_EDITORS_KEY = "kas_allowed_editors";
 var ALLOWED_EDITORS_SHEET_NAME = "allowed_editors";
+var ALLOWED_EDITORS_CACHE_KEY = "allowed_editors_cache_v1";
+var ALLOWED_EDITORS_CACHE_TTL_SEC = 300;
 var DEFAULT_SPREADSHEET_ID = "10GWGUs4ILzb1Hb3tm3OFy_dcRXCQKHqSQ0zPa3YmfpY";
 var DATA_TYPES = ["driver", "helper", "transaksi", "logs"];
 var DEFAULT_APP_PIN = "0000";
@@ -1104,16 +1106,24 @@ function normalizeEditorName_(value) {
 }
 
 function getAllowedEditors_() {
+  var cachedEditors = getAllowedEditorsFromCache_();
+  if (cachedEditors.length) return cachedEditors;
+
   try {
     var ss = getOrCreateSpreadsheet_();
     var sheet = ensureAllowedEditorsSheet_(ss);
     var editorsFromSheet = readAllowedEditorsFromSheet_(sheet);
-    if (editorsFromSheet.length) return editorsFromSheet;
+    if (editorsFromSheet.length) {
+      cacheAllowedEditors_(editorsFromSheet);
+      return editorsFromSheet;
+    }
   } catch (err) {
     Logger.log("getAllowedEditors_: failed reading sheet, fallback ke script properties: " + err);
   }
 
-  return getAllowedEditorsFromProperties_();
+  var propEditors = getAllowedEditorsFromProperties_();
+  cacheAllowedEditors_(propEditors);
+  return propEditors;
 }
 
 function isEditorAllowed_(editor) {
@@ -1322,6 +1332,7 @@ function ensureAllowedEditorsSheet_(ss) {
       ALLOWED_EDITORS_KEY,
       JSON.stringify(currentEditors)
     );
+    cacheAllowedEditors_(currentEditors);
     return sheet;
   }
 
@@ -1336,6 +1347,7 @@ function ensureAllowedEditorsSheet_(ss) {
       ALLOWED_EDITORS_KEY,
       JSON.stringify(seeded)
     );
+    cacheAllowedEditors_(seeded);
   }
 
   return sheet;
@@ -1397,6 +1409,35 @@ function getAllowedEditorsFromProperties_() {
     .filter(function (value, index, arr) {
       return !!value && arr.indexOf(value) === index;
     });
+}
+
+function getAllowedEditorsFromCache_() {
+  try {
+    var raw = CacheService.getScriptCache().get(ALLOWED_EDITORS_CACHE_KEY);
+    if (!raw) return [];
+    var list = JSON.parse(raw);
+    if (!Array.isArray(list)) return [];
+    return list
+      .map(function (value) {
+        return normalizeEditorName_(value);
+      })
+      .filter(function (value, index, arr) {
+        return !!value && arr.indexOf(value) === index;
+      });
+  } catch (err) {
+    return [];
+  }
+}
+
+function cacheAllowedEditors_(editors) {
+  try {
+    if (!Array.isArray(editors)) editors = [];
+    CacheService.getScriptCache().put(
+      ALLOWED_EDITORS_CACHE_KEY,
+      JSON.stringify(editors),
+      ALLOWED_EDITORS_CACHE_TTL_SEC
+    );
+  } catch (err) {}
 }
 
 function collectEditorsFromLogs_(ss) {

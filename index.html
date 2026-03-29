@@ -1171,8 +1171,8 @@ body.tab-transaksi .nav-tabs {
             }
         }
 
-        async function fetchJson(url) {
-            const data = await jsonpRequest(url);
+        async function fetchJson(url, timeoutMs = 12000) {
+            const data = await jsonpRequest(url, timeoutMs);
             if (!data || data.ok === false) {
                 throw new Error((data && data.error) || 'Request gagal.');
             }
@@ -1680,7 +1680,7 @@ body.tab-transaksi .nav-tabs {
 
                 const deviceId = getDeviceId();
                 const url = `${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
-                const data = await fetchJson(url);
+                const data = await fetchJson(url, 1000);
                 if (!data || !data.ok || !data.writeToken) {
                     if (optimisticToggle) {
                         executeAction(action, params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
