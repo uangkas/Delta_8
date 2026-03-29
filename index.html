@@ -1582,9 +1582,6 @@ body.tab-transaksi .nav-tabs {
             if (!input) return;
             const value = String(input.value || '').replace(/\s+/g, ' ');
             if (input.value !== value) input.value = value;
-            if (value.trim().length >= 2) {
-                focusPinInput();
-            }
         }
 
         function hideAuthModal() {
