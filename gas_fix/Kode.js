@@ -168,7 +168,7 @@ function maybeBroadcastFcmAfterWrite_(beforeData, afterData, payload, year) {
       tag: meta.tag,
       icon: DEFAULT_WEB_APP_URL + "/notification-icon.svg",
       badge: DEFAULT_WEB_APP_URL + "/notification-badge.svg",
-      url: buildNotificationTargetUrl_(meta.view)
+      url: buildNotificationTargetUrl_(meta.view, meta.focusTarget, meta.openPanel)
     });
   } catch (err) {}
 }
@@ -216,6 +216,8 @@ function buildActivityNotificationMeta_(logEntry) {
     body: ket || "Ada aktivitas baru di aplikasi.",
     tag: "delta8-activity-general",
     view: "transaksi",
+    focusTarget: "table-transaksi",
+    openPanel: "",
     isFromLog: !!logEntry
   };
 
@@ -240,30 +242,37 @@ function buildActivityNotificationMeta_(logEntry) {
     meta.title = "👥 Tambah Anggota";
     meta.tag = "delta8-activity-member-add";
     meta.view = "driver";
+    meta.focusTarget = "grid-driver";
     return meta;
   }
   if (aksi === "EDIT ANGGOTA") {
     meta.title = "🪪 Edit Anggota";
     meta.tag = "delta8-activity-member-edit";
     meta.view = "driver";
+    meta.focusTarget = "grid-driver";
     return meta;
   }
   if (aksi === "HAPUS ANGGOTA") {
     meta.title = "❌ Hapus Anggota";
     meta.tag = "delta8-activity-member-delete";
     meta.view = "driver";
+    meta.focusTarget = "grid-driver";
     return meta;
   }
   if (aksi === "IURAN") {
     meta.title =
       ket.indexOf("LUNAS") !== -1 ? "✅ Iuran Lunas" : "💰 Update Iuran";
     meta.tag = "delta8-activity-iuran";
+    meta.view = "driver";
+    meta.focusTarget = "grid-driver";
     return meta;
   }
   if (aksi === "SYSTEM") {
     meta.title =
       ket.indexOf("BERSIHKAN") !== -1 ? "🧹 Bersihkan Log" : "⚙️ Aktivitas Sistem";
     meta.tag = "delta8-activity-system";
+    meta.focusTarget = "log-list-table";
+    meta.openPanel = "log-col";
     return meta;
   }
 
@@ -272,10 +281,19 @@ function buildActivityNotificationMeta_(logEntry) {
   return meta;
 }
 
-function buildNotificationTargetUrl_(view) {
+function buildNotificationTargetUrl_(view, focusTarget, openPanel) {
   var targetView = String(view || "").trim().toLowerCase();
-  if (!targetView) return DEFAULT_WEB_APP_URL;
-  return DEFAULT_WEB_APP_URL + "?view=" + encodeURIComponent(targetView);
+  var params = [];
+  if (targetView) {
+    params.push("view=" + encodeURIComponent(targetView));
+  }
+  if (focusTarget) {
+    params.push("focus=" + encodeURIComponent(String(focusTarget)));
+  }
+  if (openPanel) {
+    params.push("panel=" + encodeURIComponent(String(openPanel)));
+  }
+  return DEFAULT_WEB_APP_URL + (params.length ? "?" + params.join("&") : "");
 }
 
 function buildNotificationId_(title, body, dataObj) {
