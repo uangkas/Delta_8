@@ -78,18 +78,18 @@ function doGet(e) {
 
     if (action === "read") return handleRead_(e);
     if (action === "ensureYear") return handleEnsureYear_(e);
-    if (action === "sheetInfo") return handleSheetInfo_();
-    if (action === "sheetId") return handleSheetId_();
+    if (action === "sheetInfo") return handleSheetInfo_(e);
+    if (action === "sheetId") return handleSheetId_(e);
     if (action === "migrateYear") return handleMigrateYear_(e);
     if (action === "fixHeaders") return handleFixHeaders_(e);
     if (action === "backupYear") return handleBackupYear_(e);
     if (action === "verifyAuth") return handleVerifyAuth_(e);
     if (action === "adminHealth") return handleAdminHealth_(e);
-    if (action === "backupConfig") return handleBackupConfig_();
+    if (action === "backupConfig") return handleBackupConfig_(e);
     if (action === "setBackupArchive") return handleSetBackupArchive_(e);
     if (action === "installBackupTrigger") return handleInstallBackupTrigger_(e);
     if (action === "fcmConfig") return handleFcmConfig_();
-    if (action === "fcmHealth") return handleFcmHealth_();
+    if (action === "fcmHealth") return handleFcmHealth_(e);
     if (action === "fcmSw") return handleFcmSw_();
     if (action === "saveFcmToken") return handleSaveFcmTokenFromGet_(e);
     if (action === "testFcm") return handleTestFcm_(e);
@@ -665,7 +665,8 @@ function handleFcmConfig_() {
   });
 }
 
-function handleFcmHealth_() {
+function handleFcmHealth_(e) {
+  validateActionAuth_(e);
   var props = PropertiesService.getScriptProperties();
   var raw = props.getProperty(FCM_TOKENS_KEY) || "[]";
   var rows = [];
@@ -744,6 +745,7 @@ function handleFcmSw_() {
 }
 
 function handleSaveFcmToken_(payload, e) {
+  validateWriteAuth_(payload, e);
   var token = String(payload.token || "").trim();
   var editor = String(payload.editor || "").trim();
   var deviceId = normalizeDeviceId_(payload.deviceId || "");
@@ -876,25 +878,24 @@ function handleEnsureYear_(e) {
   var year = getYearFromRequest_(e);
   ensureYearData_(year);
   setActiveYear_(year);
+  return jsonResponse_({
+    ok: true,
+    year: year
+  });
+}
+
+function handleSheetInfo_(e) {
+  validateActionAuth_(e);
   var info = getSpreadsheetInfo_();
   return jsonResponse_({
     ok: true,
-    year: year,
     spreadsheetId: info.id,
     spreadsheetUrl: info.url
   });
 }
 
-function handleSheetInfo_() {
-  var info = getSpreadsheetInfo_();
-  return jsonResponse_({
-    ok: true,
-    spreadsheetId: info.id,
-    spreadsheetUrl: info.url
-  });
-}
-
-function handleSheetId_() {
+function handleSheetId_(e) {
+  validateActionAuth_(e);
   var info = getSpreadsheetInfo_();
   return ContentService.createTextOutput(info.id).setMimeType(
     ContentService.MimeType.TEXT
@@ -1004,7 +1005,8 @@ function handleVerifyAuth_(e) {
   });
 }
 
-function handleBackupConfig_() {
+function handleBackupConfig_(e) {
+  validateActionAuth_(e);
   var props = PropertiesService.getScriptProperties();
   return jsonResponse_({
     ok: true,
@@ -1020,7 +1022,7 @@ function handleAdminHealth_(e) {
 }
 
 function handleAdminSetScriptProperties_(payload, e) {
-  validateWriteAuth_(payload, e);
+  validateAdminPayloadAuth_(payload, e);
   return jsonResponse_(adminSetScriptProperties_(payload && payload.entries));
 }
 
@@ -1048,11 +1050,15 @@ function handleInstallBackupTrigger_(e) {
 }
 
 function validateActionAuth_(e) {
-  var provided = (e && e.parameter && e.parameter.authToken) || "";
-  validateAuthToken_(provided, {
-    editor: (e && e.parameter && e.parameter.editor) || "",
-    deviceId: (e && e.parameter && e.parameter.deviceId) || ""
-  });
+  validateAdminAuth_((e && e.parameter && e.parameter.authToken) || "");
+}
+
+function validateAdminPayloadAuth_(payload, e) {
+  validateAdminAuth_(
+    (payload && payload.authToken) ||
+      (e && e.parameter && e.parameter.authToken) ||
+      ""
+  );
 }
 
 function validateWriteAuth_(payload, e) {
@@ -1068,33 +1074,29 @@ function validateWriteAuth_(payload, e) {
     throw new Error("Unauthorized: editor harus disertakan.");
   }
 
-  validateAuthToken_(provided, {
-    editor: editor,
-    deviceId:
-      (payload && payload.deviceId) ||
-      (e && e.parameter && e.parameter.deviceId) ||
-      ""
-  });
+  if (!isEditorAllowed_(editor)) {
+    throw new Error("Unauthorized: editor tidak terdaftar.");
+  }
+
+  if (
+    !isValidWriteSessionToken_(provided, {
+      editor: editor,
+      deviceId:
+        (payload && payload.deviceId) ||
+        (e && e.parameter && e.parameter.deviceId) ||
+        ""
+    })
+  ) {
+    throw new Error("Unauthorized: write session tidak valid.");
+  }
 }
 
-function validateAuthToken_(provided, context) {
+function validateAdminAuth_(provided) {
   var secret = getApiSecret_();
   var p = String(provided || "").trim();
-  var editor = normalizeEditorName_((context && context.editor) || "");
-
-  if (secret && p === String(secret)) {
-    if (editor && !isEditorAllowed_(editor)) {
-      throw new Error("Unauthorized: editor tidak terdaftar.");
-    }
-    return;
+  if (!secret || p !== String(secret)) {
+    throw new Error("Unauthorized: admin auth required.");
   }
-  if (isValidWriteSessionToken_(p, context)) {
-    if (editor && !isEditorAllowed_(editor)) {
-      throw new Error("Unauthorized: editor tidak terdaftar.");
-    }
-    return;
-  }
-  throw new Error("Unauthorized: invalid auth token.");
 }
 
 function getApiSecret_() {
@@ -1157,8 +1159,7 @@ function issueWriteSessionToken_(editor, deviceId) {
     );
     return token;
   } catch (err) {
-    // Fallback to static API secret if cache service is unavailable.
-    return getApiSecret_() || "";
+    throw new Error("Sesi otorisasi sementara tidak tersedia. Coba lagi.");
   }
 }
 
