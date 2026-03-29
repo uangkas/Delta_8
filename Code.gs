@@ -91,6 +91,7 @@ function doGet(e) {
     if (action === "saveFcmToken") return handleSaveFcmTokenFromGet_(e);
     if (action === "testFcm") return handleTestFcm_(e);
     if (action === "allowedEditors") return handleAllowedEditors_();
+    if (action === "backupProperties") return handleBackupProperties_(e);
 
     // Serve index.html for browser UI.
     return HtmlService.createHtmlOutputFromFile("index")
@@ -322,8 +323,75 @@ function buildNotificationId_(title, body, dataObj) {
   return normalized ? normalized.slice(0, 120) : "delta8-notif-" + new Date().getTime();
 }
 
+function backupScriptProperties_() {
+  try {
+    var spreadsheetId = PropertiesService.getScriptProperties().getProperty(SPREADSHEET_ID_KEY);
+    if (!spreadsheetId) return false;
+
+    var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    var sheet = spreadsheet.getSheetByName("properties_backup");
+    if (!sheet) {
+      sheet = spreadsheet.insertSheet("properties_backup");
+      sheet.hideSheet();
+    }
+
+    var props = PropertiesService.getScriptProperties().getProperties();
+    var data = [];
+    for (var key in props) {
+      if (props.hasOwnProperty(key)) {
+        data.push([key, props[key]]);
+      }
+    }
+
+    // Clear existing data
+    sheet.clear();
+    // Write headers
+    sheet.getRange(1, 1, 1, 2).setValues([["KEY", "VALUE"]]);
+    // Write data
+    if (data.length > 0) {
+      sheet.getRange(2, 1, data.length, 2).setValues(data);
+    }
+
+    return true;
+  } catch (err) {
+    Logger.log("Failed to backup properties: " + err);
+    return false;
+  }
+}
+
+function restoreScriptProperties_() {
+  try {
+    var spreadsheetId = PropertiesService.getScriptProperties().getProperty(SPREADSHEET_ID_KEY);
+    if (!spreadsheetId) return false;
+
+    var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    var sheet = spreadsheet.getSheetByName("properties_backup");
+    if (!sheet) return false;
+
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 2) return false; // No data besides header
+
+    var props = PropertiesService.getScriptProperties();
+    for (var i = 1; i < data.length; i++) { // Skip header
+      var key = data[i][0];
+      var value = data[i][1];
+      if (key && value !== undefined) {
+        props.setProperty(key, value);
+      }
+    }
+
+    return true;
+  } catch (err) {
+    Logger.log("Failed to restore properties: " + err);
+    return false;
+  }
+}
+
 function ensureBootstrapConfig_() {
   var props = PropertiesService.getScriptProperties();
+
+  // Try to restore properties from backup first
+  restoreScriptProperties_();
 
   if (!props.getProperty(SPREADSHEET_ID_KEY) && DEFAULT_SPREADSHEET_ID) {
     props.setProperty(SPREADSHEET_ID_KEY, DEFAULT_SPREADSHEET_ID);
@@ -331,6 +399,11 @@ function ensureBootstrapConfig_() {
 
   if (!props.getProperty(APP_PIN_KEY) && DEFAULT_APP_PIN) {
     props.setProperty(APP_PIN_KEY, DEFAULT_APP_PIN);
+  }
+
+  // Ensure ALLOWED_EDITORS_KEY exists (default to ADMIN if not set)
+  if (!props.getProperty(ALLOWED_EDITORS_KEY)) {
+    props.setProperty(ALLOWED_EDITORS_KEY, JSON.stringify(["ADMIN"]));
   }
 
   if (!props.getProperty(FCM_API_KEY) && DEFAULT_FIREBASE_CONFIG.apiKey) {
@@ -718,6 +791,15 @@ function handleAllowedEditors_() {
   return jsonResponse_({
     ok: true,
     editors: editors
+  });
+}
+
+function handleBackupProperties_(e) {
+  validateActionAuth_(e);
+  var success = backupScriptProperties_();
+  return jsonResponse_({
+    ok: success,
+    message: success ? "Properties backed up successfully" : "Failed to backup properties"
   });
 }
 

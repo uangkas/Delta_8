@@ -72,6 +72,12 @@ jobs:
         working-directory: gas_fix
         run: clasp push --force
 
+      - name: Backup script properties
+        working-directory: gas_fix
+        run: |
+          # Try to backup properties before deployment
+          curl -s -X GET "https://script.google.com/macros/s/$GAS_SCRIPT_ID/exec?action=backupProperties&authToken=$GAS_AUTH_TOKEN" || echo "Backup failed, continuing deployment"
+
       - name: Create new version
         id: version
         working-directory: gas_fix
