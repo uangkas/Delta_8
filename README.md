@@ -53,3 +53,8 @@ Catatan eksekusi:
 - script `set-github-secrets.ps1` butuh GitHub CLI `gh`
 - `GAS_SCRIPT_ID` otomatis dibaca dari `gas_fix/.clasp.json` jika tersedia
 - jika repo target bukan repo yang sedang aktif di `gh`, pakai `-Repo owner/nama-repo`
+
+Self-check backend:
+
+- endpoint admin `?action=adminSelfTest&authToken=API_SECRET` sekarang tersedia untuk menjalankan regression check ringan di backend Apps Script
+- self-check ini memverifikasi helper payload, roundtrip row conversion, builder request FCM, dan layout builder sheet

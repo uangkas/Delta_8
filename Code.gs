@@ -85,6 +85,7 @@ function doGet(e) {
     if (action === "backupYear") return handleBackupYear_(e);
     if (action === "verifyAuth") return handleVerifyAuth_(e);
     if (action === "adminHealth") return handleAdminHealth_(e);
+    if (action === "adminSelfTest") return handleAdminSelfTest_(e);
     if (action === "backupConfig") return handleBackupConfig_(e);
     if (action === "setBackupArchive") return handleSetBackupArchive_(e);
     if (action === "installBackupTrigger") return handleInstallBackupTrigger_(e);
@@ -1080,6 +1081,11 @@ function handleAdminHealth_(e) {
   return jsonResponse_(adminGetHealthSummary_());
 }
 
+function handleAdminSelfTest_(e) {
+  validateActionAuth_(e);
+  return jsonResponse_(runAdminSelfTest_());
+}
+
 function handleAdminSetScriptProperties_(payload, e) {
   validateAdminPayloadAuth_(payload, e);
   return jsonResponse_(adminSetScriptProperties_(payload && payload.entries));
@@ -1666,54 +1672,112 @@ function headersByType_(type) {
 }
 
 function writeYearSheet_(sheet, data, year) {
-  sheet.clear();
   data = normalizePayload_(data);
+  var previousLastRow = Math.max(sheet.getLastRow(), 1);
+  var previousLastCol = Math.max(sheet.getLastColumn(), 1);
+  var layout = buildYearSheetLayout_(data, year);
+  var clearRows = Math.max(previousLastRow, layout.maxRow);
+  var clearCols = Math.max(previousLastCol, layout.maxCol);
 
+  ensureSheetCapacity_(sheet, clearRows, clearCols);
+  clearSheetArea_(sheet, clearRows, clearCols);
+
+  for (var i = 0; i < layout.sections.length; i++) {
+    writeSectionBlock_(sheet, layout.sections[i]);
+  }
+
+  applyYearSheetStyle_(sheet, layout.maxRow, layout.maxCol);
+}
+
+function buildYearSheetLayout_(data, year) {
   var leftCol = 1;   // A
   var rightCol = 17; // Q
   var logCol = 23;   // W
+  var sections = [];
 
-  var driverEnd = writeSectionBlock_(sheet, "driver", data.driver, year, 1, leftCol);
-  var helperStart = driverEnd + 2;
-  var helperEnd = writeSectionBlock_(sheet, "helper", data.helper, year, helperStart, leftCol);
+  var driverSection = buildSectionBlock_(1, leftCol, "driver", data.driver, year);
+  sections.push(driverSection);
 
-  var transaksiEnd = writeSectionBlock_(sheet, "transaksi", data.transaksi, year, 1, rightCol);
-  var logsEnd = writeSectionBlock_(sheet, "logs", data.logs, year, 1, logCol);
-
-  var maxRow = Math.max(helperEnd, logsEnd, 1);
-  var maxCol = Math.max(
-    leftCol + DRIVER_HELPER_HEADERS.length - 1,
-    rightCol + TRANSAKSI_HEADERS.length - 1,
-    logCol + LOG_HEADERS.length - 1
+  var helperSection = buildSectionBlock_(
+    driverSection.endRow + 2,
+    leftCol,
+    "helper",
+    data.helper,
+    year
   );
+  sections.push(helperSection);
 
-  applyYearSheetStyle_(sheet, maxRow, maxCol);
+  var transaksiSection = buildSectionBlock_(1, rightCol, "transaksi", data.transaksi, year);
+  sections.push(transaksiSection);
+
+  var logsSection = buildSectionBlock_(1, logCol, "logs", data.logs, year);
+  sections.push(logsSection);
+
+  return {
+    sections: sections,
+    maxRow: Math.max(helperSection.endRow, logsSection.endRow, 1),
+    maxCol: Math.max(
+      leftCol + DRIVER_HELPER_HEADERS.length - 1,
+      rightCol + TRANSAKSI_HEADERS.length - 1,
+      logCol + LOG_HEADERS.length - 1
+    )
+  };
 }
 
-function writeSectionBlock_(sheet, type, items, year, startRow, startCol) {
+function buildSectionBlock_(startRow, startCol, type, items, year) {
   items = Array.isArray(items) ? items : [];
   var headers = headersByType_(type);
-  var colCount = headers.length;
+  var matrix = [];
+  matrix.push(["__SECTION__", String(type || "").toUpperCase()]);
+  matrix.push(headers);
 
-  sheet
-    .getRange(startRow, startCol, 1, 2)
-    .setValues([["__SECTION__", String(type || "").toUpperCase()]]);
-  sheet.getRange(startRow + 1, startCol, 1, colCount).setValues([headers]);
-
-  if (items.length > 0) {
-    var out = [];
-    for (var i = 0; i < items.length; i++) {
-      out.push(toRowByType_(type, items[i], i, year));
-    }
-    sheet.getRange(startRow + 2, startCol, out.length, colCount).setValues(out);
+  for (var i = 0; i < items.length; i++) {
+    matrix.push(toRowByType_(type, items[i], i, year));
   }
 
-  var endRow = startRow + 1 + items.length;
+  return {
+    row: startRow,
+    col: startCol,
+    width: headers.length,
+    height: matrix.length,
+    endRow: startRow + matrix.length - 1,
+    matrix: matrix
+  };
+}
+
+function writeSectionBlock_(sheet, section) {
+  if (!section || !section.matrix || !section.matrix.length) return 0;
+  var normalized = [];
+  for (var i = 0; i < section.matrix.length; i++) {
+    normalized.push(padRow_(section.matrix[i], section.width));
+  }
+
   sheet
-    .getRange(startRow, startCol, endRow - startRow + 1, colCount)
+    .getRange(section.row, section.col, section.height, section.width)
+    .setValues(normalized)
     .setBorder(true, true, true, true, true, true);
 
-  return endRow;
+  return section.endRow;
+}
+
+function ensureSheetCapacity_(sheet, rows, cols) {
+  rows = Math.max(1, Number(rows || 0));
+  cols = Math.max(1, Number(cols || 0));
+  var currentRows = sheet.getMaxRows();
+  var currentCols = sheet.getMaxColumns();
+
+  if (currentRows < rows) {
+    sheet.insertRowsAfter(currentRows, rows - currentRows);
+  }
+  if (currentCols < cols) {
+    sheet.insertColumnsAfter(currentCols, cols - currentCols);
+  }
+}
+
+function clearSheetArea_(sheet, rows, cols) {
+  rows = Math.max(1, Number(rows || 0));
+  cols = Math.max(1, Number(cols || 0));
+  sheet.getRange(1, 1, rows, cols).clear();
 }
 
 function readYearSheet_(sheet, year) {
@@ -2221,6 +2285,119 @@ function adminSetScriptProperties_(entries) {
     ok: true,
     updated: count
   };
+}
+
+function runAdminSelfTest_() {
+  var tests = [];
+  runSelfTestCase_(tests, "normalizePayload_defaults", function() {
+    var out = normalizePayload_({});
+    assertSelfTest_(Array.isArray(out.driver), "driver should be array");
+    assertSelfTest_(Array.isArray(out.helper), "helper should be array");
+    assertSelfTest_(Array.isArray(out.transaksi), "transaksi should be array");
+    assertSelfTest_(Array.isArray(out.logs), "logs should be array");
+  });
+
+  runSelfTestCase_(tests, "driver_row_roundtrip", function() {
+    var source = {
+      id: "M-001",
+      nama: "ANDI",
+      status: {
+        "2026": {
+          1: true,
+          2: false,
+          3: true,
+          12: true
+        }
+      }
+    };
+    var row = toRowByType_("driver", source, 0, "2026");
+    var restored = fromRowByType_("driver", row, "2026");
+    assertSelfTest_(restored && restored.nama === source.nama, "driver name mismatch");
+    assertSelfTest_(restored.status["2026"][1] === true, "month 1 mismatch");
+    assertSelfTest_(restored.status["2026"][2] === false, "month 2 mismatch");
+    assertSelfTest_(restored.status["2026"][12] === true, "month 12 mismatch");
+  });
+
+  runSelfTestCase_(tests, "transaksi_row_roundtrip", function() {
+    var source = {
+      tp: "pemasukan",
+      d: "2026-03-29",
+      p: "KAS",
+      k: "UJI",
+      v: 25000
+    };
+    var row = toRowByType_("transaksi", source, 0, "2026");
+    var restored = fromRowByType_("transaksi", row, "2026");
+    assertSelfTest_(restored && restored.tp === source.tp, "transaksi type mismatch");
+    assertSelfTest_(restored.d === source.d, "transaksi date mismatch");
+    assertSelfTest_(Number(restored.v) === Number(source.v), "transaksi nominal mismatch");
+  });
+
+  runSelfTestCase_(tests, "fcm_request_builder", function() {
+    var request = buildFcmSendRequest_(
+      "kas-delta-8",
+      "test-token",
+      "device-token",
+      "Judul",
+      "Body",
+      { tag: "uji", url: "https://example.com" }
+    );
+    assertSelfTest_(request.method === "post", "request method mismatch");
+    assertSelfTest_(String(request.url).indexOf("/messages:send") !== -1, "request url mismatch");
+    assertSelfTest_(String(request.payload).indexOf("device-token") !== -1, "request payload mismatch");
+  });
+
+  runSelfTestCase_(tests, "year_layout_builder", function() {
+    var layout = buildYearSheetLayout_(
+      normalizePayload_({
+        driver: [{ id: "1", nama: "A", status: { "2026": { 1: true } } }],
+        helper: [{ id: "2", nama: "B", status: { "2026": { 2: true } } }],
+        transaksi: [{ tp: "pengeluaran", d: "2026-03-29", p: "KAS", k: "Tes", v: 1000 }],
+        logs: [{ time: "29/03/2026 12.00", editor: "ADMIN", aksi: "TEST", ket: "OK" }]
+      }),
+      "2026"
+    );
+    assertSelfTest_(layout && Array.isArray(layout.sections), "layout sections missing");
+    assertSelfTest_(layout.sections.length === 4, "layout sections count mismatch");
+    assertSelfTest_(layout.maxRow >= 3, "layout maxRow too small");
+    assertSelfTest_(layout.maxCol >= 26, "layout maxCol too small");
+  });
+
+  var passed = 0;
+  var failed = 0;
+  for (var i = 0; i < tests.length; i++) {
+    if (tests[i].ok) {
+      passed++;
+    } else {
+      failed++;
+    }
+  }
+
+  return {
+    ok: failed === 0,
+    passed: passed,
+    failed: failed,
+    tests: tests
+  };
+}
+
+function runSelfTestCase_(tests, name, fn) {
+  try {
+    fn();
+    tests.push({ name: name, ok: true });
+  } catch (err) {
+    tests.push({
+      name: name,
+      ok: false,
+      error: err && err.message ? err.message : String(err)
+    });
+  }
+}
+
+function assertSelfTest_(condition, message) {
+  if (!condition) {
+    throw new Error(message || "assertion_failed");
+  }
 }
 
 function adminGetHealthSummary_() {
