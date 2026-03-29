@@ -19,6 +19,8 @@ var WRITE_SESSION_TTL_SEC = 21600; // 6 hours
 var BACKUP_LAST_KEY_PREFIX = "backup_last_";
 var BACKUP_ARCHIVE_ID_KEY = "backup_archive_spreadsheet_id";
 var BACKUP_KEEP_COUNT = 15;
+var ALLOWED_EDITORS_KEY = "kas_allowed_editors";
+var ALLOWED_EDITORS_SHEET_NAME = "allowed_editors";
 var DEFAULT_SPREADSHEET_ID = "10GWGUs4ILzb1Hb3tm3OFy_dcRXCQKHqSQ0zPa3YmfpY";
 var DATA_TYPES = ["driver", "helper", "transaksi", "logs"];
 var DEFAULT_APP_PIN = "0000";
@@ -89,6 +91,7 @@ function doGet(e) {
     if (action === "fcmSw") return handleFcmSw_();
     if (action === "saveFcmToken") return handleSaveFcmTokenFromGet_(e);
     if (action === "testFcm") return handleTestFcm_(e);
+    if (action === "backupProperties") return handleBackupProperties_(e);
 
     // Serve index.html for browser UI.
     return HtmlService.createHtmlOutputFromFile("index")
@@ -123,6 +126,16 @@ function doPost(e) {
     var beforeData = readYearData_(year);
 
     var normalized = normalizePayload_(payload);
+    var editor = normalizeEditorName_((payload && payload.editor) || (e && e.parameter && e.parameter.editor) || "");
+    if (editor) {
+      normalized.logs = (normalized.logs || []).map(function (logEntry) {
+        var entry = logEntry || {};
+        if (!String(entry.editor || "").trim()) {
+          entry.editor = editor;
+        }
+        return entry;
+      });
+    }
     writeYearData_(year, normalized);
     maybeBroadcastFcmAfterWrite_(beforeData, normalized, payload, year);
 
@@ -310,8 +323,75 @@ function buildNotificationId_(title, body, dataObj) {
   return normalized ? normalized.slice(0, 120) : "delta8-notif-" + new Date().getTime();
 }
 
+function backupScriptProperties_() {
+  try {
+    var spreadsheetId = PropertiesService.getScriptProperties().getProperty(SPREADSHEET_ID_KEY);
+    if (!spreadsheetId) return false;
+
+    var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    var sheet = spreadsheet.getSheetByName("properties_backup");
+    if (!sheet) {
+      sheet = spreadsheet.insertSheet("properties_backup");
+      sheet.hideSheet();
+    }
+
+    var props = PropertiesService.getScriptProperties().getProperties();
+    var data = [];
+    for (var key in props) {
+      if (props.hasOwnProperty(key)) {
+        data.push([key, props[key]]);
+      }
+    }
+
+    // Clear existing data
+    sheet.clear();
+    // Write headers
+    sheet.getRange(1, 1, 1, 2).setValues([["KEY", "VALUE"]]);
+    // Write data
+    if (data.length > 0) {
+      sheet.getRange(2, 1, data.length, 2).setValues(data);
+    }
+
+    return true;
+  } catch (err) {
+    Logger.log("Failed to backup properties: " + err);
+    return false;
+  }
+}
+
+function restoreScriptProperties_() {
+  try {
+    var spreadsheetId = PropertiesService.getScriptProperties().getProperty(SPREADSHEET_ID_KEY);
+    if (!spreadsheetId) return false;
+
+    var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    var sheet = spreadsheet.getSheetByName("properties_backup");
+    if (!sheet) return false;
+
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 2) return false; // No data besides header
+
+    var props = PropertiesService.getScriptProperties();
+    for (var i = 1; i < data.length; i++) { // Skip header
+      var key = data[i][0];
+      var value = data[i][1];
+      if (key && value !== undefined) {
+        props.setProperty(key, value);
+      }
+    }
+
+    return true;
+  } catch (err) {
+    Logger.log("Failed to restore properties: " + err);
+    return false;
+  }
+}
+
 function ensureBootstrapConfig_() {
   var props = PropertiesService.getScriptProperties();
+
+  // Try to restore properties from backup first
+  restoreScriptProperties_();
 
   if (!props.getProperty(SPREADSHEET_ID_KEY) && DEFAULT_SPREADSHEET_ID) {
     props.setProperty(SPREADSHEET_ID_KEY, DEFAULT_SPREADSHEET_ID);
@@ -701,48 +781,13 @@ function handleSaveFcmTokenFromGet_(e) {
   return handleSaveFcmToken_(payload, e);
 }
 
-function handleTestFcm_(e) {
+function handleBackupProperties_(e) {
   validateActionAuth_(e);
-  var props = PropertiesService.getScriptProperties();
-  var token = String((e && e.parameter && e.parameter.token) || "").trim();
-  var title = String((e && e.parameter && e.parameter.title) || "Tes Notifikasi").trim();
-  var body = String((e && e.parameter && e.parameter.body) || "Push notification Delta 8 aktif di perangkat ini.").trim();
-  var projectId = props.getProperty(FCM_PROJECT_ID) || DEFAULT_FIREBASE_CONFIG.projectId;
-  var saEmail = props.getProperty(FCM_SA_CLIENT_EMAIL_KEY) || DEFAULT_SERVICE_ACCOUNT_EMAIL;
-  var saPrivateKey = props.getProperty(FCM_SA_PRIVATE_KEY_KEY) || "";
-
-  if (!projectId || !saEmail || !saPrivateKey) {
-    return jsonResponse_({
-      ok: false,
-      error: "FCM service account belum dikonfigurasi di Script Properties.",
-      hasProjectId: !!projectId,
-      hasClientEmail: !!saEmail,
-      hasPrivateKey: !!saPrivateKey
-    });
-  }
-
-  var accessToken = getFcmAccessToken_(saEmail, saPrivateKey);
-  if (!accessToken) {
-    return jsonResponse_({ ok: false, error: "Gagal membuat access token FCM." });
-  }
-
-  if (token) {
-    var single = sendFcmToToken_(projectId, accessToken, token, title, body, {
-      type: "test_ping",
-      url: DEFAULT_WEB_APP_URL
-    });
-    return jsonResponse_({
-      ok: single.code >= 200 && single.code < 300,
-      code: single.code,
-      response: truncateText_(single.text, 220)
-    });
-  }
-
-  sendFcmToAllDevices_(title, body, {
-    type: "test_broadcast",
-    url: DEFAULT_WEB_APP_URL
+  var success = backupScriptProperties_();
+  return jsonResponse_({
+    ok: success,
+    message: success ? "Properties backed up successfully" : "Failed to backup properties"
   });
-  return handleFcmHealth_();
 }
 
 function adminAuthorizeFcm_() {
@@ -925,7 +970,7 @@ function handleVerifyAuth_(e) {
   var pin = (e && e.parameter && e.parameter.pin) || "";
   var editor = (e && e.parameter && e.parameter.editor) || "";
   var deviceId = normalizeDeviceId_((e && e.parameter && e.parameter.deviceId) || "");
-  editor = String(editor || "").trim();
+  editor = normalizeEditorName_(editor);
 
   if (editor.length < 2) {
     return jsonResponse_({ ok: false, error: "Nama editor minimal 2 karakter." });
@@ -938,6 +983,13 @@ function handleVerifyAuth_(e) {
 
   if (String(pin) !== String(expectedPin)) {
     return jsonResponse_({ ok: false, error: "PIN salah." });
+  }
+
+  if (!isEditorAllowed_(editor)) {
+    return jsonResponse_({
+      ok: false,
+      error: "Editor tidak terdaftar di spreadsheet allowed_editors."
+    });
   }
 
   var writeToken = issueWriteSessionToken_(editor.toUpperCase(), deviceId);
@@ -1006,11 +1058,16 @@ function validateWriteAuth_(payload, e) {
     (payload && payload.authToken) ||
     (e && e.parameter && e.parameter.authToken) ||
     "";
+  var editor =
+    (payload && payload.editor) ||
+    (e && e.parameter && e.parameter.editor) ||
+    "";
+  if (!editor || normalizeEditorName_(editor).length < 2) {
+    throw new Error("Unauthorized: editor harus disertakan.");
+  }
+
   validateAuthToken_(provided, {
-    editor:
-      (payload && payload.editor) ||
-      (e && e.parameter && e.parameter.editor) ||
-      "",
+    editor: editor,
     deviceId:
       (payload && payload.deviceId) ||
       (e && e.parameter && e.parameter.deviceId) ||
@@ -1021,10 +1078,18 @@ function validateWriteAuth_(payload, e) {
 function validateAuthToken_(provided, context) {
   var secret = getApiSecret_();
   var p = String(provided || "").trim();
+  var editor = normalizeEditorName_((context && context.editor) || "");
+
   if (secret && p === String(secret)) {
+    if (editor && !isEditorAllowed_(editor)) {
+      throw new Error("Unauthorized: editor tidak terdaftar.");
+    }
     return;
   }
   if (isValidWriteSessionToken_(p, context)) {
+    if (editor && !isEditorAllowed_(editor)) {
+      throw new Error("Unauthorized: editor tidak terdaftar.");
+    }
     return;
   }
   throw new Error("Unauthorized: invalid auth token.");
@@ -1036,6 +1101,26 @@ function getApiSecret_() {
 
 function normalizeEditorName_(value) {
   return String(value || "").trim().toUpperCase();
+}
+
+function getAllowedEditors_() {
+  try {
+    var ss = getOrCreateSpreadsheet_();
+    var sheet = ensureAllowedEditorsSheet_(ss);
+    var editorsFromSheet = readAllowedEditorsFromSheet_(sheet);
+    if (editorsFromSheet.length) return editorsFromSheet;
+  } catch (err) {
+    Logger.log("getAllowedEditors_: failed reading sheet, fallback ke script properties: " + err);
+  }
+
+  return getAllowedEditorsFromProperties_();
+}
+
+function isEditorAllowed_(editor) {
+  var normalized = normalizeEditorName_(editor);
+  if (!normalized) return false;
+  var allowed = getAllowedEditors_();
+  return allowed.indexOf(normalized) !== -1;
 }
 
 function normalizeDeviceId_(value) {
@@ -1193,7 +1278,145 @@ function getOrCreateSpreadsheet_() {
     setMetaSheet_(ss);
   }
 
+  ensureAllowedEditorsSheet_(ss);
+
   return ss;
+}
+
+function ensureAllowedEditorsSheet_(ss) {
+  var sheet = ss.getSheetByName(ALLOWED_EDITORS_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(ALLOWED_EDITORS_SHEET_NAME);
+  }
+
+  var legacyEditors = [];
+  if (sheet.getLastRow() >= 1) {
+    var sample = sheet.getRange(1, 1, 1, Math.min(2, Math.max(1, sheet.getLastColumn()))).getValues()[0];
+    var hasHeader =
+      normalizeEditorName_(sample[0]) === "NAMA EDITOR" &&
+      normalizeEditorName_(sample[1]) === "STATUS";
+    if (!hasHeader) {
+      legacyEditors = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues()
+        .map(function (row) {
+          return normalizeEditorName_(row[0]);
+        })
+        .filter(function (editor, index, arr) {
+          return !!editor && arr.indexOf(editor) === index;
+        });
+    }
+  }
+
+  sheet.setFrozenRows(1);
+  if (sheet.getMaxColumns() < 4) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), 4 - sheet.getMaxColumns());
+  }
+  sheet.getRange(1, 1, 1, 4).setValues([["NAMA EDITOR", "STATUS", "TERDAFTAR PADA", "CATATAN"]]);
+
+  var currentEditors = readAllowedEditorsFromSheet_(sheet);
+  if (!currentEditors.length && legacyEditors.length) {
+    writeAllowedEditorsToSheet_(sheet, legacyEditors, "Migrasi legacy");
+    currentEditors = legacyEditors.slice();
+  }
+  if (currentEditors.length) {
+    PropertiesService.getScriptProperties().setProperty(
+      ALLOWED_EDITORS_KEY,
+      JSON.stringify(currentEditors)
+    );
+    return sheet;
+  }
+
+  var seeded = getAllowedEditorsFromProperties_();
+  if (!seeded.length) {
+    seeded = collectEditorsFromLogs_(ss);
+  }
+
+  if (seeded.length) {
+    writeAllowedEditorsToSheet_(sheet, seeded, "Seed otomatis");
+    PropertiesService.getScriptProperties().setProperty(
+      ALLOWED_EDITORS_KEY,
+      JSON.stringify(seeded)
+    );
+  }
+
+  return sheet;
+}
+
+function readAllowedEditorsFromSheet_(sheet) {
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
+  var out = [];
+
+  for (var i = 0; i < values.length; i++) {
+    var name = normalizeEditorName_(values[i][0]);
+    var status = normalizeEditorName_(values[i][1] || "AKTIF");
+    if (!name) continue;
+    if (!status || status === "AKTIF") out.push(name);
+  }
+
+  return out.filter(function (name, index, arr) {
+    return arr.indexOf(name) === index;
+  });
+}
+
+function writeAllowedEditorsToSheet_(sheet, editors, note) {
+  editors = Array.isArray(editors) ? editors : [];
+  var normalized = editors
+    .map(function (editor) {
+      return normalizeEditorName_(editor);
+    })
+    .filter(function (editor, index, arr) {
+      return !!editor && arr.indexOf(editor) === index;
+    });
+
+  if (sheet.getMaxRows() > 1) {
+    sheet.getRange(2, 1, sheet.getMaxRows() - 1, 4).clearContent();
+  }
+
+  if (!normalized.length) return;
+
+  var now = new Date().toISOString();
+  var rows = normalized.map(function (editor) {
+    return [editor, "AKTIF", now, String(note || "")];
+  });
+  sheet.getRange(2, 1, rows.length, 4).setValues(rows);
+}
+
+function getAllowedEditorsFromProperties_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(ALLOWED_EDITORS_KEY) || "[]";
+  var list = [];
+  try {
+    list = JSON.parse(raw);
+  } catch (err) {
+    list = [];
+  }
+  if (!Array.isArray(list)) list = [];
+  return list
+    .map(function (value) {
+      return normalizeEditorName_(value);
+    })
+    .filter(function (value, index, arr) {
+      return !!value && arr.indexOf(value) === index;
+    });
+}
+
+function collectEditorsFromLogs_(ss) {
+  var out = [];
+  var sheets = ss.getSheets();
+
+  for (var i = 0; i < sheets.length; i++) {
+    var sheet = sheets[i];
+    var match = String(sheet.getName() || "").match(/^TAHUN_(\d{4})$/);
+    if (!match) continue;
+
+    var data = readYearSheet_(sheet, match[1]);
+    var logs = (data && data.logs) || [];
+    for (var j = 0; j < logs.length; j++) {
+      var editor = normalizeEditorName_((logs[j] && logs[j].editor) || "");
+      if (editor && out.indexOf(editor) === -1) out.push(editor);
+    }
+  }
+
+  return out;
 }
 
 function setMetaSheet_(ss) {
@@ -1204,7 +1427,7 @@ function setMetaSheet_(ss) {
     ["app", "Data Uang KAS Driver Helper DELTA 8"],
     ["createdAt", new Date().toISOString()],
     ["storage", "Google Sheets"],
-    ["note", "Data per tahun disimpan pada sheet driver/helper/transaksi/logs"]
+    ["note", "Data per tahun disimpan pada sheet driver/helper/transaksi/logs, akses editor di sheet allowed_editors"]
   ]);
 }
 

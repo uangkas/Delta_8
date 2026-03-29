@@ -20,6 +20,7 @@ var BACKUP_LAST_KEY_PREFIX = "backup_last_";
 var BACKUP_ARCHIVE_ID_KEY = "backup_archive_spreadsheet_id";
 var BACKUP_KEEP_COUNT = 15;
 var ALLOWED_EDITORS_KEY = "kas_allowed_editors";
+var ALLOWED_EDITORS_SHEET_NAME = "allowed_editors";
 var DEFAULT_SPREADSHEET_ID = "10GWGUs4ILzb1Hb3tm3OFy_dcRXCQKHqSQ0zPa3YmfpY";
 var DATA_TYPES = ["driver", "helper", "transaksi", "logs"];
 var DEFAULT_APP_PIN = "0000";
@@ -90,7 +91,6 @@ function doGet(e) {
     if (action === "fcmSw") return handleFcmSw_();
     if (action === "saveFcmToken") return handleSaveFcmTokenFromGet_(e);
     if (action === "testFcm") return handleTestFcm_(e);
-    if (action === "allowedEditors") return handleAllowedEditors_();
     if (action === "backupProperties") return handleBackupProperties_(e);
 
     // Serve index.html for browser UI.
@@ -399,11 +399,6 @@ function ensureBootstrapConfig_() {
 
   if (!props.getProperty(APP_PIN_KEY) && DEFAULT_APP_PIN) {
     props.setProperty(APP_PIN_KEY, DEFAULT_APP_PIN);
-  }
-
-  // Ensure ALLOWED_EDITORS_KEY exists (default to ADMIN if not set)
-  if (!props.getProperty(ALLOWED_EDITORS_KEY)) {
-    props.setProperty(ALLOWED_EDITORS_KEY, JSON.stringify(["ADMIN"]));
   }
 
   if (!props.getProperty(FCM_API_KEY) && DEFAULT_FIREBASE_CONFIG.apiKey) {
@@ -786,14 +781,6 @@ function handleSaveFcmTokenFromGet_(e) {
   return handleSaveFcmToken_(payload, e);
 }
 
-function handleAllowedEditors_() {
-  var editors = getAllowedEditors_();
-  return jsonResponse_({
-    ok: true,
-    editors: editors
-  });
-}
-
 function handleBackupProperties_(e) {
   validateActionAuth_(e);
   var success = backupScriptProperties_();
@@ -989,10 +976,6 @@ function handleVerifyAuth_(e) {
     return jsonResponse_({ ok: false, error: "Nama editor minimal 2 karakter." });
   }
 
-  if (!isEditorAllowed_(editor)) {
-    return jsonResponse_({ ok: false, error: "Editor tidak terdaftar. Hubungi admin untuk menambahkannya." });
-  }
-
   var expectedPin = PropertiesService.getScriptProperties().getProperty(APP_PIN_KEY);
   if (!expectedPin) {
     return jsonResponse_({ ok: false, error: "PIN belum dikonfigurasi di backend." });
@@ -1000,6 +983,13 @@ function handleVerifyAuth_(e) {
 
   if (String(pin) !== String(expectedPin)) {
     return jsonResponse_({ ok: false, error: "PIN salah." });
+  }
+
+  if (!isEditorAllowed_(editor)) {
+    return jsonResponse_({
+      ok: false,
+      error: "Editor tidak terdaftar di spreadsheet allowed_editors."
+    });
   }
 
   var writeToken = issueWriteSessionToken_(editor.toUpperCase(), deviceId);
@@ -1114,26 +1104,22 @@ function normalizeEditorName_(value) {
 }
 
 function getAllowedEditors_() {
-  var raw = PropertiesService.getScriptProperties().getProperty(ALLOWED_EDITORS_KEY) || "[]";
-  var list = [];
   try {
-    list = JSON.parse(raw);
+    var ss = getOrCreateSpreadsheet_();
+    var sheet = ensureAllowedEditorsSheet_(ss);
+    var editorsFromSheet = readAllowedEditorsFromSheet_(sheet);
+    if (editorsFromSheet.length) return editorsFromSheet;
   } catch (err) {
-    list = [];
+    Logger.log("getAllowedEditors_: failed reading sheet, fallback ke script properties: " + err);
   }
-  if (!Array.isArray(list)) list = [];
-  return list.map(function (v) {
-    return normalizeEditorName_(v);
-  }).filter(function (v) {
-    return !!v;
-  });
+
+  return getAllowedEditorsFromProperties_();
 }
 
 function isEditorAllowed_(editor) {
   var normalized = normalizeEditorName_(editor);
   if (!normalized) return false;
   var allowed = getAllowedEditors_();
-  if (!allowed.length) return false; // if no editors list is set, deny all write access
   return allowed.indexOf(normalized) !== -1;
 }
 
@@ -1292,7 +1278,145 @@ function getOrCreateSpreadsheet_() {
     setMetaSheet_(ss);
   }
 
+  ensureAllowedEditorsSheet_(ss);
+
   return ss;
+}
+
+function ensureAllowedEditorsSheet_(ss) {
+  var sheet = ss.getSheetByName(ALLOWED_EDITORS_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(ALLOWED_EDITORS_SHEET_NAME);
+  }
+
+  var legacyEditors = [];
+  if (sheet.getLastRow() >= 1) {
+    var sample = sheet.getRange(1, 1, 1, Math.min(2, Math.max(1, sheet.getLastColumn()))).getValues()[0];
+    var hasHeader =
+      normalizeEditorName_(sample[0]) === "NAMA EDITOR" &&
+      normalizeEditorName_(sample[1]) === "STATUS";
+    if (!hasHeader) {
+      legacyEditors = sheet.getRange(1, 1, sheet.getLastRow(), 1).getValues()
+        .map(function (row) {
+          return normalizeEditorName_(row[0]);
+        })
+        .filter(function (editor, index, arr) {
+          return !!editor && arr.indexOf(editor) === index;
+        });
+    }
+  }
+
+  sheet.setFrozenRows(1);
+  if (sheet.getMaxColumns() < 4) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), 4 - sheet.getMaxColumns());
+  }
+  sheet.getRange(1, 1, 1, 4).setValues([["NAMA EDITOR", "STATUS", "TERDAFTAR PADA", "CATATAN"]]);
+
+  var currentEditors = readAllowedEditorsFromSheet_(sheet);
+  if (!currentEditors.length && legacyEditors.length) {
+    writeAllowedEditorsToSheet_(sheet, legacyEditors, "Migrasi legacy");
+    currentEditors = legacyEditors.slice();
+  }
+  if (currentEditors.length) {
+    PropertiesService.getScriptProperties().setProperty(
+      ALLOWED_EDITORS_KEY,
+      JSON.stringify(currentEditors)
+    );
+    return sheet;
+  }
+
+  var seeded = getAllowedEditorsFromProperties_();
+  if (!seeded.length) {
+    seeded = collectEditorsFromLogs_(ss);
+  }
+
+  if (seeded.length) {
+    writeAllowedEditorsToSheet_(sheet, seeded, "Seed otomatis");
+    PropertiesService.getScriptProperties().setProperty(
+      ALLOWED_EDITORS_KEY,
+      JSON.stringify(seeded)
+    );
+  }
+
+  return sheet;
+}
+
+function readAllowedEditorsFromSheet_(sheet) {
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues();
+  var out = [];
+
+  for (var i = 0; i < values.length; i++) {
+    var name = normalizeEditorName_(values[i][0]);
+    var status = normalizeEditorName_(values[i][1] || "AKTIF");
+    if (!name) continue;
+    if (!status || status === "AKTIF") out.push(name);
+  }
+
+  return out.filter(function (name, index, arr) {
+    return arr.indexOf(name) === index;
+  });
+}
+
+function writeAllowedEditorsToSheet_(sheet, editors, note) {
+  editors = Array.isArray(editors) ? editors : [];
+  var normalized = editors
+    .map(function (editor) {
+      return normalizeEditorName_(editor);
+    })
+    .filter(function (editor, index, arr) {
+      return !!editor && arr.indexOf(editor) === index;
+    });
+
+  if (sheet.getMaxRows() > 1) {
+    sheet.getRange(2, 1, sheet.getMaxRows() - 1, 4).clearContent();
+  }
+
+  if (!normalized.length) return;
+
+  var now = new Date().toISOString();
+  var rows = normalized.map(function (editor) {
+    return [editor, "AKTIF", now, String(note || "")];
+  });
+  sheet.getRange(2, 1, rows.length, 4).setValues(rows);
+}
+
+function getAllowedEditorsFromProperties_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(ALLOWED_EDITORS_KEY) || "[]";
+  var list = [];
+  try {
+    list = JSON.parse(raw);
+  } catch (err) {
+    list = [];
+  }
+  if (!Array.isArray(list)) list = [];
+  return list
+    .map(function (value) {
+      return normalizeEditorName_(value);
+    })
+    .filter(function (value, index, arr) {
+      return !!value && arr.indexOf(value) === index;
+    });
+}
+
+function collectEditorsFromLogs_(ss) {
+  var out = [];
+  var sheets = ss.getSheets();
+
+  for (var i = 0; i < sheets.length; i++) {
+    var sheet = sheets[i];
+    var match = String(sheet.getName() || "").match(/^TAHUN_(\d{4})$/);
+    if (!match) continue;
+
+    var data = readYearSheet_(sheet, match[1]);
+    var logs = (data && data.logs) || [];
+    for (var j = 0; j < logs.length; j++) {
+      var editor = normalizeEditorName_((logs[j] && logs[j].editor) || "");
+      if (editor && out.indexOf(editor) === -1) out.push(editor);
+    }
+  }
+
+  return out;
 }
 
 function setMetaSheet_(ss) {
@@ -1303,7 +1427,7 @@ function setMetaSheet_(ss) {
     ["app", "Data Uang KAS Driver Helper DELTA 8"],
     ["createdAt", new Date().toISOString()],
     ["storage", "Google Sheets"],
-    ["note", "Data per tahun disimpan pada sheet driver/helper/transaksi/logs"]
+    ["note", "Data per tahun disimpan pada sheet driver/helper/transaksi/logs, akses editor di sheet allowed_editors"]
   ]);
 }
 
