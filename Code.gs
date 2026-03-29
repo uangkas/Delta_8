@@ -19,6 +19,7 @@ var WRITE_SESSION_TTL_SEC = 21600; // 6 hours
 var BACKUP_LAST_KEY_PREFIX = "backup_last_";
 var BACKUP_ARCHIVE_ID_KEY = "backup_archive_spreadsheet_id";
 var BACKUP_KEEP_COUNT = 15;
+var ALLOWED_EDITORS_KEY = "kas_allowed_editors";
 var DEFAULT_SPREADSHEET_ID = "10GWGUs4ILzb1Hb3tm3OFy_dcRXCQKHqSQ0zPa3YmfpY";
 var DATA_TYPES = ["driver", "helper", "transaksi", "logs"];
 var DEFAULT_APP_PIN = "0000";
@@ -123,6 +124,16 @@ function doPost(e) {
     var beforeData = readYearData_(year);
 
     var normalized = normalizePayload_(payload);
+    var editor = normalizeEditorName_((payload && payload.editor) || (e && e.parameter && e.parameter.editor) || "");
+    if (editor) {
+      normalized.logs = (normalized.logs || []).map(function (logEntry) {
+        var entry = logEntry || {};
+        if (!String(entry.editor || "").trim()) {
+          entry.editor = editor;
+        }
+        return entry;
+      });
+    }
     writeYearData_(year, normalized);
     maybeBroadcastFcmAfterWrite_(beforeData, normalized, payload, year);
 
@@ -925,10 +936,14 @@ function handleVerifyAuth_(e) {
   var pin = (e && e.parameter && e.parameter.pin) || "";
   var editor = (e && e.parameter && e.parameter.editor) || "";
   var deviceId = normalizeDeviceId_((e && e.parameter && e.parameter.deviceId) || "");
-  editor = String(editor || "").trim();
+  editor = normalizeEditorName_(editor);
 
   if (editor.length < 2) {
     return jsonResponse_({ ok: false, error: "Nama editor minimal 2 karakter." });
+  }
+
+  if (!isEditorAllowed_(editor)) {
+    return jsonResponse_({ ok: false, error: "Editor tidak terdaftar. Hubungi admin untuk menambahkannya." });
   }
 
   var expectedPin = PropertiesService.getScriptProperties().getProperty(APP_PIN_KEY);
@@ -1006,11 +1021,16 @@ function validateWriteAuth_(payload, e) {
     (payload && payload.authToken) ||
     (e && e.parameter && e.parameter.authToken) ||
     "";
+  var editor =
+    (payload && payload.editor) ||
+    (e && e.parameter && e.parameter.editor) ||
+    "";
+  if (!editor || normalizeEditorName_(editor).length < 2) {
+    throw new Error("Unauthorized: editor harus disertakan.");
+  }
+
   validateAuthToken_(provided, {
-    editor:
-      (payload && payload.editor) ||
-      (e && e.parameter && e.parameter.editor) ||
-      "",
+    editor: editor,
     deviceId:
       (payload && payload.deviceId) ||
       (e && e.parameter && e.parameter.deviceId) ||
@@ -1021,10 +1041,18 @@ function validateWriteAuth_(payload, e) {
 function validateAuthToken_(provided, context) {
   var secret = getApiSecret_();
   var p = String(provided || "").trim();
+  var editor = normalizeEditorName_((context && context.editor) || "");
+
   if (secret && p === String(secret)) {
+    if (editor && !isEditorAllowed_(editor)) {
+      throw new Error("Unauthorized: editor tidak terdaftar.");
+    }
     return;
   }
   if (isValidWriteSessionToken_(p, context)) {
+    if (editor && !isEditorAllowed_(editor)) {
+      throw new Error("Unauthorized: editor tidak terdaftar.");
+    }
     return;
   }
   throw new Error("Unauthorized: invalid auth token.");
@@ -1036,6 +1064,30 @@ function getApiSecret_() {
 
 function normalizeEditorName_(value) {
   return String(value || "").trim().toUpperCase();
+}
+
+function getAllowedEditors_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(ALLOWED_EDITORS_KEY) || "[]";
+  var list = [];
+  try {
+    list = JSON.parse(raw);
+  } catch (err) {
+    list = [];
+  }
+  if (!Array.isArray(list)) list = [];
+  return list.map(function (v) {
+    return normalizeEditorName_(v);
+  }).filter(function (v) {
+    return !!v;
+  });
+}
+
+function isEditorAllowed_(editor) {
+  var normalized = normalizeEditorName_(editor);
+  if (!normalized) return false;
+  var allowed = getAllowedEditors_();
+  if (!allowed.length) return true; // if no editors list is set, treat as open mode
+  return allowed.indexOf(normalized) !== -1;
 }
 
 function normalizeDeviceId_(value) {
