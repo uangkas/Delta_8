@@ -1674,6 +1674,10 @@ body.tab-transaksi .nav-tabs {
                     optimisticActionOpened = true;
                 }
 
+                if (hidePromise) {
+                    await hidePromise;
+                }
+
                 const deviceId = getDeviceId();
                 const url = `${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
                 const data = await fetchJson(url);
@@ -1685,10 +1689,7 @@ body.tab-transaksi .nav-tabs {
                         optimisticActionOpened = false;
                         bootstrap.Modal.getOrCreateInstance('#modalCatat').hide();
                     }
-                    if (hidePromise) {
-                        await hidePromise;
-                        reopenAuthModal();
-                    }
+                    reopenAuthModal();
                     resetAuthPinFocus();
                     showNotif((data && data.error) ? data.error : 'PIN salah', 'error');
                     return;
@@ -1710,15 +1711,7 @@ body.tab-transaksi .nav-tabs {
                     } else {
                         executeAction(action, params);
                     }
-                    if (hidePromise) await hidePromise;
-                } else if (action === 'catat') {
-                    if (hidePromise) await hidePromise;
                 } else {
-                    if (hidePromise) {
-                        await hidePromise;
-                    } else {
-                        await hideAuthModal();
-                    }
                     executeAction(action, params);
                 }
             } catch (err) {
@@ -1729,10 +1722,7 @@ body.tab-transaksi .nav-tabs {
                     optimisticActionOpened = false;
                     bootstrap.Modal.getOrCreateInstance('#modalCatat').hide();
                 }
-                if (hidePromise) {
-                    await hidePromise;
-                    reopenAuthModal();
-                }
+                reopenAuthModal();
                 resetAuthPinFocus();
                 showNotif((err && err.message) ? err.message : 'Tidak bisa verifikasi ke backend', 'error');
             } finally {
