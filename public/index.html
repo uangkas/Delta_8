@@ -1776,7 +1776,7 @@ body.tab-transaksi .nav-tabs {
                     DB_HELPER = DB_HELPER.filter(x => x.id != currentContext.id);
                 } else {
                     const t = DB_TRANSAKSI[currentContext.idx];
-                    addLog("Hapus transaksi", `${t.tp.toUpperCase()} - ${t.p} - ${t.k || '-'}`);
+                    addLog("Hapus transaksi", `${t.tp.toUpperCase()} - ${t.p} - ${t.k || '-'} - ${formatLogCurrency(t.v)}`);
                     DB_TRANSAKSI.splice(currentContext.idx, 1);
                 }
                 syncAll();
@@ -2074,6 +2074,10 @@ async function syncAll() {
             DB_LOGS.unshift({ time, editor: getActiveEditor(), aksi: aksi.toUpperCase(), ket: ket });
         }
 
+        function formatLogCurrency(value) {
+            return `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
+        }
+
         function clearLogs() { new bootstrap.Modal('#modalKonfirmasiLog').show(); }
         function eksekusiHapusLog() { bootstrap.Modal.getInstance('#modalKonfirmasiLog').hide(); addLog("SYSTEM", "BERSIHKAN SEMUA LOG"); DB_LOGS = []; syncAll(); }
 
@@ -2265,17 +2269,17 @@ async function syncAll() {
         let change = "";
         if (old.tp !== d.tp) change += `Tipe: ${old.tp}=>${d.tp}, `;
         if (old.p !== d.p) change += `Sumber: ${old.p}=>${d.p}, `;
-        if (old.v !== d.v) change += `Nominal: ${old.v}=>${d.v}, `;
+        if (old.v !== d.v) change += `Nominal: ${formatLogCurrency(old.v)}=>${formatLogCurrency(d.v)}, `;
 
         DB_TRANSAKSI[idx] = d;
 
         addLog("Edit transaksi",
-            `${d.tp.toUpperCase()} - ${d.p} - ${change || 'Update Data'}`
+            `${d.tp.toUpperCase()} - ${d.p} - ${formatLogCurrency(d.v)} - ${change || 'Update Data'}`
         );
     } else {
         DB_TRANSAKSI.push(d);
         addLog("Tambah transaksi",
-            `${d.tp.toUpperCase()} - ${d.p} - ${d.k || '-'}`
+            `${d.tp.toUpperCase()} - ${d.p} - ${d.k || '-'} - ${formatLogCurrency(d.v)}`
         );
     }
 
