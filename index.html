@@ -962,6 +962,8 @@ body.tab-transaksi .nav-tabs {
         let loadToken = 0;
         let autoSyncTimer = null;
         let autoSyncInProgress = false;
+        let syncInProgress = false;
+        let syncQueued = false;
         let suppressRemoteRefreshUntil = 0;
         let fcmState = { enabled: false, config: null, vapidKey: "", messaging: null, swReg: null };
         let authInProgress = false;
@@ -1955,6 +1957,7 @@ body.tab-transaksi .nav-tabs {
         function shouldAutoSyncCurrentYear() {
             if (document.hidden) return false;
             if (authInProgress) return false;
+            if (syncInProgress) return false;
             if (Date.now() < suppressRemoteRefreshUntil) return false;
             if (hasOpenBlockingModal()) return false;
             return true;
@@ -2058,6 +2061,12 @@ body.tab-transaksi .nav-tabs {
         }
 
 async function syncAll() {
+    if (syncInProgress) {
+        syncQueued = true;
+        return;
+    }
+    syncQueued = false;
+    syncInProgress = true;
 
     // render dulu data lokal
     render();
@@ -2078,6 +2087,10 @@ async function syncAll() {
         if (!writeToken) {
             showNotif('Write token belum tersedia. Verifikasi ulang dulu.', 'error');
             status.innerText = "⚠️ GAGAL SINKRON";
+            const shouldRerun = syncQueued;
+            syncInProgress = false;
+            syncQueued = false;
+            if (shouldRerun) setTimeout(() => syncAll(), 0);
             return;
         }
 
@@ -2086,6 +2099,7 @@ async function syncAll() {
             authToken: writeToken,
             editor: getActiveEditor(),
             deviceId: getDeviceId(),
+            year: CURRENT_YEAR,
             driver: DB_DRIVER,
             helper: DB_HELPER,
             transaksi: DB_TRANSAKSI,
@@ -2105,6 +2119,10 @@ async function syncAll() {
         if (verification.data) {
             applyYearData(CURRENT_YEAR, verification.data);
         }
+        const shouldRerun = syncQueued;
+        syncInProgress = false;
+        syncQueued = false;
+        if (shouldRerun) setTimeout(() => syncAll(), 0);
         suppressRemoteRefreshUntil = Date.now() + AUTO_SYNC_SUPPRESS_MS;
 
         status.innerText = "☁️ TERHUBUNG";
@@ -2112,6 +2130,10 @@ async function syncAll() {
     } catch (err) {
 
         console.error("SYNC ERROR:", err);
+        syncInProgress = false;
+        const shouldRerun = syncQueued;
+        syncQueued = false;
+        if (shouldRerun) setTimeout(() => syncAll(), 0);
 
         status.innerText = "⚠️ GAGAL SINKRON";
 
