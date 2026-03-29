@@ -9,6 +9,7 @@ on:
       - "index.html"
       - "gas_fix/**"
       - "scripts/sync-deploy-sources.ps1"
+      - "scripts/invoke-gas-admin-endpoint.ps1"
       - ".github/workflows/deploy-gas.yml"
   pull_request:
     paths:
@@ -16,6 +17,7 @@ on:
       - "index.html"
       - "gas_fix/**"
       - "scripts/sync-deploy-sources.ps1"
+      - "scripts/invoke-gas-admin-endpoint.ps1"
       - ".github/workflows/deploy-gas.yml"
   workflow_dispatch:
 
@@ -26,6 +28,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      GAS_WEBAPP_URL: https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg/exec
 
     steps:
       - name: Checkout repository
@@ -73,10 +77,15 @@ jobs:
         run: clasp push --force
 
       - name: Backup script properties
-        working-directory: gas_fix
+        shell: pwsh
+        env:
+          GAS_AUTH_TOKEN: ${{ secrets.GAS_AUTH_TOKEN }}
         run: |
-          # Try to backup properties before deployment
-          curl -s -X GET "https://script.google.com/macros/s/$GAS_SCRIPT_ID/exec?action=backupProperties&authToken=$GAS_AUTH_TOKEN" || echo "Backup failed, continuing deployment"
+          if ([string]::IsNullOrWhiteSpace($env:GAS_AUTH_TOKEN)) {
+            Write-Host "Secret GAS_AUTH_TOKEN belum diisi. Skip backup properties."
+            exit 0
+          }
+          ./scripts/invoke-gas-admin-endpoint.ps1 -Url $env:GAS_WEBAPP_URL -Action "backupProperties" -AuthToken $env:GAS_AUTH_TOKEN -AllowFailure
 
       - name: Create new version
         id: version
@@ -94,3 +103,14 @@ jobs:
       - name: Redeploy web app URL existing
         working-directory: gas_fix
         run: clasp deploy --deploymentId AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg --versionNumber ${{ steps.version.outputs.number }} --description "GitHub Actions ${GITHUB_SHA}"
+
+      - name: Run backend self-test
+        shell: pwsh
+        env:
+          GAS_AUTH_TOKEN: ${{ secrets.GAS_AUTH_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GAS_AUTH_TOKEN)) {
+            Write-Host "Secret GAS_AUTH_TOKEN belum diisi. Skip backend self-test."
+            exit 0
+          }
+          ./scripts/invoke-gas-admin-endpoint.ps1 -Url $env:GAS_WEBAPP_URL -Action "adminSelfTest" -AuthToken $env:GAS_AUTH_TOKEN

@@ -4,7 +4,8 @@ param(
     [string]$FirebaseServiceAccountPath = ".\firebase-service-account.json",
     [string]$ClaspCredentialsPath = "$HOME\.clasprc.json",
     [string]$GasScriptId = "",
-    [string]$ClaspConfigPath = ".\gas_fix\.clasp.json"
+    [string]$ClaspConfigPath = ".\gas_fix\.clasp.json",
+    [string]$GasAuthToken = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -143,9 +144,17 @@ Write-Host "Memasang GitHub Secrets untuk repo ini..."
 Set-SecretFromFile -Name "FIREBASE_SERVICE_ACCOUNT" -FilePath $firebaseJson -RepoName $Repo
 Set-SecretFromValue -Name "CLASP_CREDENTIALS_JSON_B64" -Value $claspBase64 -RepoName $Repo
 Set-SecretFromValue -Name "GAS_SCRIPT_ID" -Value $resolvedGasScriptId -RepoName $Repo
+if (-not [string]::IsNullOrWhiteSpace($GasAuthToken)) {
+    Set-SecretFromValue -Name "GAS_AUTH_TOKEN" -Value $GasAuthToken.Trim() -RepoName $Repo
+}
 
 Write-Host ""
 Write-Host "Selesai. Secret yang terpasang:"
 Write-Host "- FIREBASE_SERVICE_ACCOUNT"
 Write-Host "- CLASP_CREDENTIALS_JSON_B64"
 Write-Host "- GAS_SCRIPT_ID"
+if (-not [string]::IsNullOrWhiteSpace($GasAuthToken)) {
+    Write-Host "- GAS_AUTH_TOKEN"
+} else {
+    Write-Host "- GAS_AUTH_TOKEN (belum diisi, self-test deploy akan skip)"
+}

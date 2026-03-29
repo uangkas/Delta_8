@@ -11,10 +11,15 @@ Secret GitHub yang wajib diisi:
 - `GAS_SCRIPT_ID`: Script ID Google Apps Script tujuan
 - `FIREBASE_SERVICE_ACCOUNT`: JSON service account Firebase Hosting untuk project `kas-delta-8`
 
+Secret GitHub yang disarankan:
+
+- `GAS_AUTH_TOKEN`: token admin backend untuk backup properties dan `adminSelfTest` otomatis setelah deploy GAS
+
 Contoh file dan script bantu:
 
 - template service account aman ada di `firebase-service-account.example.json`
 - script set secret GitHub ada di `scripts/set-github-secrets.ps1`
+- script panggil endpoint admin GAS ada di `scripts/invoke-gas-admin-endpoint.ps1`
 - script commit lalu push ke `main` ada di `scripts/push-main.ps1`
 
 Trigger deploy:
@@ -53,6 +58,7 @@ Catatan eksekusi:
 - script `set-github-secrets.ps1` butuh GitHub CLI `gh`
 - `GAS_SCRIPT_ID` otomatis dibaca dari `gas_fix/.clasp.json` jika tersedia
 - jika repo target bukan repo yang sedang aktif di `gh`, pakai `-Repo owner/nama-repo`
+- isi `-GasAuthToken` saat menjalankan `set-github-secrets.ps1` jika ingin backup properties dan backend self-test otomatis di workflow deploy GAS
 
 Self-check backend:
 
