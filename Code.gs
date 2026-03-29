@@ -1051,7 +1051,7 @@ function isEditorAllowed_(editor) {
   var normalized = normalizeEditorName_(editor);
   if (!normalized) return false;
   var allowed = getAllowedEditors_();
-  if (!allowed.length) return true; // if no editors list is set, treat as open mode
+  if (!allowed.length) return false; // if no editors list is set, deny all write access
   return allowed.indexOf(normalized) !== -1;
 }
 
