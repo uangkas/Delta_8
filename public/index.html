@@ -444,6 +444,23 @@
             color: var(--text-muted);
             font-size: 12px;
         }
+        .config-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .config-field label {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--accent-color);
+        }
+        .config-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
         .qris-proof-input {
             margin-top: 14px;
         }
@@ -1045,6 +1062,33 @@ body.tab-transaksi .nav-tabs {
                             <tbody id="hist"></tbody>
                         </table>
                     </div>
+
+                    <div class="luxe-dropdown" onclick="toggleCol('midtrans-config-col')"><span>âš™ KONFIGURASI MIDTRANS</span><span id="midtrans-config-icon">â–¼</span></div>
+                    <div id="midtrans-config-col" class="luxe-content">
+                        <div class="config-field">
+                            <label>Admin Token</label>
+                            <input type="password" id="midtrans-admin-token" class="form-control" placeholder="API_SECRET">
+                        </div>
+                        <div class="config-field">
+                            <label>Server Key</label>
+                            <input type="password" id="midtrans-server-key" class="form-control" placeholder="Midtrans Server Key">
+                        </div>
+                        <div class="config-field">
+                            <label>Environment</label>
+                            <select id="midtrans-env" class="form-control">
+                                <option value="sandbox">Sandbox</option>
+                                <option value="production">Production</option>
+                            </select>
+                        </div>
+                        <div class="config-field">
+                            <label>Notification URL (Opsional)</label>
+                            <input type="text" id="midtrans-notification-url" class="form-control" placeholder="Kosongkan untuk default GAS URL">
+                        </div>
+                        <div class="config-actions">
+                            <button class="btn btn-dark w-100" onclick="loadMidtransConfig()">LOAD</button>
+                            <button class="btn btn-warning w-100 fw-bold" onclick="saveMidtransConfig()">SIMPAN</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="system-area">
@@ -1139,6 +1183,7 @@ body.tab-transaksi .nav-tabs {
         const MIDTRANS_QRIS_ENABLED = true;
         let pendingQrisProofData = null;
         let pendingMidtransQrisParams = null;
+        const MIDTRANS_ADMIN_TOKEN_KEY = 'delta8_midtrans_admin_token';
         const cloneData = (v) => JSON.parse(JSON.stringify(v));
 
         function showNotif(message, type = 'info') {
@@ -2191,6 +2236,77 @@ body.tab-transaksi .nav-tabs {
             }
         }
 
+        function getMidtransAdminToken() {
+            return String(localStorage.getItem(MIDTRANS_ADMIN_TOKEN_KEY) || '').trim();
+        }
+
+        function setMidtransAdminToken(token) {
+            const value = String(token || '').trim();
+            localStorage.setItem(MIDTRANS_ADMIN_TOKEN_KEY, value);
+            return value;
+        }
+
+        async function loadMidtransConfig() {
+            const tokenInput = document.getElementById('midtrans-admin-token');
+            const token = String((tokenInput && tokenInput.value) || getMidtransAdminToken()).trim();
+            if (!token) {
+                showNotif('Admin token diperlukan untuk load konfigurasi.', 'error');
+                return;
+            }
+            setMidtransAdminToken(token);
+            if (tokenInput) tokenInput.value = token;
+
+            try {
+                const data = await fetchJson(`${CLOUD_URL}?action=midtransConfigGet&authToken=${encodeURIComponent(token)}`, 15000);
+                const cfg = data && data.data ? data.data : {};
+                const serverKeyInput = document.getElementById('midtrans-server-key');
+                const envSelect = document.getElementById('midtrans-env');
+                const notifInput = document.getElementById('midtrans-notification-url');
+                if (serverKeyInput) serverKeyInput.value = cfg.serverKey || '';
+                if (envSelect) envSelect.value = (cfg.env || 'sandbox').toLowerCase() === 'production' ? 'production' : 'sandbox';
+                if (notifInput) notifInput.value = cfg.notificationUrl || '';
+                showNotif('Konfigurasi Midtrans berhasil dimuat.', 'success');
+            } catch (err) {
+                showNotif((err && err.message) ? err.message : 'Gagal load konfigurasi Midtrans.', 'error');
+            }
+        }
+
+        function saveMidtransConfig() {
+            const tokenInput = document.getElementById('midtrans-admin-token');
+            const serverKeyInput = document.getElementById('midtrans-server-key');
+            const envSelect = document.getElementById('midtrans-env');
+            const notifInput = document.getElementById('midtrans-notification-url');
+            const token = String((tokenInput && tokenInput.value) || '').trim();
+            const serverKey = String((serverKeyInput && serverKeyInput.value) || '').trim();
+            const env = String((envSelect && envSelect.value) || 'sandbox').trim().toLowerCase();
+            const notificationUrl = String((notifInput && notifInput.value) || '').trim();
+
+            if (!token) {
+                showNotif('Admin token wajib diisi.', 'error');
+                return;
+            }
+            if (!serverKey) {
+                showNotif('Server key wajib diisi.', 'error');
+                return;
+            }
+
+            setMidtransAdminToken(token);
+
+            const payload = {
+                action: 'midtransConfigSet',
+                authToken: token,
+                serverKey,
+                env,
+                notificationUrl
+            };
+            postToAppsScript(payload).then(() => {
+                showNotif('Konfigurasi Midtrans disimpan.', 'success');
+                setTimeout(() => loadMidtransConfig(), 1200);
+            }).catch(() => {
+                showNotif('Gagal simpan konfigurasi Midtrans.', 'error');
+            });
+        }
+
         function getQrisImageUrl() {
             const runtimeConfig = window.DELTA8_QRIS_CONFIG || {};
             const configuredImage = String(runtimeConfig.imageUrl || QRIS_STATIC_IMAGE_URL || '').trim();
@@ -2456,6 +2572,8 @@ body.tab-transaksi .nav-tabs {
         window.continueMemberPayment = continueMemberPayment;
         window.continueQrisToAuth = continueQrisToAuth;
         window.checkMidtransStatus = checkMidtransStatus;
+        window.loadMidtransConfig = loadMidtransConfig;
+        window.saveMidtransConfig = saveMidtransConfig;
         window.chooseMemberPayment = chooseMemberPayment;
 
         async function loadFromCloud(year = CURRENT_YEAR, options = {}) {
@@ -3290,6 +3408,12 @@ async function syncAll() {
         }
         window.onload = () => {
     setTheme(localStorage.getItem('delta8_theme') || 'luxury');
+
+    const savedAdminToken = getMidtransAdminToken();
+    if (savedAdminToken) {
+        const adminInput = document.getElementById('midtrans-admin-token');
+        if (adminInput) adminInput.value = savedAdminToken;
+    }
     
     initTahun();
 
