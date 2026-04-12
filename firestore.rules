@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isValidYearDocId(yearId) {
+      return yearId.matches('^(202[5-9]|20[3-4][0-9]|2050)$');
+    }
+
+    function isAllowedRealtimeKeys() {
+      return request.resource.data.keys().hasOnly([
+        'year',
+        'signature',
+        'editor',
+        'deviceId',
+        'updatedAt'
+      ]);
+    }
+
+    function isValidRealtimePayload(yearId) {
+      return isAllowedRealtimeKeys()
+        && request.resource.data.year is int
+        && request.resource.data.year >= 2025
+        && request.resource.data.year <= 2050
+        && yearId == string(request.resource.data.year)
+        && request.resource.data.signature is string
+        && request.resource.data.signature.size() > 0
+        && request.resource.data.signature.size() <= 20000
+        && request.resource.data.editor is string
+        && request.resource.data.editor.size() <= 120
+        && request.resource.data.deviceId is string
+        && request.resource.data.deviceId.size() <= 160
+        && request.resource.data.updatedAt == request.time;
+    }
+
+    match /delta8_year_sync/{yearId} {
+      allow get, list: if isValidYearDocId(yearId);
+      allow create, update: if isValidYearDocId(yearId) && isValidRealtimePayload(yearId);
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

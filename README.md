@@ -64,3 +64,26 @@ Self-check backend:
 
 - endpoint admin `?action=adminSelfTest&authToken=API_SECRET` sekarang tersedia untuk menjalankan regression check ringan di backend Apps Script
 - self-check ini memverifikasi helper payload, roundtrip row conversion, builder request FCM, dan layout builder sheet
+
+Firestore realtime security:
+
+- rules Firestore ada di `firestore.rules` dan saat ini hanya membuka koleksi `delta8_year_sync`
+- App Check client sudah disiapkan di `index.html`, tetapi default-nya nonaktif sampai Anda mengisi `window.DELTA8_APPCHECK_CONFIG`
+- contoh aktivasi sebelum script aplikasi berjalan:
+
+```html
+<script>
+  window.DELTA8_APPCHECK_CONFIG = {
+    enabled: true,
+    provider: 'recaptcha-enterprise',
+    siteKey: 'ISI_SITE_KEY_APPCHECK_DI_SINI'
+  };
+</script>
+```
+
+- setelah site key dipasang, aktifkan enforcement App Check untuk Cloud Firestore di Firebase Console
+- untuk deploy rules:
+
+```powershell
+firebase deploy --only firestore:rules
+```
