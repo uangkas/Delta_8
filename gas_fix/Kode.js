@@ -14,6 +14,10 @@ var FCM_VAPID_KEY = "fcm_vapid_key";
 var FCM_SA_CLIENT_EMAIL_KEY = "fcm_sa_client_email";
 var FCM_SA_PRIVATE_KEY_KEY = "fcm_sa_private_key";
 var FCM_LAST_SEND_KEY = "fcm_last_send_json";
+var MIDTRANS_SERVER_KEY_PROP = "midtrans_server_key";
+var MIDTRANS_ENV_PROP = "midtrans_env";
+var MIDTRANS_NOTIFICATION_URL_PROP = "midtrans_notification_url";
+var MIDTRANS_PENDING_PAYMENTS_PROP = "midtrans_pending_payments";
 var ACTIVE_JSONP_CALLBACK = "";
 var WRITE_SESSION_TTL_SEC = 21600; // 6 hours
 var BACKUP_LAST_KEY_PREFIX = "backup_last_";
@@ -95,6 +99,8 @@ function doGet(e) {
     if (action === "saveFcmToken") return handleSaveFcmTokenFromGet_(e);
     if (action === "testFcm") return handleTestFcm_(e);
     if (action === "backupProperties") return handleBackupProperties_(e);
+    if (action === "midtransCreateQris") return handleMidtransCreateQris_(e);
+    if (action === "midtransStatus") return handleMidtransStatus_(e);
 
     // Serve index.html for browser UI.
     return HtmlService.createHtmlOutputFromFile("index")
@@ -114,13 +120,23 @@ function doPost(e) {
   ensureBootstrapConfig_();
   ACTIVE_JSONP_CALLBACK = "";
   try {
+    if (e && e.parameter && e.parameter.action === "midtransNotification") {
+      return handleMidtransNotification_(e);
+    }
     var payload = parsePostBody_(e);
+
+    if (payload.action === "midtransNotification") {
+      return handleMidtransNotification_(e, payload);
+    }
 
     if (payload.action === "saveFcmToken") {
       return handleSaveFcmToken_(payload, e);
     }
     if (payload.action === "adminSetScriptProperties") {
       return handleAdminSetScriptProperties_(payload, e);
+    }
+    if (payload.action === "midtransCreateQris") {
+      return handleMidtransCreateQrisFromPost_(payload, e);
     }
 
     validateWriteAuth_(payload, e);
@@ -2266,6 +2282,318 @@ function sanitizeJsonpCallback_(callback) {
   if (!value) return "";
   if (!/^[A-Za-z_$][0-9A-Za-z_$.]{0,127}$/.test(value)) return "";
   return value;
+}
+
+function getMidtransConfig_() {
+  var props = PropertiesService.getScriptProperties();
+  var serverKey = String(props.getProperty(MIDTRANS_SERVER_KEY_PROP) || "").trim();
+  var env = String(props.getProperty(MIDTRANS_ENV_PROP) || "sandbox").trim().toLowerCase();
+  if (!serverKey) {
+    throw new Error("Midtrans server key belum diset di Script Properties.");
+  }
+  if (env !== "production" && env !== "sandbox") env = "sandbox";
+
+  var baseUrl = env === "production"
+    ? "https://api.midtrans.com"
+    : "https://api.sandbox.midtrans.com";
+
+  var notificationUrl = String(props.getProperty(MIDTRANS_NOTIFICATION_URL_PROP) || "").trim();
+  if (!notificationUrl) {
+    try {
+      notificationUrl = ScriptApp.getService().getUrl() + "?action=midtransNotification";
+    } catch (_) {
+      notificationUrl = "";
+    }
+  }
+
+  return {
+    serverKey: serverKey,
+    env: env,
+    baseUrl: baseUrl,
+    notificationUrl: notificationUrl
+  };
+}
+
+function buildMidtransAuthHeader_(serverKey) {
+  return "Basic " + Utilities.base64Encode(serverKey + ":");
+}
+
+function parseMidtransMonths_(raw) {
+  var value = String(raw || "").trim();
+  if (!value) return [];
+  return value.split(",")
+    .map(function (item) { return parseInt(item, 10); })
+    .filter(function (item) { return item >= 1 && item <= 12; })
+    .filter(function (item, index, arr) { return arr.indexOf(item) === index; })
+    .sort(function (a, b) { return a - b; });
+}
+
+function getMidtransPendingPayments_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(MIDTRANS_PENDING_PAYMENTS_PROP) || "{}";
+  try {
+    var parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveMidtransPendingPayments_(map) {
+  PropertiesService.getScriptProperties().setProperty(
+    MIDTRANS_PENDING_PAYMENTS_PROP,
+    JSON.stringify(map || {})
+  );
+}
+
+function appendLog_(data, editor, aksi, ket) {
+  data = data || {};
+  if (!Array.isArray(data.logs)) data.logs = [];
+  var tz = Session.getScriptTimeZone() || "Asia/Jakarta";
+  var now = Utilities.formatDate(new Date(), tz, "dd/MM/yyyy HH.mm");
+  data.logs.unshift({
+    time: now,
+    editor: String(editor || "").trim().toUpperCase(),
+    aksi: String(aksi || "").trim().toUpperCase(),
+    ket: String(ket || "")
+  });
+}
+
+function applyMemberStatusUpdate_(data, info, value) {
+  if (!data || !info) return false;
+  var list = String(info.kat || "").toUpperCase() === "HELPER"
+    ? data.helper
+    : data.driver;
+  if (!Array.isArray(list)) return false;
+  var member = list.filter(function (item) { return String(item.id) === String(info.id); })[0];
+  if (!member) return false;
+
+  if (!member.status) member.status = {};
+  if (!member.status[info.year]) member.status[info.year] = {};
+  (info.months || []).forEach(function (month) {
+    if (value === null || typeof value === "undefined") {
+      delete member.status[info.year][month];
+    } else {
+      member.status[info.year][month] = value;
+    }
+  });
+  return true;
+}
+
+function handleMidtransCreateQris_(e) {
+  validateWriteAuth_(null, e);
+  var year = getTargetYear_(null, e);
+  ensureYearData_(year);
+  var data = readYearData_(year);
+
+  var amount = parseInt((e && e.parameter && e.parameter.amount) || "0", 10);
+  if (!amount || amount < 1) {
+    return jsonResponse_({ ok: false, error: "Nominal Midtrans tidak valid." });
+  }
+
+  var orderId = String((e && e.parameter && e.parameter.order_id) || "").trim();
+  if (!orderId) {
+    orderId = "KAS-" + year + "-" + Utilities.getUuid().slice(0, 8).toUpperCase();
+  }
+
+  var info = {
+    id: String((e && e.parameter && e.parameter.member_id) || ""),
+    nama: String((e && e.parameter && e.parameter.member_name) || ""),
+    kat: String((e && e.parameter && e.parameter.kat) || "DRIVER").toUpperCase(),
+    year: String(year),
+    months: parseMidtransMonths_((e && e.parameter && e.parameter.months) || "")
+  };
+
+  if (!info.id || !info.months.length) {
+    return jsonResponse_({ ok: false, error: "Data anggota/bulan tidak lengkap." });
+  }
+
+  var config = getMidtransConfig_();
+
+  var payload = {
+    payment_type: "qris",
+    transaction_details: {
+      order_id: orderId,
+      gross_amount: amount
+    }
+  };
+
+  var headers = {
+    Accept: "application/json",
+    Authorization: buildMidtransAuthHeader_(config.serverKey)
+  };
+  if (config.notificationUrl) {
+    headers["X-Override-Notification"] = config.notificationUrl;
+  }
+
+  var response = UrlFetchApp.fetch(config.baseUrl + "/v2/charge", {
+    method: "post",
+    contentType: "application/json",
+    headers: headers,
+    muteHttpExceptions: true,
+    payload: JSON.stringify(payload)
+  });
+
+  var raw = response.getContentText();
+  var parsed = {};
+  try {
+    parsed = JSON.parse(raw || "{}");
+  } catch (err) {
+    return jsonResponse_({ ok: false, error: "Respon Midtrans tidak valid." });
+  }
+
+  if (String(parsed.status_code) !== "201") {
+    return jsonResponse_({ ok: false, error: parsed.status_message || "Gagal membuat QRIS Midtrans." });
+  }
+
+  var qrUrl = "";
+  if (parsed.actions && parsed.actions.length) {
+    for (var i = 0; i < parsed.actions.length; i++) {
+      if (parsed.actions[i] && parsed.actions[i].name === "generate-qr-code") {
+        qrUrl = parsed.actions[i].url;
+        break;
+      }
+    }
+  }
+
+  applyMemberStatusUpdate_(data, info, "pending");
+  appendLog_(data, "SYSTEM", "IURAN", info.kat + " - " + info.nama + " - " +
+    info.months.map(function (m) { return (m < 10 ? "0" + m : "" + m) + "/" + year; }).join(", ") +
+    " - [⏳ - PENDING QRIS " + orderId + "]");
+  writeYearData_(year, data);
+
+  var pending = getMidtransPendingPayments_();
+  pending[orderId] = info;
+  saveMidtransPendingPayments_(pending);
+
+  return jsonResponse_({
+    ok: true,
+    order_id: orderId,
+    transaction_id: parsed.transaction_id || "",
+    qr_url: qrUrl,
+    qr_string: parsed.qr_string || "",
+    status: parsed.transaction_status || "pending"
+  });
+}
+
+function handleMidtransCreateQrisFromPost_(payload, e) {
+  var params = payload || {};
+  var year = getTargetYear_(payload, e);
+  var query = {
+    parameter: {
+      amount: params.amount,
+      order_id: params.order_id,
+      member_id: params.member_id,
+      member_name: params.member_name,
+      kat: params.kat,
+      months: params.months,
+      editor: params.editor,
+      deviceId: params.deviceId,
+      authToken: params.authToken
+    }
+  };
+  return handleMidtransCreateQris_(query);
+}
+
+function handleMidtransNotification_(e, payload) {
+  var body = payload || {};
+  if (!payload && e && e.postData && e.postData.contents) {
+    try {
+      body = JSON.parse(e.postData.contents || "{}");
+    } catch (err) {
+      body = {};
+    }
+  }
+
+  var orderId = String(body.order_id || "").trim();
+  if (!orderId) {
+    return jsonResponse_({ ok: false, error: "order_id kosong." });
+  }
+
+  var config = getMidtransConfig_();
+  var signature = String(body.signature_key || "").trim();
+  if (signature) {
+    var base = String(body.order_id || "") + String(body.status_code || "") + String(body.gross_amount || "") + config.serverKey;
+    var expected = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_512, base)
+      .map(function (b) {
+        var s = (b < 0 ? b + 256 : b).toString(16);
+        return s.length === 1 ? "0" + s : s;
+      })
+      .join("");
+    if (expected !== signature) {
+      return jsonResponse_({ ok: false, error: "Signature Midtrans tidak valid." });
+    }
+  }
+
+  var result = applyMidtransStatusUpdate_(orderId, body);
+  return jsonResponse_(result);
+}
+
+function applyMidtransStatusUpdate_(orderId, body) {
+  var pending = getMidtransPendingPayments_();
+  var info = pending[orderId];
+  if (!info) {
+    return { ok: true, ignored: true };
+  }
+
+  var year = info.year;
+  ensureYearData_(year);
+  var data = readYearData_(year);
+
+  var status = String(body.transaction_status || "").toLowerCase();
+  if (status === "settlement" || status === "capture") {
+    applyMemberStatusUpdate_(data, info, true);
+    appendLog_(data, "SYSTEM", "IURAN", info.kat + " - " + info.nama + " - " +
+      info.months.map(function (m) { return (m < 10 ? "0" + m : "" + m) + "/" + year; }).join(", ") +
+      " - [✅ - LUNAS MIDTRANS]");
+    delete pending[orderId];
+  } else if (status === "expire" || status === "cancel" || status === "deny") {
+    applyMemberStatusUpdate_(data, info, null);
+    appendLog_(data, "SYSTEM", "IURAN", info.kat + " - " + info.nama + " - " +
+      info.months.map(function (m) { return (m < 10 ? "0" + m : "" + m) + "/" + year; }).join(", ") +
+      " - [❌ - MIDTRANS " + status.toUpperCase() + "]");
+    delete pending[orderId];
+  } else {
+    saveMidtransPendingPayments_(pending);
+    return { ok: true, status: status, pending: true };
+  }
+
+  writeYearData_(year, data);
+  saveMidtransPendingPayments_(pending);
+  return { ok: true, status: status };
+}
+
+function handleMidtransStatus_(e) {
+  validateWriteAuth_(null, e);
+  var orderId = String((e && e.parameter && e.parameter.order_id) || "").trim();
+  if (!orderId) {
+    return jsonResponse_({ ok: false, error: "order_id kosong." });
+  }
+
+  var config = getMidtransConfig_();
+  var response = UrlFetchApp.fetch(config.baseUrl + "/v2/" + encodeURIComponent(orderId) + "/status", {
+    method: "get",
+    headers: {
+      Accept: "application/json",
+      Authorization: buildMidtransAuthHeader_(config.serverKey)
+    },
+    muteHttpExceptions: true
+  });
+
+  var raw = response.getContentText();
+  var parsed = {};
+  try {
+    parsed = JSON.parse(raw || "{}");
+  } catch (err) {
+    return jsonResponse_({ ok: false, error: "Respon Midtrans tidak valid." });
+  }
+
+  var result = applyMidtransStatusUpdate_(orderId, parsed);
+  result.midtrans = {
+    status: parsed.transaction_status || "",
+    status_code: parsed.status_code || "",
+    order_id: parsed.order_id || orderId
+  };
+  return jsonResponse_(result);
 }
 
 function adminSetScriptProperties_(entries) {

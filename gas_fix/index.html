@@ -168,7 +168,7 @@
         .no-col { width: 45px !important; height: 40px; position: sticky !important; left: 0; z-index: 10; background-color: var(--bg-card) !important; color: var(--text-main) !important; font-size: 11px !important; font-weight: 800; text-align: center; vertical-align: middle !important; border-radius: 7px; }
         .name-col { width: 180px !important; position: sticky !important; left: 45px; z-index: 9; background-color: var(--accent-color) !important; color: var(--text-main) !important; font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase; vertical-align: middle !important; padding-left: 12px !important; border-right: 2px solid var(--accent-color) !important; border-left: 2px solid var(--accent-color) !important; border-radius: 7px; }
 
-        .status-toggle { background: var(--accent-color); width: 60px !important; border-radius: 7px; text-align: center; vertical-align: middle; cursor: pointer; font-size: 11px !important; }
+        .status-toggle { background: var(--accent-color); width: 60px !important; border-radius: 7px; text-align: center; vertical-align: middle; cursor: default; font-size: 11px !important; }
         /* ===== ANIMASI HOVER CEKLIST ===== */
 
 .status-toggle {
@@ -179,15 +179,15 @@
 
 /* Hover efek glow + naik */
 .status-toggle:hover {
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 0 10px var(--accent-color);
-    cursor: pointer;
+    transform: none;
+    box-shadow: none;
+    cursor: default;
 }
 
 /* Klik efek tekan */
 .status-toggle:active {
-    transform: scale(0.92);
-    box-shadow: 0 0 16px var(--accent-color);
+    transform: none;
+    box-shadow: none;
 }
 
 /* Ripple luxury effect */
@@ -207,10 +207,16 @@
 
 /* Saat hover muncul cahaya */
 .status-toggle:hover::after {
-    width: 120%;
-    height: 120%;
-    opacity: 0;
+    width: 0;
+    height: 0;
+    opacity: 0.25;
 }
+        .auth-helper-text {
+            color: var(--text-muted) !important;
+        }
+        .auth-helper-text b {
+            color: var(--accent-color);
+        }
         .text-center-force { font-size: 12px; color: var(--text-main) !important; text-align: center; border-radius: 6px; vertical-align: middle !important; width: 60px !important; }
 
         thead th.no-col { z-index: 40 !important; top: 0; left: 0; background: var(--gradient) !important; }
@@ -308,7 +314,160 @@
         .form-control { background-color: var(--input-bg, #1a1a1a) !important; color: var(--text-main) !important; border: 1px solid var(--accent-color) !important; font-size: 12px !important;}
         .modal-content { background: var(--bg-card); border: 2px solid var(--accent-color); color: var(--text-main); border-radius: 15px; }
         .col-aksi-center { text-align: center !important; vertical-align: middle !important; padding: 0 !important; width: 30px; border-radius: 6px !important; }
+        .col-bayar { width: 88px !important; min-width: 88px !important; text-align: center !important; vertical-align: middle !important; padding: 4px !important; }
         .btn-aksi-trigger { cursor: pointer; color: var(--text-main); font-weight: bold; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; background: transparent !important; }
+        .btn-bayar-mini {
+            border: 1px solid var(--accent-color);
+            background: var(--gradient);
+            color: #000;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            border-radius: 8px;
+            padding: 6px 10px;
+            min-width: 72px;
+            line-height: 1;
+            white-space: nowrap;
+        }
+        .btn-bayar-mini:hover {
+            filter: brightness(1.03);
+            transform: translateY(-1px);
+        }
+        .payment-option-wrap { display: flex; gap: 8px; }
+        .payment-option-btn {
+            flex: 1;
+            border: 1px solid var(--accent-color);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--accent-color);
+            font-weight: 900;
+            text-transform: uppercase;
+            padding: 12px 10px;
+        }
+        .payment-option-btn:hover {
+            background: var(--gradient);
+            color: #000;
+        }
+        .payment-option-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            background: transparent;
+            color: var(--text-muted);
+            border-color: var(--border-color);
+        }
+        .month-option-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+        .month-option-btn {
+            border: 1px solid var(--accent-color);
+            border-radius: 10px;
+            background: transparent;
+            color: var(--accent-color);
+            font-weight: 900;
+            text-transform: uppercase;
+            padding: 10px 6px;
+            font-size: 10px;
+        }
+        .month-option-btn:hover {
+            background: var(--gradient);
+            color: #000;
+        }
+        .month-option-btn.active {
+            background: var(--gradient);
+            color: #000;
+            box-shadow: 0 0 0 1px rgba(0,0,0,0.12) inset;
+        }
+        .month-option-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            background: transparent;
+            color: var(--text-muted);
+            border-color: var(--border-color);
+        }
+        .payment-month-summary {
+            margin-top: 14px;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--accent-color);
+            background: rgba(255,255,255,0.03);
+        }
+        .payment-month-summary .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 700;
+        }
+        .payment-month-summary .value {
+            font-size: 16px;
+            font-weight: 900;
+            color: var(--accent-color);
+        }
+        .qris-preview-box {
+            border: 1px solid var(--accent-color);
+            border-radius: 16px;
+            padding: 16px;
+            background: rgba(255,255,255,0.03);
+        }
+        .qris-code-image {
+            width: 100%;
+            max-width: 260px;
+            aspect-ratio: 1 / 1;
+            object-fit: contain;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            background: #fff;
+            padding: 10px;
+        }
+        .qris-empty-state {
+            width: 100%;
+            max-width: 260px;
+            aspect-ratio: 1 / 1;
+            border-radius: 14px;
+            border: 1px dashed var(--accent-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 16px;
+            color: var(--text-muted);
+            margin: 0 auto;
+        }
+        .qris-amount {
+            font-size: 1.4rem;
+            font-weight: 900;
+            color: var(--accent-color);
+        }
+        .qris-detail {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        .qris-proof-input {
+            margin-top: 14px;
+        }
+        .qris-proof-preview {
+            width: 100%;
+            max-width: 260px;
+            max-height: 260px;
+            object-fit: contain;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.04);
+            padding: 8px;
+        }
+        .qris-proof-status {
+            font-size: 12px;
+            margin-top: 10px;
+            color: var(--text-muted);
+        }
+        .qris-proof-status.success {
+            color: #10b981;
+        }
+        .qris-proof-status.error {
+            color: #ef4444;
+        }
         .card-saldo { background: var(--card-inner); border: 2px solid var(--accent-color); border-radius: 12px; padding: 10px 6px; text-align: center; min-height: 70px; display: flex; flex-direction: column; justify-content: center; }
         .card-saldo .label { font-size: 12px; font-weight: 900; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
         .card-saldo .value { font-size: 12px; font-weight: 900; color: var(--text-main); }
@@ -825,7 +984,7 @@ body.tab-transaksi .nav-tabs {
                                 <th class="no-col">NO</th><th class="name-col">NAMA ANGGOTA</th>
                                 <th>JAN</th><th>FEB</th><th>MAR</th><th>APR</th><th>MEI</th><th>JUN</th>
                                 <th>JUL</th><th>AGU</th><th>SEP</th><th>OKT</th><th>NOV</th><th>DES</th>
-                                <th class="text-center-force">TOTAL</th><th class="text-center-force">AKSI</th>
+                                <th class="text-center-force">TOTAL</th><th class="text-center-force">AKSI</th><th class="text-center-force">BAYAR</th>
                             </tr>
                         </thead>
                         <tbody id="grid-driver"></tbody>
@@ -843,7 +1002,7 @@ body.tab-transaksi .nav-tabs {
                                 <th class="no-col">NO</th><th class="name-col">NAMA ANGGOTA</th>
                                 <th>JAN</th><th>FEB</th><th>MAR</th><th>APR</th><th>MEI</th><th>JUN</th>
                                 <th>JUL</th><th>AGU</th><th>SEP</th><th>OKT</th><th>NOV</th><th>DES</th>
-                                <th class="text-center-force">TOTAL</th><th class="text-center-force">AKSI</th>
+                                <th class="text-center-force">TOTAL</th><th class="text-center-force">AKSI</th><th class="text-center-force">BAYAR</th>
                             </tr>
                         </thead>
                         <tbody id="grid-helper"></tbody>
@@ -926,7 +1085,10 @@ body.tab-transaksi .nav-tabs {
         <div class="menu-item p-2 px-3" onclick="doEdit()">✏️ Edit</div>
         <div class="menu-item p-2 px-3 text-danger" onclick="doDelete()">🗑️ Hapus</div>
     </div>
-    <div class="modal" id="modalVerifyAuth" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">VERIFIKASI OTORITAS</h6><input type="text" id="inputEditorName" name="editor_verifikasi" class="form-control mb-1 text-center" placeholder="Nama Editor Terdaftar" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handleEditorNameInput(this)" onkeydown="if(event.key==='Enter'){focusPinAfterEditorCheck();}"><div class="small text-muted mb-1 lh-sm">Hanya editor yang tercatat di sheet <b>allowed_editors</b> yang bisa edit, tambah, atau hapus data.</div><input type="password" id="inputPIN" name="pin_verifikasi" class="form-control mb-3 text-center" maxlength="4" placeholder="PIN 4 DIGIT" inputmode="numeric" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handlePinInput(this)" onkeydown="if(event.key==='Enter'){submitAuth();}"></div></div></div></div>
+    <div class="modal" id="modalVerifyAuth" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">VERIFIKASI OTORITAS</h6><input type="text" id="inputEditorName" name="editor_verifikasi" class="form-control mb-2 text-center" placeholder="Nama Editor Terdaftar" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handleEditorNameInput(this)" onkeydown="if(event.key==='Enter'){focusPinAfterEditorCheck();}"><input type="password" id="inputPIN" name="pin_verifikasi" class="form-control mb-2 text-center" maxlength="4" placeholder="PIN 4 DIGIT" inputmode="numeric" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handlePinInput(this)" onkeydown="if(event.key==='Enter'){submitAuth();}"><div class="small auth-helper-text lh-sm">Hanya editor yang tercatat di sheet <b>allowed_editors</b> yang bisa edit, tambah, atau hapus data.</div></div></div></div></div>
+    <div class="modal fade" id="modalPilihPembayaran" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PILIH PEMBAYARAN</h6><div class="payment-option-wrap"><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('CASH')">CASH</button><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('QRIS')">QRIS</button></div></div></div></div></div>
+    <div class="modal fade" id="modalPilihBulanBayar" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-2">PILIH BULAN</h6><div class="small text-muted mb-3">Bisa pilih lebih dari satu bulan. Bulan yang sudah lunas dinonaktifkan.</div><div id="payment-month-grid" class="month-option-grid"></div><div class="payment-month-summary"><div class="label" id="payment-month-selection-label">Belum ada bulan dipilih</div><div class="value" id="payment-month-total">Rp 0</div></div><button type="button" id="payment-month-continue" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueMemberPayment()" disabled>LANJUT</button></div></div></div></div>
+    <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PEMBAYARAN QRIS</h6><div class="qris-preview-box"><div id="qris-code-wrap" class="mb-3"></div><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-3" id="qris-amount-value">Rp 0</div><div class="qris-detail">Kode QRIS ditampilkan otomatis dari file yang ada di project, dan nominal sudah terisi sesuai bulan yang dipilih.</div><div id="qris-midtrans-status" class="qris-detail mt-2" style="display:none;">Status Midtrans: MENUNGGU PEMBAYARAN</div><button type="button" id="qris-midtrans-check" class="btn btn-dark w-100 fw-bold mt-3" style="display:none;" onclick="checkMidtransStatus()">CEK STATUS MIDTRANS</button><div class="qris-proof-input" id="qris-proof-wrap"><input type="file" id="qris-proof-file" class="form-control" accept="image/*" onchange="handleQrisProofUpload(this)"><div class="qris-detail mt-2">Upload bukti transfer agar pembayaran QRIS bisa divalidasi sebelum verifikasi otoritas.</div><div id="qris-proof-preview-wrap" class="mt-3" style="display:none;"><img id="qris-proof-preview" class="qris-proof-preview" alt="Preview bukti transfer"></div><div id="qris-proof-status" class="qris-proof-status">Belum ada bukti transfer.</div></div></div><button type="button" id="qris-continue-btn" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueQrisToAuth()" disabled>LANJUT VERIFIKASI PEMBAYARAN</button></div></div></div></div>
     <div class="modal" id="modalCatat" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><h6 class="fw-bold mb-3">CATAT TRANSAKSI</h6><form id="fTrans"><input type="hidden" id="editTransIdx"><select name="tp" id="trans_type" class="form-select mb-2"><option value="Pemasukan">Pemasukan</option><option value="Pengeluaran" selected>Pengeluaran</option></select><input type="date" name="d" id="trans_date" class="form-control mb-2" required><input type="text" name="p" id="trans_source" class="form-control mb-2" placeholder="Sumber/Penerima"><input type="text" name="k" id="trans_ket" class="form-control mb-2" placeholder="Keterangan"><input type="number" name="v" id="trans_val" class="form-control mb-3" placeholder="Nominal" required><button type="submit" class="btn btn-warning w-100 fw-bold">SIMPAN</button></form></div></div></div></div>
     <div class="modal fade" id="modalTambah" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><h6 class="fw-bold mb-3">TAMBAH/EDIT ANGGOTA</h6><form id="fAdd"><input type="hidden" id="editMemberId"><textarea id="n" class="form-control mb-2" style="height:100px" placeholder="Nama Anggota"></textarea><select id="k" class="form-select mb-3"><option value="Driver">Driver</option><option value="Helper">Helper</option></select><button type="submit" class="btn btn-warning w-100 fw-bold">SIMPAN</button></form></div></div></div></div>
     <div class="modal fade" id="modalKonfirmasiHapus" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><div class="mb-3" style="font-size: 2rem;">⚠️</div><h6 class="fw-bold mb-4">Hapus data ini?</h6><div class="d-flex gap-2"><button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal">BATAL</button><button type="button" class="btn btn-danger w-100" onclick="eksekusiHapus()">HAPUS</button></div></div></div></div></div>
@@ -968,6 +1130,14 @@ body.tab-transaksi .nav-tabs {
         let fcmState = { enabled: false, config: null, vapidKey: "", messaging: null, swReg: null };
         let authInProgress = false;
         let pendingAction = null, pendingParams = null, currentContext = { type: '', id: null, idx: null };
+        let pendingPaymentContext = null;
+        const PAYMENT_MONTH_NAMES = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
+        const MONTHLY_IURAN_AMOUNT = 25000;
+        let pendingIuranPaymentData = null;
+        const QRIS_STATIC_IMAGE_URL = '/QRIS.jpg';
+        const QRIS_STATIC_PAYLOAD = '';
+        const MIDTRANS_QRIS_ENABLED = true;
+        let pendingQrisProofData = null;
         const cloneData = (v) => JSON.parse(JSON.stringify(v));
 
         function showNotif(message, type = 'info') {
@@ -1574,10 +1744,6 @@ body.tab-transaksi .nav-tabs {
                 menu.style.display = 'block'; menu.style.top = (rect.bottom + window.scrollY) + 'px'; menu.style.left = (rect.left + window.scrollX - 80) + 'px';
                 return;
             }
-            if (e.target.closest('.status-toggle')) {
-                const tgl = e.target.closest('.status-toggle');
-                askAuth('toggle', { id: tgl.dataset.id, kat: tgl.dataset.kat, y: tgl.dataset.y, m: tgl.dataset.m });
-            }
             if (!e.target.closest('#actionMenu')) menu.style.display = 'none';
         };
 
@@ -1787,7 +1953,50 @@ body.tab-transaksi .nav-tabs {
                 document.getElementById('fTrans').reset(); 
                 document.getElementById('editTransIdx').value = ""; 
                 document.getElementById('trans_date').valueAsDate = new Date(); 
+                pendingIuranPaymentData = null;
+                const nominalInput = document.getElementById('trans_val');
+                if (nominalInput) nominalInput.readOnly = false;
                 bootstrap.Modal.getOrCreateInstance('#modalCatat').show(); 
+            } else if (action === 'bayar_member') {
+                const selectedYear = Number(params && params.y) || CURRENT_YEAR;
+                const selectedMonths = Array.isArray(params && params.selectedMonths)
+                    ? params.selectedMonths.map(Number).filter(m => m >= 1 && m <= 12).sort((a, b) => a - b)
+                    : [Number(params && params.selectedMonth) || Number(params && params.m) || 0].filter(m => m >= 1 && m <= 12);
+                const selectedMonth = selectedMonths[0] || 0;
+                const paymentMethod = String(params && params.method ? params.method : 'CASH').toUpperCase();
+                const now = new Date();
+                const defaultMonth = selectedMonth >= 1 && selectedMonth <= 12
+                    ? selectedMonth
+                    : (selectedYear === now.getFullYear() ? now.getMonth() + 1 : 1);
+                const defaultDay = (selectedYear === now.getFullYear() && defaultMonth === (now.getMonth() + 1))
+                    ? now.getDate()
+                    : 1;
+                const defaultDate = `${selectedYear}-${String(defaultMonth).padStart(2, '0')}-${String(defaultDay).padStart(2, '0')}`;
+
+                document.getElementById('fTrans').reset();
+                document.getElementById('editTransIdx').value = "";
+                document.getElementById('trans_type').value = 'Pemasukan';
+                document.getElementById('trans_date').value = defaultDate;
+                document.getElementById('trans_source').value = (params && params.nama ? params.nama : '').toUpperCase();
+                const monthLabel = selectedMonths.map(month => PAYMENT_MONTH_NAMES[month - 1]).filter(Boolean).join(', ');
+                document.getElementById('trans_ket').value = `BAYAR IURAN ${params && params.kat ? String(params.kat).toUpperCase() : 'ANGGOTA'} ${monthLabel} VIA ${paymentMethod}`.trim();
+                const nominalInput = document.getElementById('trans_val');
+                if (nominalInput) {
+                    nominalInput.value = selectedMonths.length * MONTHLY_IURAN_AMOUNT;
+                    nominalInput.readOnly = true;
+                }
+                pendingIuranPaymentData = {
+                    id: params && params.id,
+                    nama: params && params.nama,
+                    kat: params && params.kat,
+                    y: selectedYear,
+                    months: selectedMonths,
+                    method: paymentMethod
+                };
+                bootstrap.Modal.getOrCreateInstance('#modalCatat').show();
+                setTimeout(() => {
+                    if (nominalInput) nominalInput.focus();
+                }, 150);
             } else if (action === 'download') {
                 downloadFinancialPDF();
             } else if (action === 'edit_trigger') {
@@ -1804,7 +2013,11 @@ body.tab-transaksi .nav-tabs {
                     document.getElementById('trans_date').value = t.d;
                     document.getElementById('trans_source').value = t.p; 
                     document.getElementById('trans_ket').value = t.k;
-                    document.getElementById('trans_val').value = t.v;
+                    const nominalInput = document.getElementById('trans_val');
+                    if (nominalInput) {
+                        nominalInput.value = t.v;
+                        nominalInput.readOnly = false;
+                    }
                     bootstrap.Modal.getOrCreateInstance('#modalCatat').show();
                 }
             } else if (action === 'delete_trigger') {
@@ -1826,7 +2039,7 @@ body.tab-transaksi .nav-tabs {
                 if (!p) return null;
                 if (!p.status) p.status = {};
                 if (!p.status[params.y]) p.status[params.y] = {};
-                const previousValue = !!p.status[params.y][params.m];
+                const previousValue = p.status[params.y][params.m] === true;
                 const nextValue = Object.prototype.hasOwnProperty.call(options, 'nextValue') ? !!options.nextValue : !previousValue;
                 p.status[params.y][params.m] = nextValue;
                 const result = { person: p, previousValue, isLunas: nextValue };
@@ -1844,6 +2057,353 @@ body.tab-transaksi .nav-tabs {
                 return result;
             }
         }
+
+        function openPaymentOptions(params) {
+            pendingPaymentContext = params ? { ...params, selectedMonths: [] } : null;
+            bootstrap.Modal.getOrCreateInstance('#modalPilihPembayaran').show();
+        }
+
+        function updatePaymentMonthSummary() {
+            const totalEl = document.getElementById('payment-month-total');
+            const labelEl = document.getElementById('payment-month-selection-label');
+            const continueBtn = document.getElementById('payment-month-continue');
+            const selectedMonths = Array.isArray(pendingPaymentContext && pendingPaymentContext.selectedMonths)
+                ? pendingPaymentContext.selectedMonths.slice().sort((a, b) => a - b)
+                : [];
+            const total = selectedMonths.length * MONTHLY_IURAN_AMOUNT;
+
+            if (labelEl) {
+                labelEl.innerText = selectedMonths.length
+                    ? `Bulan dipilih: ${selectedMonths.map(month => PAYMENT_MONTH_NAMES[month - 1]).join(', ')}`
+                    : 'Belum ada bulan dipilih';
+            }
+            if (totalEl) totalEl.innerText = `Rp ${total.toLocaleString('id-ID')}`;
+            if (continueBtn) {
+                const method = String(pendingPaymentContext && pendingPaymentContext.method ? pendingPaymentContext.method : '').toUpperCase();
+                continueBtn.disabled = selectedMonths.length === 0;
+                continueBtn.innerText = method === 'CASH' ? 'LANJUT KE VERIFIKASI' : `LANJUT PEMBAYARAN ${method || ''}`.trim();
+            }
+        }
+
+        async function createMidtransQrisPayment(params) {
+            const session = getAuthSession() || {};
+            const writeToken = String(session.writeToken || '').trim();
+            if (!writeToken) throw new Error('Verifikasi otoritas dulu untuk membuat QRIS Midtrans.');
+
+            const orderId = String(params.orderId || `KAS-${params.year}-${Date.now()}`);
+            const query = new URLSearchParams({
+                action: 'midtransCreateQris',
+                amount: String(params.amount || 0),
+                order_id: orderId,
+                member_id: String(params.id || ''),
+                member_name: String(params.nama || ''),
+                kat: String(params.kat || 'DRIVER'),
+                months: Array.isArray(params.months) ? params.months.join(',') : '',
+                year: String(params.year || ''),
+                editor: String(session.editor || getActiveEditor() || ''),
+                deviceId: String(session.deviceId || getDeviceId() || ''),
+                authToken: writeToken
+            });
+
+            const data = await fetchJson(`${CLOUD_URL}?${query.toString()}`, 15000);
+            return {
+                orderId,
+                qrUrl: data.qr_url || '',
+                qrString: data.qr_string || '',
+                status: data.status || 'pending'
+            };
+        }
+
+        async function checkMidtransStatus() {
+            if (!pendingPaymentContext || !pendingPaymentContext.orderId) return;
+            const session = getAuthSession() || {};
+            const writeToken = String(session.writeToken || '').trim();
+            if (!writeToken) {
+                showNotif('Verifikasi otoritas dulu untuk cek status.', 'error');
+                return;
+            }
+
+            const statusEl = document.getElementById('qris-midtrans-status');
+            try {
+                if (statusEl) statusEl.innerText = 'Status Midtrans: MEMERIKSA...';
+                const params = new URLSearchParams({
+                    action: 'midtransStatus',
+                    order_id: String(pendingPaymentContext.orderId),
+                    editor: String(session.editor || getActiveEditor() || ''),
+                    deviceId: String(session.deviceId || getDeviceId() || ''),
+                    authToken: writeToken
+                });
+                const data = await fetchJson(`${CLOUD_URL}?${params.toString()}`, 15000);
+                const status = String((data && data.midtrans && data.midtrans.status) || (data && data.status) || '').toUpperCase();
+                if (statusEl) statusEl.innerText = `Status Midtrans: ${status || 'UNKNOWN'}`;
+                if (status === 'SETTLEMENT' || status === 'CAPTURE') {
+                    showNotif('Pembayaran Midtrans sudah lunas.', 'success');
+                    await loadFromCloudSmart(CURRENT_YEAR, { forceRender: true });
+                    const modal = bootstrap.Modal.getInstance('#modalQrisPayment');
+                    if (modal) modal.hide();
+                } else if (status === 'EXPIRE' || status === 'CANCEL' || status === 'DENY') {
+                    showNotif(`Pembayaran Midtrans ${status}.`, 'error');
+                    await loadFromCloudSmart(CURRENT_YEAR, { forceRender: true });
+                }
+            } catch (err) {
+                if (statusEl) statusEl.innerText = 'Status Midtrans: GAGAL CEK';
+                showNotif((err && err.message) ? err.message : 'Gagal cek status Midtrans.', 'error');
+            }
+        }
+
+        function getQrisImageUrl() {
+            const runtimeConfig = window.DELTA8_QRIS_CONFIG || {};
+            const configuredImage = String(runtimeConfig.imageUrl || QRIS_STATIC_IMAGE_URL || '').trim();
+            if (configuredImage) return configuredImage;
+
+            const payload = String(runtimeConfig.payload || QRIS_STATIC_PAYLOAD || '').trim();
+            if (!payload) return '';
+
+            return `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(payload)}`;
+        }
+
+        function renderQrisCode(customUrl, qrString) {
+            const wrap = document.getElementById('qris-code-wrap');
+            if (!wrap) return;
+            let imageUrl = String(customUrl || '').trim();
+            if (!imageUrl && qrString) {
+                imageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(String(qrString || '').trim())}`;
+            }
+            if (!imageUrl) {
+                imageUrl = getQrisImageUrl();
+            }
+            if (imageUrl) {
+                wrap.innerHTML = `<img src="${imageUrl}" alt="Kode QRIS" class="qris-code-image">`;
+            } else {
+                wrap.innerHTML = `<div class="qris-empty-state">Kode QRIS belum dikonfigurasi. Isi <b>window.DELTA8_QRIS_CONFIG</b> atau set URL/payload QRIS di script.</div>`;
+            }
+        }
+
+        function resetQrisProofState() {
+            pendingQrisProofData = null;
+            const input = document.getElementById('qris-proof-file');
+            const previewWrap = document.getElementById('qris-proof-preview-wrap');
+            const preview = document.getElementById('qris-proof-preview');
+            const status = document.getElementById('qris-proof-status');
+            const continueBtn = document.getElementById('qris-continue-btn');
+            if (input) input.value = '';
+            if (preview) preview.removeAttribute('src');
+            if (previewWrap) previewWrap.style.display = 'none';
+            if (status) {
+                status.className = 'qris-proof-status';
+                status.innerText = 'Belum ada bukti transfer.';
+            }
+            if (continueBtn) continueBtn.disabled = true;
+        }
+
+        function setQrisProofStatus(message, type = '') {
+            const status = document.getElementById('qris-proof-status');
+            if (!status) return;
+            status.className = `qris-proof-status${type ? ` ${type}` : ''}`;
+            status.innerText = message;
+        }
+
+        function handleQrisProofUpload(input) {
+            const file = input && input.files && input.files[0];
+            const previewWrap = document.getElementById('qris-proof-preview-wrap');
+            const preview = document.getElementById('qris-proof-preview');
+            const continueBtn = document.getElementById('qris-continue-btn');
+
+            pendingQrisProofData = null;
+            if (continueBtn) continueBtn.disabled = true;
+            if (preview) preview.removeAttribute('src');
+            if (previewWrap) previewWrap.style.display = 'none';
+
+            if (!file) {
+                setQrisProofStatus('Belum ada bukti transfer.', '');
+                return;
+            }
+
+            if (!String(file.type || '').startsWith('image/')) {
+                setQrisProofStatus('File harus berupa gambar bukti transfer.', 'error');
+                return;
+            }
+
+            if (file.size < 15 * 1024) {
+                setQrisProofStatus('Ukuran gambar terlalu kecil untuk bukti transfer yang jelas.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                const image = new Image();
+                image.onload = () => {
+                    if (image.width < 200 || image.height < 200) {
+                        setQrisProofStatus('Resolusi bukti transfer terlalu rendah. Upload gambar yang lebih jelas.', 'error');
+                        return;
+                    }
+
+                    if (preview) preview.src = String(reader.result || '');
+                    if (previewWrap) previewWrap.style.display = 'block';
+                    pendingQrisProofData = {
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        width: image.width,
+                        height: image.height
+                    };
+                    setQrisProofStatus(`Bukti transfer valid secara visual dasar: ${file.name}`, 'success');
+                    if (continueBtn) continueBtn.disabled = false;
+                };
+                image.onerror = () => {
+                    setQrisProofStatus('Gagal membaca gambar bukti transfer.', 'error');
+                };
+                image.src = String(reader.result || '');
+            };
+            reader.onerror = () => {
+                setQrisProofStatus('Gagal memproses file bukti transfer.', 'error');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function openQrisPaymentModal(params) {
+            const amount = Array.isArray(params && params.selectedMonths)
+                ? params.selectedMonths.length * MONTHLY_IURAN_AMOUNT
+                : 0;
+            const memberInfo = document.getElementById('qris-member-info');
+            const monthInfo = document.getElementById('qris-month-info');
+            const amountInfo = document.getElementById('qris-amount-value');
+            const proofWrap = document.getElementById('qris-proof-wrap');
+            const continueBtn = document.getElementById('qris-continue-btn');
+            const isMidtrans = String(params && params.provider || '').toLowerCase() === 'midtrans';
+            const statusEl = document.getElementById('qris-midtrans-status');
+            const statusBtn = document.getElementById('qris-midtrans-check');
+
+            if (memberInfo) memberInfo.innerText = `${String(params && params.kat || '').toUpperCase()} - ${String(params && params.nama || '').toUpperCase()}`;
+            if (monthInfo) monthInfo.innerText = (params && Array.isArray(params.selectedMonths) && params.selectedMonths.length)
+                ? `Bulan: ${params.selectedMonths.map(month => PAYMENT_MONTH_NAMES[month - 1]).join(', ')}`
+                : 'Bulan belum dipilih';
+            if (amountInfo) amountInfo.innerText = `Rp ${amount.toLocaleString('id-ID')}`;
+
+            pendingPaymentContext = params || null;
+            renderQrisCode(params && params.qrUrl, params && params.qrString);
+            resetQrisProofState();
+            if (proofWrap) {
+                proofWrap.style.display = isMidtrans ? 'none' : '';
+            }
+            if (statusEl) {
+                statusEl.style.display = isMidtrans ? '' : 'none';
+                statusEl.innerText = 'Status Midtrans: MENUNGGU PEMBAYARAN';
+            }
+            if (statusBtn) {
+                statusBtn.style.display = isMidtrans ? '' : 'none';
+            }
+            if (continueBtn) {
+                continueBtn.disabled = !isMidtrans;
+                continueBtn.innerText = isMidtrans ? 'TUTUP' : 'LANJUT VERIFIKASI PEMBAYARAN';
+            }
+            bootstrap.Modal.getOrCreateInstance('#modalQrisPayment').show();
+        }
+
+        function chooseMemberPayment(method) {
+            if (!pendingPaymentContext) return;
+            const paymentModal = bootstrap.Modal.getInstance('#modalPilihPembayaran') || bootstrap.Modal.getOrCreateInstance('#modalPilihPembayaran');
+            paymentModal.hide();
+            pendingPaymentContext = { ...pendingPaymentContext, method, selectedMonths: [] };
+            const monthGrid = document.getElementById('payment-month-grid');
+            if (!monthGrid) return;
+
+            const selectedYear = Number(pendingPaymentContext.y) || CURRENT_YEAR;
+            const personList = pendingPaymentContext.kat === 'Driver' ? DB_DRIVER : DB_HELPER;
+            const person = personList.find(x => x.id == pendingPaymentContext.id);
+            const statusMap = (person && person.status && person.status[selectedYear]) ? person.status[selectedYear] : {};
+
+            monthGrid.innerHTML = PAYMENT_MONTH_NAMES.map((monthName, idx) => {
+                const month = idx + 1;
+                const paid = statusMap[month] === true || statusMap[month] === 'pending';
+                return `<button type="button" id="payment-month-${month}" class="month-option-btn" ${paid ? 'disabled' : ''} onclick="togglePaymentMonthSelection(${month})">${monthName}</button>`;
+            }).join('');
+
+            const paidCount = Object.values(statusMap).filter(v => v === true || v === 'pending').length;
+            if (paidCount >= 12) {
+                showNotif('Semua bulan untuk anggota ini sudah dibayar.', 'error');
+                pendingPaymentContext = null;
+                return;
+            }
+
+            updatePaymentMonthSummary();
+            bootstrap.Modal.getOrCreateInstance('#modalPilihBulanBayar').show();
+        }
+
+        function togglePaymentMonthSelection(month) {
+            if (!pendingPaymentContext) return;
+            const normalizedMonth = Number(month);
+            if (!Array.isArray(pendingPaymentContext.selectedMonths)) pendingPaymentContext.selectedMonths = [];
+            const selectedMonths = pendingPaymentContext.selectedMonths;
+            const existingIndex = selectedMonths.indexOf(normalizedMonth);
+            if (existingIndex >= 0) selectedMonths.splice(existingIndex, 1);
+            else selectedMonths.push(normalizedMonth);
+            const button = document.getElementById(`payment-month-${normalizedMonth}`);
+            if (button) button.classList.toggle('active', existingIndex < 0);
+            updatePaymentMonthSummary();
+        }
+
+        function continueMemberPayment() {
+            if (!pendingPaymentContext || !Array.isArray(pendingPaymentContext.selectedMonths) || pendingPaymentContext.selectedMonths.length === 0) return;
+            const monthModal = bootstrap.Modal.getInstance('#modalPilihBulanBayar') || bootstrap.Modal.getOrCreateInstance('#modalPilihBulanBayar');
+            monthModal.hide();
+            const params = {
+                ...pendingPaymentContext,
+                selectedMonths: pendingPaymentContext.selectedMonths.slice().sort((a, b) => a - b)
+            };
+            pendingPaymentContext = null;
+            if (String(params.method || '').toUpperCase() === 'QRIS') {
+                if (MIDTRANS_QRIS_ENABLED) {
+                    const amount = params.selectedMonths.length * MONTHLY_IURAN_AMOUNT;
+                    showNotif('Menyiapkan QRIS Midtrans...', 'info');
+                    createMidtransQrisPayment({
+                        id: params.id,
+                        nama: params.nama,
+                        kat: params.kat,
+                        year: params.y || CURRENT_YEAR,
+                        months: params.selectedMonths,
+                        amount
+                    }).then((resp) => {
+                        openQrisPaymentModal({
+                            ...params,
+                            provider: 'midtrans',
+                            orderId: resp.orderId,
+                            qrUrl: resp.qrUrl,
+                            qrString: resp.qrString
+                        });
+                    }).catch((err) => {
+                        showNotif((err && err.message) ? err.message : 'Gagal membuat QRIS Midtrans.', 'error');
+                    });
+                    return;
+                }
+                pendingPaymentContext = params;
+                openQrisPaymentModal(params);
+                return;
+            }
+            askAuth('bayar_member', params);
+        }
+
+        function continueQrisToAuth() {
+            const qrisModal = bootstrap.Modal.getInstance('#modalQrisPayment') || bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
+            qrisModal.hide();
+            if (!pendingPaymentContext) return;
+            if (String(pendingPaymentContext.provider || '').toLowerCase() === 'midtrans') {
+                pendingPaymentContext = null;
+                return;
+            }
+            if (!pendingQrisProofData) return;
+            const params = { ...pendingPaymentContext };
+            pendingPaymentContext = null;
+            askAuth('bayar_member', params);
+        }
+
+        window.openPaymentOptions = openPaymentOptions;
+        window.handleQrisProofUpload = handleQrisProofUpload;
+        window.togglePaymentMonthSelection = togglePaymentMonthSelection;
+        window.continueMemberPayment = continueMemberPayment;
+        window.continueQrisToAuth = continueQrisToAuth;
+        window.checkMidtransStatus = checkMidtransStatus;
+        window.chooseMemberPayment = chooseMemberPayment;
 
         async function loadFromCloud(year = CURRENT_YEAR, options = {}) {
 
@@ -2211,9 +2771,9 @@ async function syncAll() {
         const yStatus = p?.status?.[y];
         if (!yStatus) return;
 
-        Object.keys(yStatus).forEach(mm => {
-            if (yStatus[mm] && (m === 0 || parseInt(mm, 10) === m)) cIuran += 25000;
-        });
+            Object.keys(yStatus).forEach(mm => {
+                if (yStatus[mm] === true && (m === 0 || parseInt(mm, 10) === m)) cIuran += 25000;
+            });
     });
 
     const drawRows = (list, kat) => {
@@ -2224,18 +2784,21 @@ async function syncAll() {
             if (!p.status) p.status = {};
             let count = 0;
             const cellParts = [];
+            const safeName = String(p.nama || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
             for (let i = 1; i <= 12; i++) {
-                const s = !!p.status[y]?.[i];
-                if (s) count++;
+                const rawStatus = p.status[y]?.[i];
+                const isPaid = rawStatus === true;
+                const isPending = rawStatus === 'pending';
+                if (isPaid) count++;
 
                 cellParts.push(
-                    `<td class="status-toggle ${s ? 'text-success' : 'text-danger'}" data-id="${p.id}" data-kat="${kat}" data-y="${y}" data-m="${i}">${s ? '&#9989;' : '&#10060;'}</td>`
+                    `<td class="status-toggle ${isPaid ? 'text-success' : (isPending ? 'text-warning' : 'text-danger')}" data-id="${p.id}" data-kat="${kat}" data-y="${y}" data-m="${i}">${isPaid ? '&#9989;' : (isPending ? '&#9203;' : '&#10060;')}</td>`
                 );
             }
 
             rows.push(
-                `<tr><td class="no-col">${idx + 1}</td><td class="name-col">${p.nama}</td>${cellParts.join('')}<td class="text-center-force">${count}/12</td><td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="member" data-id="${p.id}">&#8942;</div></td></tr>`
+                `<tr><td class="no-col">${idx + 1}</td><td class="name-col">${p.nama}</td>${cellParts.join('')}<td class="text-center-force">${count}/12</td><td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="member" data-id="${p.id}">&#8942;</div></td><td class="col-bayar"><button type="button" class="btn-bayar-mini" onclick="openPaymentOptions({ id: '${p.id}', nama: '${safeName}', kat: '${kat}', y: ${y}, m: ${m} })">BAYAR</button></td></tr>`
             );
         });
 
@@ -2302,7 +2865,7 @@ async function syncAll() {
         Object.keys(p.status).forEach(yy => {
             if (parseInt(yy) < y) {
                 Object.keys(p.status[yy]).forEach(mm => {
-                    if (p.status[yy][mm]) {
+                    if (p.status[yy][mm] === true) {
                         saldo += 25000;
                     }
                 });
@@ -2325,7 +2888,7 @@ async function syncAll() {
                 if (!p.status) return;
                 Object.keys(p.status).forEach(sy => {
                     Object.keys(p.status[sy]).forEach(sm => {
-                        if ((parseInt(sy, 10) < y || (parseInt(sy, 10) === y && parseInt(sm, 10) < m)) && p.status[sy][sm]) tIn += 25000;
+                        if ((parseInt(sy, 10) < y || (parseInt(sy, 10) === y && parseInt(sm, 10) < m)) && p.status[sy][sm] === true) tIn += 25000;
                     });
                 });
             });
@@ -2391,8 +2954,34 @@ async function syncAll() {
         addLog("Tambah transaksi",
             `${d.tp.toUpperCase()} - ${d.p} - ${d.k || '-'} - ${formatLogCurrency(d.v)}`
         );
+
+        if (pendingQrisProofData && pendingIuranPaymentData && pendingIuranPaymentData.method === 'QRIS') {
+            addLog(
+                "Validasi transfer",
+                `QRIS - ${String(pendingIuranPaymentData.nama || '').toUpperCase()} - ${pendingIuranPaymentData.months.map(month => `${String(month).padStart(2, '0')}/${pendingIuranPaymentData.y}`).join(', ')} - Bukti: ${pendingQrisProofData.name} (${pendingQrisProofData.width}x${pendingQrisProofData.height})`
+            );
+        }
+
+        if (pendingIuranPaymentData && Array.isArray(pendingIuranPaymentData.months) && pendingIuranPaymentData.months.length) {
+            const targetList = pendingIuranPaymentData.kat === 'Driver' ? DB_DRIVER : DB_HELPER;
+            const person = targetList.find(x => x.id == pendingIuranPaymentData.id);
+            if (person) {
+                if (!person.status) person.status = {};
+                if (!person.status[pendingIuranPaymentData.y]) person.status[pendingIuranPaymentData.y] = {};
+                const isQris = pendingIuranPaymentData.method === 'QRIS';
+                pendingIuranPaymentData.months.forEach(month => {
+                    person.status[pendingIuranPaymentData.y][month] = isQris ? 'pending' : true;
+                });
+                addLog(
+                    "Iuran",
+                    `${String(pendingIuranPaymentData.kat || '').toUpperCase()} - ${String(pendingIuranPaymentData.nama || '').toUpperCase()} - ${pendingIuranPaymentData.months.map(month => `${String(month).padStart(2, '0')}/${pendingIuranPaymentData.y}`).join(', ')} - [${isQris ? "⏳ - PENDING VERIFIKASI QRIS" : "✅ - LUNAS VIA " + pendingIuranPaymentData.method}]`
+                );
+            }
+        }
     }
 
+    pendingQrisProofData = null;
+    pendingIuranPaymentData = null;
     syncAll();
     bootstrap.Modal.getInstance('#modalCatat').hide();
 };
