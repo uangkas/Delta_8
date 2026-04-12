@@ -1066,6 +1066,10 @@ body.tab-transaksi .nav-tabs {
                     <div class="luxe-dropdown" onclick="toggleCol('midtrans-config-col')"><span>âš™ KONFIGURASI MIDTRANS</span><span id="midtrans-config-icon">â–¼</span></div>
                     <div id="midtrans-config-col" class="luxe-content">
                         <div class="config-field">
+                            <label>Info Script</label>
+                            <div id="midtrans-script-info" class="small text-muted">Klik CEK PROPERTIES untuk melihat Script ID & status key.</div>
+                        </div>
+                        <div class="config-field">
                             <label>Admin Token</label>
                             <input type="password" id="midtrans-admin-token" class="form-control" placeholder="API_SECRET">
                         </div>
@@ -1085,6 +1089,7 @@ body.tab-transaksi .nav-tabs {
                             <input type="text" id="midtrans-notification-url" class="form-control" placeholder="Kosongkan untuk default GAS URL">
                         </div>
                         <div class="config-actions">
+                            <button class="btn btn-dark w-100" onclick="checkAdminScriptInfo()">CEK PROPERTIES</button>
                             <button class="btn btn-dark w-100" onclick="loadMidtransConfig()">LOAD</button>
                             <button class="btn btn-warning w-100 fw-bold" onclick="saveMidtransConfig()">SIMPAN</button>
                         </div>
@@ -2271,6 +2276,37 @@ body.tab-transaksi .nav-tabs {
             }
         }
 
+        async function checkAdminScriptInfo() {
+            const tokenInput = document.getElementById('midtrans-admin-token');
+            const token = String((tokenInput && tokenInput.value) || getMidtransAdminToken()).trim();
+            if (!token) {
+                showNotif('Admin token diperlukan untuk cek properties.', 'error');
+                return;
+            }
+            setMidtransAdminToken(token);
+            if (tokenInput) tokenInput.value = token;
+
+            const infoEl = document.getElementById('midtrans-script-info');
+            if (infoEl) infoEl.innerText = 'Memeriksa properties...';
+            try {
+                const data = await fetchJson(`${CLOUD_URL}?action=adminScriptInfo&authToken=${encodeURIComponent(token)}`, 15000);
+                const info = data && data.data ? data.data : {};
+                const midtrans = info.midtrans || {};
+                const parts = [];
+                if (info.scriptId) parts.push(`Script ID: ${info.scriptId}`);
+                if (info.webAppUrl) parts.push(`WebApp URL: ${info.webAppUrl}`);
+                parts.push(`API_SECRET: ${info.hasApiSecret ? 'ADA' : 'TIDAK ADA'}`);
+                parts.push(`Midtrans ServerKey (Script): ${midtrans.hasServerKeyScript ? 'ADA' : 'TIDAK ADA'}`);
+                parts.push(`Midtrans ServerKey (User): ${midtrans.hasServerKeyUser ? 'ADA' : 'TIDAK ADA'}`);
+                parts.push(`Env: ${(midtrans.env || 'sandbox').toUpperCase()}`);
+                if (infoEl) infoEl.innerText = parts.join(' | ');
+                showNotif('Info script berhasil dimuat.', 'success');
+            } catch (err) {
+                if (infoEl) infoEl.innerText = 'Gagal memeriksa properties.';
+                showNotif((err && err.message) ? err.message : 'Gagal cek properties.', 'error');
+            }
+        }
+
         function saveMidtransConfig() {
             const tokenInput = document.getElementById('midtrans-admin-token');
             const serverKeyInput = document.getElementById('midtrans-server-key');
@@ -2574,6 +2610,7 @@ body.tab-transaksi .nav-tabs {
         window.checkMidtransStatus = checkMidtransStatus;
         window.loadMidtransConfig = loadMidtransConfig;
         window.saveMidtransConfig = saveMidtransConfig;
+        window.checkAdminScriptInfo = checkAdminScriptInfo;
         window.chooseMemberPayment = chooseMemberPayment;
 
         async function loadFromCloud(year = CURRENT_YEAR, options = {}) {

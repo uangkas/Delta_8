@@ -102,6 +102,7 @@ function doGet(e) {
     if (action === "midtransCreateQris") return handleMidtransCreateQris_(e);
     if (action === "midtransStatus") return handleMidtransStatus_(e);
     if (action === "midtransConfigGet") return handleMidtransConfigGet_(e);
+    if (action === "adminScriptInfo") return handleAdminScriptInfo_(e);
 
     // Serve index.html for browser UI.
     return HtmlService.createHtmlOutputFromFile("index")
@@ -2641,6 +2642,32 @@ function handleMidtransConfigSet_(payload, e) {
     scriptProps.setProperty(MIDTRANS_NOTIFICATION_URL_PROP, notificationUrl);
   }
   return jsonResponse_({ ok: true });
+}
+
+function handleAdminScriptInfo_(e) {
+  validateAdminAuth_((e && e.parameter && e.parameter.authToken) || "");
+  var scriptProps = PropertiesService.getScriptProperties();
+  var userProps = PropertiesService.getUserProperties();
+  var scriptId = "";
+  var webUrl = "";
+  try {
+    scriptId = ScriptApp.getScriptId();
+    webUrl = ScriptApp.getService().getUrl() || "";
+  } catch (_) {}
+
+  return jsonResponse_({
+    ok: true,
+    data: {
+      scriptId: scriptId,
+      webAppUrl: webUrl,
+      hasApiSecret: !!scriptProps.getProperty(API_SECRET_KEY),
+      midtrans: {
+        hasServerKeyScript: !!scriptProps.getProperty(MIDTRANS_SERVER_KEY_PROP),
+        hasServerKeyUser: !!userProps.getProperty(MIDTRANS_SERVER_KEY_PROP),
+        env: (scriptProps.getProperty(MIDTRANS_ENV_PROP) || userProps.getProperty(MIDTRANS_ENV_PROP) || "sandbox")
+      }
+    }
+  });
 }
 
 function adminSetScriptProperties_(entries) {
