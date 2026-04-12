@@ -2285,9 +2285,18 @@ function sanitizeJsonpCallback_(callback) {
 }
 
 function getMidtransConfig_() {
-  var props = PropertiesService.getScriptProperties();
-  var serverKey = String(props.getProperty(MIDTRANS_SERVER_KEY_PROP) || "").trim();
-  var env = String(props.getProperty(MIDTRANS_ENV_PROP) || "sandbox").trim().toLowerCase();
+  var scriptProps = PropertiesService.getScriptProperties();
+  var userProps = PropertiesService.getUserProperties();
+  var serverKey = String(
+    scriptProps.getProperty(MIDTRANS_SERVER_KEY_PROP) ||
+      userProps.getProperty(MIDTRANS_SERVER_KEY_PROP) ||
+      ""
+  ).trim();
+  var env = String(
+    scriptProps.getProperty(MIDTRANS_ENV_PROP) ||
+      userProps.getProperty(MIDTRANS_ENV_PROP) ||
+      "sandbox"
+  ).trim().toLowerCase();
   if (!serverKey) {
     throw new Error("Midtrans server key belum diset di Script Properties.");
   }
@@ -2297,7 +2306,11 @@ function getMidtransConfig_() {
     ? "https://api.midtrans.com"
     : "https://api.sandbox.midtrans.com";
 
-  var notificationUrl = String(props.getProperty(MIDTRANS_NOTIFICATION_URL_PROP) || "").trim();
+  var notificationUrl = String(
+    scriptProps.getProperty(MIDTRANS_NOTIFICATION_URL_PROP) ||
+      userProps.getProperty(MIDTRANS_NOTIFICATION_URL_PROP) ||
+      ""
+  ).trim();
   if (!notificationUrl) {
     try {
       notificationUrl = ScriptApp.getService().getUrl() + "?action=midtransNotification";
