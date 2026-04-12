@@ -1138,6 +1138,7 @@ body.tab-transaksi .nav-tabs {
         const QRIS_STATIC_PAYLOAD = '';
         const MIDTRANS_QRIS_ENABLED = true;
         let pendingQrisProofData = null;
+        let pendingMidtransQrisParams = null;
         const cloneData = (v) => JSON.parse(JSON.stringify(v));
 
         function showNotif(message, type = 'info') {
@@ -1997,6 +1998,31 @@ body.tab-transaksi .nav-tabs {
                 setTimeout(() => {
                     if (nominalInput) nominalInput.focus();
                 }, 150);
+            } else if (action === 'midtrans_qris') {
+                if (!pendingMidtransQrisParams) return;
+                const params = { ...pendingMidtransQrisParams };
+                pendingMidtransQrisParams = null;
+                const amount = params.selectedMonths.length * MONTHLY_IURAN_AMOUNT;
+                showNotif('Menyiapkan QRIS Midtrans...', 'info');
+                createMidtransQrisPayment({
+                    id: params.id,
+                    nama: params.nama,
+                    kat: params.kat,
+                    year: params.y || CURRENT_YEAR,
+                    months: params.selectedMonths,
+                    amount
+                }).then((resp) => {
+                    openQrisPaymentModal({
+                        ...params,
+                        provider: 'midtrans',
+                        orderId: resp.orderId,
+                        qrUrl: resp.qrUrl,
+                        qrString: resp.qrString
+                    });
+                }).catch((err) => {
+                    const msg = (err && err.message) ? err.message : 'Gagal membuat QRIS Midtrans.';
+                    showNotif(msg, 'error');
+                });
             } else if (action === 'download') {
                 downloadFinancialPDF();
             } else if (action === 'edit_trigger') {
@@ -2355,6 +2381,13 @@ body.tab-transaksi .nav-tabs {
             if (String(params.method || '').toUpperCase() === 'QRIS') {
                 if (MIDTRANS_QRIS_ENABLED) {
                     const amount = params.selectedMonths.length * MONTHLY_IURAN_AMOUNT;
+                    const session = getAuthSession() || {};
+                    const writeToken = String(session.writeToken || '').trim();
+                    if (!writeToken) {
+                        pendingMidtransQrisParams = params;
+                        askAuth('midtrans_qris');
+                        return;
+                    }
                     showNotif('Menyiapkan QRIS Midtrans...', 'info');
                     createMidtransQrisPayment({
                         id: params.id,
@@ -2372,7 +2405,13 @@ body.tab-transaksi .nav-tabs {
                             qrString: resp.qrString
                         });
                     }).catch((err) => {
-                        showNotif((err && err.message) ? err.message : 'Gagal membuat QRIS Midtrans.', 'error');
+                        const message = (err && err.message) ? err.message : 'Gagal membuat QRIS Midtrans.';
+                        if (message.toLowerCase().includes('write session')) {
+                            pendingMidtransQrisParams = params;
+                            askAuth('midtrans_qris');
+                            return;
+                        }
+                        showNotif(message, 'error');
                     });
                     return;
                 }
