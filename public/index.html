@@ -2131,13 +2131,27 @@ body.tab-transaksi .nav-tabs {
                 authToken: writeToken
             });
 
-            const data = await fetchJson(`${CLOUD_URL}?${query.toString()}`, 15000);
-            return {
-                orderId,
-                qrUrl: data.qr_url || '',
-                qrString: data.qr_string || '',
-                status: data.status || 'pending'
-            };
+            const url = `${CLOUD_URL}?${query.toString()}`;
+            let lastErr = null;
+            for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                    const data = await fetchJson(url, 30000);
+                    return {
+                        orderId,
+                        qrUrl: data.qr_url || '',
+                        qrString: data.qr_string || '',
+                        status: data.status || 'pending'
+                    };
+                } catch (err) {
+                    lastErr = err;
+                    const message = String((err && err.message) || '').toLowerCase();
+                    const shouldRetry =
+                        message.includes('backend tidak merespons') ||
+                        message.includes('gagal menghubungi backend');
+                    if (!shouldRetry) break;
+                }
+            }
+            throw lastErr || new Error('Gagal menghubungi backend.');
         }
 
         async function checkMidtransStatus() {
