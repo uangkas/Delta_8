@@ -101,6 +101,7 @@ function doGet(e) {
     if (action === "backupProperties") return handleBackupProperties_(e);
     if (action === "midtransCreateQris") return handleMidtransCreateQris_(e);
     if (action === "midtransStatus") return handleMidtransStatus_(e);
+    if (action === "midtransConfigGet") return handleMidtransConfigGet_(e);
 
     // Serve index.html for browser UI.
     return HtmlService.createHtmlOutputFromFile("index")
@@ -134,6 +135,9 @@ function doPost(e) {
     }
     if (payload.action === "adminSetScriptProperties") {
       return handleAdminSetScriptProperties_(payload, e);
+    }
+    if (payload.action === "midtransConfigSet") {
+      return handleMidtransConfigSet_(payload, e);
     }
     if (payload.action === "midtransCreateQris") {
       return handleMidtransCreateQrisFromPost_(payload, e);
@@ -2607,6 +2611,36 @@ function handleMidtransStatus_(e) {
     order_id: parsed.order_id || orderId
   };
   return jsonResponse_(result);
+}
+
+function handleMidtransConfigGet_(e) {
+  validateAdminAuth_((e && e.parameter && e.parameter.authToken) || "");
+  var scriptProps = PropertiesService.getScriptProperties();
+  var userProps = PropertiesService.getUserProperties();
+  var out = {
+    serverKey: scriptProps.getProperty(MIDTRANS_SERVER_KEY_PROP) || userProps.getProperty(MIDTRANS_SERVER_KEY_PROP) || "",
+    env: scriptProps.getProperty(MIDTRANS_ENV_PROP) || userProps.getProperty(MIDTRANS_ENV_PROP) || "sandbox",
+    notificationUrl: scriptProps.getProperty(MIDTRANS_NOTIFICATION_URL_PROP) || userProps.getProperty(MIDTRANS_NOTIFICATION_URL_PROP) || ""
+  };
+  return jsonResponse_({ ok: true, data: out });
+}
+
+function handleMidtransConfigSet_(payload, e) {
+  validateAdminPayloadAuth_(payload, e);
+  var scriptProps = PropertiesService.getScriptProperties();
+  var serverKey = String((payload && payload.serverKey) || "").trim();
+  var env = String((payload && payload.env) || "").trim().toLowerCase();
+  var notificationUrl = String((payload && payload.notificationUrl) || "").trim();
+  if (!serverKey) {
+    return jsonResponse_({ ok: false, error: "serverKey wajib diisi." });
+  }
+  if (env !== "production" && env !== "sandbox") env = "sandbox";
+  scriptProps.setProperty(MIDTRANS_SERVER_KEY_PROP, serverKey);
+  scriptProps.setProperty(MIDTRANS_ENV_PROP, env);
+  if (notificationUrl) {
+    scriptProps.setProperty(MIDTRANS_NOTIFICATION_URL_PROP, notificationUrl);
+  }
+  return jsonResponse_({ ok: true });
 }
 
 function adminSetScriptProperties_(entries) {
