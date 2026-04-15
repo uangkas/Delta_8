@@ -1081,6 +1081,7 @@ body.tab-transaksi .nav-tabs {
                         <button class="btn-hapus-final" onclick="clearLogs()">HAPUS SEMUA LOG SISTEM</button>
                     </div>
 
+                    <div id="admin-payment-wrap" style="display:none;">
                     <div class="luxe-dropdown" onclick="toggleCol('admin-payment-col')"><span>ðŸ›¡ PANEL ADMIN PEMBAYARAN</span><span id="admin-icon">â–¼</span></div>
                     <div id="admin-payment-col" class="luxe-content">
                         <div class="d-flex flex-wrap gap-2 mb-3">
@@ -1094,6 +1095,7 @@ body.tab-transaksi .nav-tabs {
                                 <tbody id="admin-payment-list"></tbody>
                             </table>
                         </div>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -1606,6 +1608,8 @@ body.tab-transaksi .nav-tabs {
 
             const systemArea = document.getElementById('system-area');
             if (systemArea) systemArea.style.display = '';
+            const adminWrap = document.getElementById('admin-payment-wrap');
+            if (adminWrap) adminWrap.style.display = '';
 
             const logCol = document.getElementById('log-col');
             if (logCol) logCol.classList.remove('show');
@@ -2761,6 +2765,7 @@ async function syncAll() {
     const drawRows = (list, kat) => {
         const rows = [];
         const sorted = [...list].sort((a, b) => a.nama.localeCompare(b.nama));
+        const adminMode = isAdminMode();
 
         sorted.forEach((p, idx) => {
             if (!p.status) p.status = {};
@@ -2780,7 +2785,7 @@ async function syncAll() {
             }
 
             rows.push(
-                `<tr><td class="no-col">${idx + 1}</td><td class="name-col">${p.nama}</td>${cellParts.join('')}<td class="text-center-force">${count}/12</td><td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="member" data-id="${p.id}">&#8942;</div></td><td class="col-bayar"><button type="button" class="btn-bayar-mini" onclick="openPaymentOptions({ id: '${p.id}', nama: '${safeName}', kat: '${kat}', y: ${y}, m: ${m} })">BAYAR</button></td></tr>`
+                `<tr><td class="no-col">${idx + 1}</td><td class="name-col">${p.nama}</td>${cellParts.join('')}<td class="text-center-force">${count}/12</td>${adminMode ? `<td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="member" data-id="${p.id}">&#8942;</div></td>` : ''}<td class="col-bayar"><button type="button" class="btn-bayar-mini" onclick="openPaymentOptions({ id: '${p.id}', nama: '${safeName}', kat: '${kat}', y: ${y}, m: ${m} })">BAYAR</button></td></tr>`
             );
         });
 
@@ -2791,6 +2796,7 @@ async function syncAll() {
     gh.innerHTML = drawRows(DB_HELPER, 'Helper');
 
     const transaksiRows = [];
+    const adminMode = isAdminMode();
     for (let idx = 0; idx < DB_TRANSAKSI.length; idx++) {
         const x = DB_TRANSAKSI[idx];
         const yy = parseInt((x.d || '').slice(0, 4), 10);
@@ -2804,10 +2810,28 @@ async function syncAll() {
         else cOut += x.v;
 
         transaksiRows.push(
-            `<tr><td class="text-center">${x.d.split('-').reverse().join('/')}</td><td class="fw-bold ${x.tp === 'Pemasukan' ? 'text-success' : 'text-danger'} text-center">${x.tp.toUpperCase()}</td><td>${x.p}</td><td>${x.k || '-'}</td><td class="fw-bold text-end">Rp ${x.v.toLocaleString()}</td><td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="trans" data-idx="${idx}">&#8942;</div></td></tr>`
+            `<tr><td class="text-center">${x.d.split('-').reverse().join('/')}</td><td class="fw-bold ${x.tp === 'Pemasukan' ? 'text-success' : 'text-danger'} text-center">${x.tp.toUpperCase()}</td><td>${x.p}</td><td>${x.k || '-'}</td><td class="fw-bold text-end">Rp ${x.v.toLocaleString()}</td>${adminMode ? `<td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="trans" data-idx="${idx}">&#8942;</div></td>` : ''}</tr>`
         );
     }
     hi.innerHTML = transaksiRows.join('');
+
+    const memberActionHeaders = document.querySelectorAll('#driver thead th:nth-child(16), #helper thead th:nth-child(16)');
+    memberActionHeaders.forEach((th) => {
+        th.style.display = adminMode ? '' : 'none';
+    });
+    document.querySelectorAll('#grid-driver tr, #grid-helper tr').forEach((row) => {
+        const actionCell = row.children[15];
+        if (actionCell) actionCell.style.display = adminMode ? '' : 'none';
+    });
+
+    const transaksiActionHeader = document.querySelector('#table-transaksi thead th.col-aks');
+    if (transaksiActionHeader) transaksiActionHeader.style.display = adminMode ? '' : 'none';
+    document.querySelectorAll('#hist tr').forEach((row) => {
+        const actionCell = row.lastElementChild;
+        if (actionCell && actionCell.querySelector('.btn-aksi-trigger')) {
+            actionCell.style.display = adminMode ? '' : 'none';
+        }
+    });
 
     const logRows = [];
     for (let i = 0; i < Math.min(50, DB_LOGS.length); i++) {
