@@ -20,6 +20,14 @@ $syncMap = @(
         )
     },
     @{
+        Source = "admin.html"
+        Destinations = @(
+            "gas_fix\admin.html"
+            "public\admin.html"
+            "public_admin\index.html"
+        )
+    },
+    @{
         Source = "firebase-messaging-sw.js"
         Destinations = @(
             "public\firebase-messaging-sw.js"

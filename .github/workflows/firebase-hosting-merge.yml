@@ -5,9 +5,11 @@ on:
     branches:
       - main
     paths:
+      - "admin.html"
       - "index.html"
       - "firebase-messaging-sw.js"
       - "public/**"
+      - "public_admin/**"
       - "firebase.json"
       - ".firebaserc"
       - ".firebaseignore"
@@ -16,9 +18,11 @@ on:
       - ".github/workflows/firebase-hosting-pull-request.yml"
   pull_request:
     paths:
+      - "admin.html"
       - "index.html"
       - "firebase-messaging-sw.js"
       - "public/**"
+      - "public_admin/**"
       - "firebase.json"
       - ".firebaserc"
       - ".firebaseignore"
@@ -48,3 +52,20 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: kas-delta-8
           channelId: live
+          target: frontend
+
+  deploy_live_admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync root sources into hosting folder
+        shell: pwsh
+        run: ./scripts/sync-deploy-sources.ps1
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0.10.0
+        with:
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: kas-delta-8
+          channelId: live
+          target: admin

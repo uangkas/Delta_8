@@ -1086,6 +1086,17 @@ body.tab-transaksi .nav-tabs {
                         <button class="btn-unduh-final" onclick="askAuth('download')">📥 UNDUH LAPORAN PDF</button>
                         <button class="btn-hapus-final" onclick="clearLogs()">HAPUS SEMUA LOG SISTEM</button>
                     </div>
+
+                    <div class="luxe-dropdown" onclick="toggleCol('admin-payment-col')"><span>ðŸ›¡ PANEL ADMIN PEMBAYARAN</span><span id="admin-icon">â–¼</span></div>
+                    <div id="admin-payment-col" class="luxe-content">
+                        <div id="admin-payment-summary" class="small text-muted mb-3">Belum ada pembayaran QRIS yang menunggu verifikasi.</div>
+                        <div class="table-responsive" style="max-height: 320px;">
+                            <table class="table" id="admin-payment-table">
+                                <thead><tr><th>ANGGOTA</th><th>BULAN</th><th>NOMINAL</th><th>STATUS</th><th>AKSI</th></tr></thead>
+                                <tbody id="admin-payment-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1111,7 +1122,7 @@ body.tab-transaksi .nav-tabs {
     <div class="modal" id="modalVerifyAuth" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">VERIFIKASI OTORITAS</h6><input type="text" id="inputEditorName" name="editor_verifikasi" class="form-control mb-2 text-center" placeholder="Nama Editor Terdaftar" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handleEditorNameInput(this)" onkeydown="if(event.key==='Enter'){focusPinAfterEditorCheck();}"><input type="password" id="inputPIN" name="pin_verifikasi" class="form-control mb-2 text-center" maxlength="4" placeholder="PIN 4 DIGIT" inputmode="numeric" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handlePinInput(this)" onkeydown="if(event.key==='Enter'){submitAuth();}"><div class="small auth-helper-text lh-sm">Hanya editor yang tercatat di sheet <b>allowed_editors</b> yang bisa edit, tambah, atau hapus data.</div></div></div></div></div>
     <div class="modal fade" id="modalPilihPembayaran" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PILIH PEMBAYARAN</h6><div class="payment-option-wrap"><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('CASH')">CASH</button><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('QRIS')">QRIS</button></div></div></div></div></div>
     <div class="modal fade" id="modalPilihBulanBayar" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-2">PILIH BULAN</h6><div class="small text-muted mb-3">Bisa pilih lebih dari satu bulan. Bulan yang sudah lunas dinonaktifkan.</div><div id="payment-month-grid" class="month-option-grid"></div><div class="payment-month-summary"><div class="label" id="payment-month-selection-label">Belum ada bulan dipilih</div><div class="value" id="payment-month-total">Rp 0</div></div><button type="button" id="payment-month-continue" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueMemberPayment()" disabled>LANJUT</button></div></div></div></div>
-    <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PEMBAYARAN QRIS</h6><div class="qris-preview-box"><div id="qris-code-wrap" class="mb-3"></div><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-3" id="qris-amount-value">Rp 0</div><div class="qris-detail">Kode QRIS ditampilkan otomatis dari file yang ada di project, dan nominal sudah terisi sesuai bulan yang dipilih.</div><div class="qris-proof-input" id="qris-proof-wrap"><input type="file" id="qris-proof-file" class="form-control" accept="image/*" onchange="handleQrisProofUpload(this)"><div class="qris-detail mt-2">Upload bukti transfer agar pembayaran QRIS bisa divalidasi sebelum verifikasi otoritas.</div><div id="qris-proof-preview-wrap" class="mt-3" style="display:none;"><img id="qris-proof-preview" class="qris-proof-preview" alt="Preview bukti transfer"></div><div id="qris-proof-status" class="qris-proof-status">Belum ada bukti transfer.</div></div></div><button type="button" id="qris-continue-btn" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueQrisToAuth()" disabled>LANJUT VERIFIKASI PEMBAYARAN</button></div></div></div></div>
+    <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PEMBAYARAN QRIS</h6><div class="qris-preview-box"><div id="qris-code-wrap" class="mb-3"></div><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-3" id="qris-amount-value">Rp 0</div><div class="qris-detail">Scan kode QRIS yang tersedia, lalu lanjutkan agar pembayaran masuk ke daftar verifikasi admin.</div></div><button type="button" id="qris-continue-btn" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueQrisToAuth()">SAYA SUDAH BAYAR</button></div></div></div></div>
     <div class="modal" id="modalCatat" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><h6 class="fw-bold mb-3">CATAT TRANSAKSI</h6><form id="fTrans"><input type="hidden" id="editTransIdx"><select name="tp" id="trans_type" class="form-select mb-2"><option value="Pemasukan">Pemasukan</option><option value="Pengeluaran" selected>Pengeluaran</option></select><input type="date" name="d" id="trans_date" class="form-control mb-2" required><input type="text" name="p" id="trans_source" class="form-control mb-2" placeholder="Sumber/Penerima"><input type="text" name="k" id="trans_ket" class="form-control mb-2" placeholder="Keterangan"><input type="number" name="v" id="trans_val" class="form-control mb-3" placeholder="Nominal" required><button type="submit" class="btn btn-warning w-100 fw-bold">SIMPAN</button></form></div></div></div></div>
     <div class="modal fade" id="modalTambah" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><h6 class="fw-bold mb-3">TAMBAH/EDIT ANGGOTA</h6><form id="fAdd"><input type="hidden" id="editMemberId"><textarea id="n" class="form-control mb-2" style="height:100px" placeholder="Nama Anggota"></textarea><select id="k" class="form-select mb-3"><option value="Driver">Driver</option><option value="Helper">Helper</option></select><button type="submit" class="btn btn-warning w-100 fw-bold">SIMPAN</button></form></div></div></div></div>
     <div class="modal fade" id="modalKonfirmasiHapus" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><div class="mb-3" style="font-size: 2rem;">⚠️</div><h6 class="fw-bold mb-4">Hapus data ini?</h6><div class="d-flex gap-2"><button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal">BATAL</button><button type="button" class="btn btn-danger w-100" onclick="eksekusiHapus()">HAPUS</button></div></div></div></div></div>
@@ -1159,7 +1170,6 @@ body.tab-transaksi .nav-tabs {
         let pendingIuranPaymentData = null;
         const QRIS_STATIC_IMAGE_URL = '/QRIS.jpg';
         const QRIS_STATIC_PAYLOAD = '';
-        let pendingQrisProofData = null;
         const cloneData = (v) => JSON.parse(JSON.stringify(v));
 
         function showNotif(message, type = 'info') {
@@ -1560,6 +1570,54 @@ body.tab-transaksi .nav-tabs {
                     window.history.replaceState({}, '', next);
                 }
             } catch (err) {}
+        }
+
+        function isAdminMode() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                return params.get('mode') === 'admin';
+            } catch (err) {
+                return false;
+            }
+        }
+
+        function applyAdminMode() {
+            if (!isAdminMode()) return;
+
+            document.body.classList.add('admin-mode');
+
+            const title = document.querySelector('.judul-utama');
+            if (title) title.innerText = 'PANEL ADMIN DELTA 8';
+
+            const hideSelectors = [
+                '#mainTabs',
+                '#member-toolbar',
+                '.tab-content',
+                '#financial-area',
+                '.footer-app'
+            ];
+            hideSelectors.forEach((selector) => {
+                document.querySelectorAll(selector).forEach((el) => {
+                    el.style.display = 'none';
+                });
+            });
+
+            const systemArea = document.getElementById('system-area');
+            if (systemArea) systemArea.style.display = '';
+
+            const logCol = document.getElementById('log-col');
+            if (logCol) logCol.classList.remove('show');
+            const exportCol = document.getElementById('export-col');
+            if (exportCol) exportCol.classList.remove('show');
+            const adminCol = document.getElementById('admin-payment-col');
+            if (adminCol) adminCol.classList.add('show');
+
+            const logIcon = document.getElementById('log-icon');
+            if (logIcon) logIcon.innerText = '▼';
+            const exportIcon = document.getElementById('export-icon');
+            if (exportIcon) exportIcon.innerText = '▼';
+            const adminIcon = document.getElementById('admin-icon');
+            if (adminIcon) adminIcon.innerText = '▲';
         }
 
         async function saveFcmToken(token) {
@@ -2077,6 +2135,98 @@ body.tab-transaksi .nav-tabs {
                     render();
                 }
                 return result;
+            } else if (action === 'admin_verify_pending' || action === 'admin_cancel_pending') {
+                const statusValue = action === 'admin_verify_pending' ? true : null;
+                const person = setMemberPaymentStatusLocal(params, statusValue);
+                if (!person) return null;
+                const monthText = (params.months || []).map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
+                addLog(
+                    "Iuran",
+                    `${String(params.kat || '').toUpperCase()} - ${person.nama} - ${monthText} - [${statusValue === true ? "✅ - LUNAS VERIFIKASI ADMIN" : "❌ - PEMBAYARAN QRIS DIBATALKAN"}]`
+                );
+                syncAll();
+                return { person, statusValue };
+            }
+        }
+
+        function setMemberPaymentStatusLocal(params, statusValue) {
+            const kat = String((params && params.kat) || '').toUpperCase();
+            const source = kat === 'HELPER' ? DB_HELPER : DB_DRIVER;
+            const person = source.find(item => String(item.id) === String(params && params.id));
+            if (!person) return null;
+            if (!person.status) person.status = {};
+            if (!person.status[params.y]) person.status[params.y] = {};
+            const months = Array.isArray(params && params.months) ? params.months : [];
+            months.forEach(month => {
+                if (statusValue === null) delete person.status[params.y][month];
+                else person.status[params.y][month] = statusValue;
+            });
+            return person;
+        }
+
+        function getPendingPaymentRows() {
+            const rows = [];
+            const collect = (list, kat) => {
+                list.forEach(person => {
+                    const yearStatus = person && person.status ? person.status[CURRENT_YEAR] : null;
+                    if (!yearStatus) return;
+                    const months = Object.keys(yearStatus)
+                        .map(Number)
+                        .filter(month => yearStatus[month] === 'pending')
+                        .sort((a, b) => a - b);
+                    if (!months.length) return;
+                    rows.push({
+                        id: person.id,
+                        nama: person.nama,
+                        kat,
+                        y: CURRENT_YEAR,
+                        months,
+                        nominal: months.length * MONTHLY_IURAN_AMOUNT
+                    });
+                });
+            };
+            collect(DB_DRIVER, 'Driver');
+            collect(DB_HELPER, 'Helper');
+            return rows.sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || '')));
+        }
+
+        function renderAdminPaymentPanel() {
+            const summaryEl = document.getElementById('admin-payment-summary');
+            const listEl = document.getElementById('admin-payment-list');
+            if (!summaryEl || !listEl) return;
+
+            const pendingRows = getPendingPaymentRows();
+            if (!pendingRows.length) {
+                summaryEl.innerText = 'Belum ada pembayaran QRIS yang menunggu verifikasi.';
+                listEl.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Tidak ada data pending.</td></tr>';
+                return;
+            }
+
+            const totalNominal = pendingRows.reduce((sum, item) => sum + Number(item.nominal || 0), 0);
+            summaryEl.innerText = `${pendingRows.length} anggota menunggu verifikasi QRIS. Total nominal Rp ${totalNominal.toLocaleString('id-ID')}.`;
+
+            listEl.innerHTML = pendingRows.map(item => {
+                const monthLabel = item.months.map(month => PAYMENT_MONTH_NAMES[month - 1]).join(', ');
+                const safePayload = encodeURIComponent(JSON.stringify(item));
+                return `<tr>
+                    <td>${String(item.kat || '').toUpperCase()} - ${item.nama}</td>
+                    <td>${monthLabel}</td>
+                    <td class="fw-bold text-end">Rp ${item.nominal.toLocaleString('id-ID')}</td>
+                    <td><span class="badge bg-warning text-dark">PENDING</span></td>
+                    <td class="text-nowrap">
+                        <button type="button" class="btn btn-sm btn-success" onclick="triggerAdminPendingAction('admin_verify_pending', '${safePayload}')">LUNASKAN</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-1" onclick="triggerAdminPendingAction('admin_cancel_pending', '${safePayload}')">BATALKAN</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function triggerAdminPendingAction(action, encodedPayload) {
+            try {
+                const params = JSON.parse(decodeURIComponent(String(encodedPayload || '')));
+                askAuth(action, params);
+            } catch (err) {
+                showNotif('Data pembayaran pending tidak valid.', 'error');
             }
         }
 
@@ -2135,88 +2285,6 @@ body.tab-transaksi .nav-tabs {
             }
         }
 
-        function resetQrisProofState() {
-            pendingQrisProofData = null;
-            const input = document.getElementById('qris-proof-file');
-            const previewWrap = document.getElementById('qris-proof-preview-wrap');
-            const preview = document.getElementById('qris-proof-preview');
-            const status = document.getElementById('qris-proof-status');
-            const continueBtn = document.getElementById('qris-continue-btn');
-            if (input) input.value = '';
-            if (preview) preview.removeAttribute('src');
-            if (previewWrap) previewWrap.style.display = 'none';
-            if (status) {
-                status.className = 'qris-proof-status';
-                status.innerText = 'Belum ada bukti transfer.';
-            }
-            if (continueBtn) continueBtn.disabled = true;
-        }
-
-        function setQrisProofStatus(message, type = '') {
-            const status = document.getElementById('qris-proof-status');
-            if (!status) return;
-            status.className = `qris-proof-status${type ? ` ${type}` : ''}`;
-            status.innerText = message;
-        }
-
-        function handleQrisProofUpload(input) {
-            const file = input && input.files && input.files[0];
-            const previewWrap = document.getElementById('qris-proof-preview-wrap');
-            const preview = document.getElementById('qris-proof-preview');
-            const continueBtn = document.getElementById('qris-continue-btn');
-
-            pendingQrisProofData = null;
-            if (continueBtn) continueBtn.disabled = true;
-            if (preview) preview.removeAttribute('src');
-            if (previewWrap) previewWrap.style.display = 'none';
-
-            if (!file) {
-                setQrisProofStatus('Belum ada bukti transfer.', '');
-                return;
-            }
-
-            if (!String(file.type || '').startsWith('image/')) {
-                setQrisProofStatus('File harus berupa gambar bukti transfer.', 'error');
-                return;
-            }
-
-            if (file.size < 15 * 1024) {
-                setQrisProofStatus('Ukuran gambar terlalu kecil untuk bukti transfer yang jelas.', 'error');
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = () => {
-                const image = new Image();
-                image.onload = () => {
-                    if (image.width < 200 || image.height < 200) {
-                        setQrisProofStatus('Resolusi bukti transfer terlalu rendah. Upload gambar yang lebih jelas.', 'error');
-                        return;
-                    }
-
-                    if (preview) preview.src = String(reader.result || '');
-                    if (previewWrap) previewWrap.style.display = 'block';
-                    pendingQrisProofData = {
-                        name: file.name,
-                        size: file.size,
-                        type: file.type,
-                        width: image.width,
-                        height: image.height
-                    };
-                    setQrisProofStatus(`Bukti transfer valid secara visual dasar: ${file.name}`, 'success');
-                    if (continueBtn) continueBtn.disabled = false;
-                };
-                image.onerror = () => {
-                    setQrisProofStatus('Gagal membaca gambar bukti transfer.', 'error');
-                };
-                image.src = String(reader.result || '');
-            };
-            reader.onerror = () => {
-                setQrisProofStatus('Gagal memproses file bukti transfer.', 'error');
-            };
-            reader.readAsDataURL(file);
-        }
-
         function openQrisPaymentModal(params) {
             const amount = Array.isArray(params && params.selectedMonths)
                 ? params.selectedMonths.length * MONTHLY_IURAN_AMOUNT
@@ -2224,7 +2292,6 @@ body.tab-transaksi .nav-tabs {
             const memberInfo = document.getElementById('qris-member-info');
             const monthInfo = document.getElementById('qris-month-info');
             const amountInfo = document.getElementById('qris-amount-value');
-            const proofWrap = document.getElementById('qris-proof-wrap');
             const continueBtn = document.getElementById('qris-continue-btn');
 
             if (memberInfo) memberInfo.innerText = `${String(params && params.kat || '').toUpperCase()} - ${String(params && params.nama || '').toUpperCase()}`;
@@ -2235,13 +2302,9 @@ body.tab-transaksi .nav-tabs {
 
             pendingPaymentContext = params || null;
             renderQrisCode(params && params.qrUrl, params && params.qrString);
-            resetQrisProofState();
-            if (proofWrap) {
-                proofWrap.style.display = '';
-            }
             if (continueBtn) {
-                continueBtn.disabled = true;
-                continueBtn.innerText = 'LANJUT VERIFIKASI PEMBAYARAN';
+                continueBtn.disabled = false;
+                continueBtn.innerText = 'SAYA SUDAH BAYAR';
             }
             bootstrap.Modal.getOrCreateInstance('#modalQrisPayment').show();
         }
@@ -2310,18 +2373,17 @@ body.tab-transaksi .nav-tabs {
             const qrisModal = bootstrap.Modal.getInstance('#modalQrisPayment') || bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
             qrisModal.hide();
             if (!pendingPaymentContext) return;
-            if (!pendingQrisProofData) return;
             const params = { ...pendingPaymentContext };
             pendingPaymentContext = null;
             askAuth('bayar_member', params);
         }
 
         window.openPaymentOptions = openPaymentOptions;
-        window.handleQrisProofUpload = handleQrisProofUpload;
         window.togglePaymentMonthSelection = togglePaymentMonthSelection;
         window.continueMemberPayment = continueMemberPayment;
         window.continueQrisToAuth = continueQrisToAuth;
         window.chooseMemberPayment = chooseMemberPayment;
+        window.triggerAdminPendingAction = triggerAdminPendingAction;
 
         async function loadFromCloud(year = CURRENT_YEAR, options = {}) {
 
@@ -2753,6 +2815,7 @@ async function syncAll() {
         );
     }
     lg.innerHTML = logRows.join('');
+    renderAdminPaymentPanel();
 
     document.getElementById('s-awal').innerText = "Rp " + sAwal.toLocaleString();
     document.getElementById('in').innerText = "Rp " + cIuran.toLocaleString();
@@ -2873,13 +2936,6 @@ async function syncAll() {
             `${d.tp.toUpperCase()} - ${d.p} - ${d.k || '-'} - ${formatLogCurrency(d.v)}`
         );
 
-        if (pendingQrisProofData && pendingIuranPaymentData && pendingIuranPaymentData.method === 'QRIS') {
-            addLog(
-                "Validasi transfer",
-                `QRIS - ${String(pendingIuranPaymentData.nama || '').toUpperCase()} - ${pendingIuranPaymentData.months.map(month => `${String(month).padStart(2, '0')}/${pendingIuranPaymentData.y}`).join(', ')} - Bukti: ${pendingQrisProofData.name} (${pendingQrisProofData.width}x${pendingQrisProofData.height})`
-            );
-        }
-
         if (pendingIuranPaymentData && Array.isArray(pendingIuranPaymentData.months) && pendingIuranPaymentData.months.length) {
             const targetList = pendingIuranPaymentData.kat === 'Driver' ? DB_DRIVER : DB_HELPER;
             const person = targetList.find(x => x.id == pendingIuranPaymentData.id);
@@ -2896,9 +2952,8 @@ async function syncAll() {
                 );
             }
         }
-    }
+        }
 
-    pendingQrisProofData = null;
     pendingIuranPaymentData = null;
     syncAll();
     bootstrap.Modal.getInstance('#modalCatat').hide();
@@ -3155,6 +3210,7 @@ async function syncAll() {
         }
         window.onload = () => {
     setTheme(localStorage.getItem('delta8_theme') || 'luxury');
+    applyAdminMode();
 
     initTahun();
 

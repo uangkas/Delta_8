@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "kas-delta-8"
+  },
+  "targets": {
+    "kas-delta-8": {
+      "hosting": {
+        "frontend": [
+          "kads-delta-8"
+        ],
+        "admin": [
+          "admin-kas"
+        ]
+      }
+    }
   }
 }

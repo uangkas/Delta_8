@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin Delta 8</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --bg-soft: #111827;
+            --card: rgba(15, 23, 42, 0.78);
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --accent: #f59e0b;
+            --border: rgba(148, 163, 184, 0.22);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(245, 158, 11, 0.18), transparent 28%),
+                radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 30%),
+                linear-gradient(180deg, var(--bg), #020617);
+            color: var(--text);
+        }
+
+        .admin-shell {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding: 18px;
+        }
+
+        .admin-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 18px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: var(--card);
+            backdrop-filter: blur(14px);
+        }
+
+        .admin-title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+        }
+
+        .admin-subtitle {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .admin-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 42px;
+            padding: 0 14px;
+            border-radius: 12px;
+            text-decoration: none;
+            border: 1px solid var(--border);
+            color: var(--text);
+            background: rgba(15, 23, 42, 0.65);
+            font-weight: 700;
+        }
+
+        .admin-link.primary {
+            background: linear-gradient(135deg, #f59e0b, #fbbf24);
+            color: #111827;
+            border-color: transparent;
+        }
+
+        .admin-frame-wrap {
+            flex: 1;
+            min-height: 70vh;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+            background: rgba(2, 6, 23, 0.85);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+        }
+
+        .admin-frame {
+            width: 100%;
+            height: calc(100vh - 142px);
+            min-height: 640px;
+            border: 0;
+            background: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .admin-shell {
+                padding: 12px;
+            }
+
+            .admin-topbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .admin-frame {
+                height: calc(100vh - 210px);
+                min-height: 560px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-shell">
+        <div class="admin-topbar">
+            <div>
+                <h1 class="admin-title">PANEL ADMIN DELTA 8</h1>
+                <p class="admin-subtitle">Link terpisah untuk verifikasi pembayaran QRIS pending dan monitoring sistem.</p>
+            </div>
+            <div class="admin-actions">
+                <a class="admin-link" id="user-site-link" href="https://kads-delta-8.web.app">HALAMAN USER</a>
+                <a class="admin-link primary" id="admin-open-link" href="https://kads-delta-8.web.app/?mode=admin&panel=admin-payment-col" target="_blank" rel="noopener noreferrer">BUKA TAB BARU</a>
+            </div>
+        </div>
+
+        <div class="admin-frame-wrap">
+            <iframe
+                class="admin-frame"
+                id="admin-frame"
+                src="https://kads-delta-8.web.app/?mode=admin&panel=admin-payment-col"
+                title="Panel Admin Delta 8">
+            </iframe>
+        </div>
+    </div>
+    <script>
+        const FRONTEND_URL = 'https://kads-delta-8.web.app';
+        const ADMIN_PANEL_URL = `${FRONTEND_URL}/?mode=admin&panel=admin-payment-col`;
+
+        const userLink = document.getElementById('user-site-link');
+        if (userLink) userLink.href = FRONTEND_URL;
+
+        const openLink = document.getElementById('admin-open-link');
+        if (openLink) openLink.href = ADMIN_PANEL_URL;
+
+        const frame = document.getElementById('admin-frame');
+        if (frame) frame.src = ADMIN_PANEL_URL;
+    </script>
+</body>
+</html>

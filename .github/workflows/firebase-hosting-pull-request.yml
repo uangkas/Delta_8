@@ -7,9 +7,11 @@ on:
       - synchronize
       - reopened
     paths:
+      - "admin.html"
       - "index.html"
       - "firebase-messaging-sw.js"
       - "public/**"
+      - "public_admin/**"
       - "firebase.json"
       - ".firebaserc"
       - ".firebaseignore"
@@ -26,7 +28,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build_and_preview:
+  build_and_preview_frontend:
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
@@ -42,3 +44,22 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: kas-delta-8
           expires: 30d
+          target: frontend
+
+  build_and_preview_admin:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync root sources into hosting folder
+        shell: pwsh
+        run: ./scripts/sync-deploy-sources.ps1
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0.10.0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: kas-delta-8
+          expires: 30d
+          target: admin
