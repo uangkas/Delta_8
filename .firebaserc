@@ -6,7 +6,7 @@
     "kas-delta-8": {
       "hosting": {
         "frontend": [
-          "kads-delta-8"
+          "kas-delta-8"
         ],
         "admin": [
           "admin-kas"
