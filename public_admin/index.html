@@ -148,6 +148,7 @@
             font-weight: 700;
             letter-spacing: 0.04em;
             transition: transform .18s ease, border-color .18s ease, background .18s ease;
+            cursor: pointer;
         }
 
         .admin-link:hover {
@@ -156,7 +157,8 @@
             background: rgba(255,255,255,0.06);
         }
 
-        .admin-link.primary {
+        .admin-link.primary,
+        .admin-link.active {
             color: #111827;
             border-color: transparent;
             background: linear-gradient(135deg, var(--gold-strong), var(--gold));
@@ -193,6 +195,11 @@
             margin: 6px 0 0;
             color: var(--muted);
             font-size: 13px;
+        }
+
+        .admin-topbar-copy strong {
+            color: var(--gold);
+            font-weight: 800;
         }
 
         .admin-pill {
@@ -277,8 +284,8 @@
 
             <section class="admin-card">
                 <div class="admin-actions">
-                    <a class="admin-link" id="user-site-link" href="https://kas-delta-8.web.app/index.html">HALAMAN USER</a>
-                    <a class="admin-link primary" id="admin-open-link" href="https://kas-delta-8.web.app/index.html?mode=admin&panel=admin-payment-col" target="_blank" rel="noopener noreferrer">BUKA TAB BARU</a>
+                    <button type="button" class="admin-link active" id="admin-panel-link">PANEL ADMIN</button>
+                    <button type="button" class="admin-link" id="user-site-link">HALAMAN USER</button>
                 </div>
             </section>
         </aside>
@@ -287,7 +294,7 @@
             <div class="admin-topbar">
                 <div>
                     <h2 class="admin-topbar-title">PANEL ADMIN PEMBAYARAN</h2>
-                    <p class="admin-topbar-copy">Tampilan difokuskan untuk verifikasi QRIS, tambah anggota, dan transaksi admin.</p>
+                    <p class="admin-topbar-copy" id="admin-view-caption">Tampilan difokuskan untuk <strong>verifikasi QRIS</strong>, tambah anggota, dan transaksi admin.</p>
                 </div>
                 <div class="admin-pill">LIVE CONTROL</div>
             </div>
@@ -306,14 +313,31 @@
         const USER_SITE_URL = 'https://kas-delta-8.web.app/index.html';
         const ADMIN_PANEL_URL = `${USER_SITE_URL}?mode=admin&panel=admin-payment-col`;
 
-        const userLink = document.getElementById('user-site-link');
-        if (userLink) userLink.href = USER_SITE_URL;
-
-        const openLink = document.getElementById('admin-open-link');
-        if (openLink) openLink.href = ADMIN_PANEL_URL;
-
         const frame = document.getElementById('admin-frame');
-        if (frame) frame.src = ADMIN_PANEL_URL;
+        const userLink = document.getElementById('user-site-link');
+        const adminLink = document.getElementById('admin-panel-link');
+        const caption = document.getElementById('admin-view-caption');
+
+        function setActiveView(mode) {
+            const isAdmin = mode === 'admin';
+            if (adminLink) adminLink.classList.toggle('active', isAdmin);
+            if (userLink) userLink.classList.toggle('active', !isAdmin);
+            if (caption) {
+                caption.innerHTML = isAdmin
+                    ? 'Tampilan difokuskan untuk <strong>verifikasi QRIS</strong>, tambah anggota, dan transaksi admin.'
+                    : 'Halaman user dimuat di panel ini dengan menu lengkap untuk <strong>tambah, edit, hapus anggota dan transaksi</strong>.';
+            }
+            if (frame) frame.src = isAdmin ? ADMIN_PANEL_URL : USER_SITE_URL;
+        }
+
+        if (adminLink) {
+            adminLink.addEventListener('click', () => setActiveView('admin'));
+        }
+        if (userLink) {
+            userLink.addEventListener('click', () => setActiveView('user'));
+        }
+
+        setActiveView('admin');
     </script>
 </body>
 </html>
