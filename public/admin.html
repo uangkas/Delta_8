@@ -132,8 +132,8 @@
                 <p class="admin-subtitle">Link terpisah untuk verifikasi pembayaran QRIS pending dan monitoring sistem.</p>
             </div>
             <div class="admin-actions">
-                <a class="admin-link" id="user-site-link" href="https://kas-delta-8.web.app">HALAMAN USER</a>
-                <a class="admin-link primary" id="admin-open-link" href="https://kas-delta-8.web.app/?mode=admin&panel=admin-payment-col" target="_blank" rel="noopener noreferrer">BUKA TAB BARU</a>
+                <a class="admin-link" id="user-site-link" href="https://kas-delta-8.web.app/index.html">HALAMAN USER</a>
+                <a class="admin-link primary" id="admin-open-link" href="https://kas-delta-8.web.app/index.html?mode=admin&panel=admin-payment-col" target="_blank" rel="noopener noreferrer">BUKA TAB BARU</a>
             </div>
         </div>
 
@@ -141,17 +141,17 @@
             <iframe
                 class="admin-frame"
                 id="admin-frame"
-                src="https://kas-delta-8.web.app/?mode=admin&panel=admin-payment-col"
+                src="https://kas-delta-8.web.app/index.html?mode=admin&panel=admin-payment-col"
                 title="Panel Admin Delta 8">
             </iframe>
         </div>
     </div>
     <script>
-        const FRONTEND_URL = 'https://kas-delta-8.web.app';
-        const ADMIN_PANEL_URL = `${FRONTEND_URL}/?mode=admin&panel=admin-payment-col`;
+        const USER_SITE_URL = 'https://kas-delta-8.web.app/index.html';
+        const ADMIN_PANEL_URL = `${USER_SITE_URL}?mode=admin&panel=admin-payment-col`;
 
         const userLink = document.getElementById('user-site-link');
-        if (userLink) userLink.href = FRONTEND_URL;
+        if (userLink) userLink.href = USER_SITE_URL;
 
         const openLink = document.getElementById('admin-open-link');
         if (openLink) openLink.href = ADMIN_PANEL_URL;
