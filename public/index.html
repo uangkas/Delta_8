@@ -989,10 +989,6 @@ body.tab-transaksi .nav-tabs {
     </select>
   </div>
 
-    <button class="btn-luxe" onclick="askAuth('tambah')">
-        + ANGGOTA
-    </button>
-
 </div>
         <!-- Tabs Content -->
         <div class="tab-content" id="mainTabsContent">
@@ -1041,9 +1037,7 @@ body.tab-transaksi .nav-tabs {
         <select id="selYear" class="custom-select-mini"></select>
     </div>
 
-    <div class="button-group-right">
-        <button class="btn-luxe" onclick="askAuth('catat')">+ TRANSAKSI</button>
-    </div>
+    <div class="button-group-right"></div>
 </div>
 
                 <div class="banner-bar">LAPORAN KEUANGAN BULANAN</div>
@@ -1089,6 +1083,10 @@ body.tab-transaksi .nav-tabs {
 
                     <div class="luxe-dropdown" onclick="toggleCol('admin-payment-col')"><span>ðŸ›¡ PANEL ADMIN PEMBAYARAN</span><span id="admin-icon">â–¼</span></div>
                     <div id="admin-payment-col" class="luxe-content">
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            <button type="button" class="btn btn-warning fw-bold" onclick="askAuth('tambah')">+ ANGGOTA</button>
+                            <button type="button" class="btn btn-dark fw-bold" onclick="askAuth('catat')">+ TRANSAKSI</button>
+                        </div>
                         <div id="admin-payment-summary" class="small text-muted mb-3">Belum ada pembayaran QRIS yang menunggu verifikasi.</div>
                         <div class="table-responsive" style="max-height: 320px;">
                             <table class="table" id="admin-payment-table">
@@ -1588,13 +1586,17 @@ body.tab-transaksi .nav-tabs {
 
             const title = document.querySelector('.judul-utama');
             if (title) title.innerText = 'PANEL ADMIN DELTA 8';
+            const status = document.getElementById('sync-status');
+            if (status) status.innerText = 'ADMIN CONTROL PANEL';
 
             const hideSelectors = [
                 '#mainTabs',
                 '#member-toolbar',
                 '.tab-content',
                 '#financial-area',
-                '.footer-app'
+                '.footer-app',
+                '.theme-container',
+                '#btn-enable-notif'
             ];
             hideSelectors.forEach((selector) => {
                 document.querySelectorAll(selector).forEach((el) => {

@@ -6,110 +6,238 @@
     <title>Panel Admin Delta 8</title>
     <style>
         :root {
-            --bg: #0f172a;
-            --bg-soft: #111827;
-            --card: rgba(15, 23, 42, 0.78);
-            --text: #e5e7eb;
-            --muted: #94a3b8;
-            --accent: #f59e0b;
-            --border: rgba(148, 163, 184, 0.22);
+            --bg: #07111f;
+            --bg-soft: #0d1829;
+            --panel: rgba(9, 18, 34, 0.82);
+            --panel-strong: rgba(13, 24, 41, 0.94);
+            --text: #edf2f7;
+            --muted: #93a4ba;
+            --line: rgba(148, 163, 184, 0.18);
+            --gold: #f3c76b;
+            --gold-strong: #e2a93b;
+            --blue: #6dd3ff;
+            --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
             min-height: 100vh;
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-            background:
-                radial-gradient(circle at top left, rgba(245, 158, 11, 0.18), transparent 28%),
-                radial-gradient(circle at top right, rgba(14, 165, 233, 0.16), transparent 30%),
-                linear-gradient(180deg, var(--bg), #020617);
             color: var(--text);
+            background:
+                radial-gradient(circle at 0% 0%, rgba(243, 199, 107, 0.16), transparent 24%),
+                radial-gradient(circle at 100% 0%, rgba(109, 211, 255, 0.18), transparent 30%),
+                linear-gradient(180deg, #07111f 0%, #020817 100%);
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 32px 32px;
+            mask-image: radial-gradient(circle at center, black, transparent 80%);
+            opacity: 0.35;
         }
 
         .admin-shell {
             min-height: 100vh;
+            padding: 22px;
+            display: grid;
+            grid-template-columns: 320px minmax(0, 1fr);
+            gap: 18px;
+        }
+
+        .admin-sidebar,
+        .admin-main {
+            position: relative;
+            z-index: 1;
+        }
+
+        .admin-sidebar {
             display: flex;
             flex-direction: column;
             gap: 16px;
-            padding: 18px;
         }
 
-        .admin-topbar {
-            display: flex;
-            justify-content: space-between;
+        .admin-card,
+        .admin-frame-wrap {
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(12, 21, 38, 0.92), rgba(7, 17, 31, 0.88));
+            backdrop-filter: blur(16px);
+            box-shadow: var(--shadow);
+        }
+
+        .admin-card {
+            padding: 22px;
+        }
+
+        .admin-kicker {
+            display: inline-flex;
             align-items: center;
-            gap: 16px;
-            padding: 16px 18px;
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            background: var(--card);
-            backdrop-filter: blur(14px);
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            color: #0b1220;
+            background: linear-gradient(135deg, var(--gold), #fff0c6);
         }
 
         .admin-title {
-            margin: 0;
-            font-size: 20px;
+            margin: 18px 0 10px;
+            font-size: 32px;
+            line-height: 1.05;
             font-weight: 800;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.04em;
         }
 
-        .admin-subtitle {
-            margin: 6px 0 0;
+        .admin-copy {
+            margin: 0;
             color: var(--muted);
-            font-size: 13px;
+            line-height: 1.7;
+            font-size: 14px;
+        }
+
+        .admin-metrics {
+            display: grid;
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .metric {
+            padding: 14px 16px;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 18px;
+            background: rgba(255,255,255,0.03);
+        }
+
+        .metric-label {
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+        }
+
+        .metric-value {
+            margin-top: 6px;
+            font-size: 18px;
+            font-weight: 800;
         }
 
         .admin-actions {
-            display: flex;
+            display: grid;
             gap: 10px;
-            flex-wrap: wrap;
         }
 
         .admin-link {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 42px;
-            padding: 0 14px;
-            border-radius: 12px;
+            min-height: 46px;
+            padding: 0 16px;
+            border-radius: 14px;
             text-decoration: none;
-            border: 1px solid var(--border);
+            border: 1px solid var(--line);
             color: var(--text);
-            background: rgba(15, 23, 42, 0.65);
+            background: rgba(255,255,255,0.03);
             font-weight: 700;
+            letter-spacing: 0.04em;
+            transition: transform .18s ease, border-color .18s ease, background .18s ease;
+        }
+
+        .admin-link:hover {
+            transform: translateY(-1px);
+            border-color: rgba(243, 199, 107, 0.36);
+            background: rgba(255,255,255,0.06);
         }
 
         .admin-link.primary {
-            background: linear-gradient(135deg, #f59e0b, #fbbf24);
             color: #111827;
             border-color: transparent;
+            background: linear-gradient(135deg, var(--gold-strong), var(--gold));
+        }
+
+        .admin-main {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-width: 0;
+        }
+
+        .admin-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            padding: 18px 22px;
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            background: var(--panel);
+            backdrop-filter: blur(18px);
+            box-shadow: var(--shadow);
+        }
+
+        .admin-topbar-title {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+        }
+
+        .admin-topbar-copy {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .admin-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+            padding: 0 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(109, 211, 255, 0.28);
+            color: var(--blue);
+            background: rgba(109, 211, 255, 0.08);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            white-space: nowrap;
         }
 
         .admin-frame-wrap {
             flex: 1;
-            min-height: 70vh;
-            border: 1px solid var(--border);
-            border-radius: 20px;
+            min-height: 72vh;
             overflow: hidden;
-            background: rgba(2, 6, 23, 0.85);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
         }
 
         .admin-frame {
             width: 100%;
-            height: calc(100vh - 142px);
-            min-height: 640px;
+            height: calc(100vh - 110px);
+            min-height: 680px;
             border: 0;
             background: #fff;
         }
 
+        @media (max-width: 1080px) {
+            .admin-shell {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 768px) {
             .admin-shell {
-                padding: 12px;
+                padding: 14px;
+            }
+
+            .admin-title {
+                font-size: 26px;
             }
 
             .admin-topbar {
@@ -118,7 +246,7 @@
             }
 
             .admin-frame {
-                height: calc(100vh - 210px);
+                height: calc(100vh - 240px);
                 min-height: 560px;
             }
         }
@@ -126,25 +254,53 @@
 </head>
 <body>
     <div class="admin-shell">
-        <div class="admin-topbar">
-            <div>
-                <h1 class="admin-title">PANEL ADMIN DELTA 8</h1>
-                <p class="admin-subtitle">Link terpisah untuk verifikasi pembayaran QRIS pending dan monitoring sistem.</p>
-            </div>
-            <div class="admin-actions">
-                <a class="admin-link" id="user-site-link" href="https://kas-delta-8.web.app/index.html">HALAMAN USER</a>
-                <a class="admin-link primary" id="admin-open-link" href="https://kas-delta-8.web.app/index.html?mode=admin&panel=admin-payment-col" target="_blank" rel="noopener noreferrer">BUKA TAB BARU</a>
-            </div>
-        </div>
+        <aside class="admin-sidebar">
+            <section class="admin-card">
+                <div class="admin-kicker">ADMIN SPACE</div>
+                <h1 class="admin-title">Delta 8 Control Room</h1>
+                <p class="admin-copy">Satu ruang kerja yang lebih tenang untuk mengelola pembayaran pending, tambah anggota, dan mencatat transaksi tanpa mengganggu halaman user.</p>
+                <div class="admin-metrics">
+                    <div class="metric">
+                        <div class="metric-label">MODE</div>
+                        <div class="metric-value">ADMIN PANEL</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">FRONTEND USER</div>
+                        <div class="metric-value">kas-delta-8</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">PANEL ADMIN</div>
+                        <div class="metric-value">admin-kas</div>
+                    </div>
+                </div>
+            </section>
 
-        <div class="admin-frame-wrap">
-            <iframe
-                class="admin-frame"
-                id="admin-frame"
-                src="https://kas-delta-8.web.app/index.html?mode=admin&panel=admin-payment-col"
-                title="Panel Admin Delta 8">
-            </iframe>
-        </div>
+            <section class="admin-card">
+                <div class="admin-actions">
+                    <a class="admin-link" id="user-site-link" href="https://kas-delta-8.web.app/index.html">HALAMAN USER</a>
+                    <a class="admin-link primary" id="admin-open-link" href="https://kas-delta-8.web.app/index.html?mode=admin&panel=admin-payment-col" target="_blank" rel="noopener noreferrer">BUKA TAB BARU</a>
+                </div>
+            </section>
+        </aside>
+
+        <main class="admin-main">
+            <div class="admin-topbar">
+                <div>
+                    <h2 class="admin-topbar-title">PANEL ADMIN PEMBAYARAN</h2>
+                    <p class="admin-topbar-copy">Tampilan difokuskan untuk verifikasi QRIS, tambah anggota, dan transaksi admin.</p>
+                </div>
+                <div class="admin-pill">LIVE CONTROL</div>
+            </div>
+
+            <div class="admin-frame-wrap">
+                <iframe
+                    class="admin-frame"
+                    id="admin-frame"
+                    src="https://kas-delta-8.web.app/index.html?mode=admin&panel=admin-payment-col"
+                    title="Panel Admin Delta 8">
+                </iframe>
+            </div>
+        </main>
     </div>
     <script>
         const USER_SITE_URL = 'https://kas-delta-8.web.app/index.html';
