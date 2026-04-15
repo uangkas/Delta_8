@@ -14,10 +14,6 @@ var FCM_VAPID_KEY = "fcm_vapid_key";
 var FCM_SA_CLIENT_EMAIL_KEY = "fcm_sa_client_email";
 var FCM_SA_PRIVATE_KEY_KEY = "fcm_sa_private_key";
 var FCM_LAST_SEND_KEY = "fcm_last_send_json";
-var MIDTRANS_SERVER_KEY_PROP = "midtrans_server_key";
-var MIDTRANS_ENV_PROP = "midtrans_env";
-var MIDTRANS_NOTIFICATION_URL_PROP = "midtrans_notification_url";
-var MIDTRANS_PENDING_PAYMENTS_PROP = "midtrans_pending_payments";
 var ACTIVE_JSONP_CALLBACK = "";
 var WRITE_SESSION_TTL_SEC = 21600; // 6 hours
 var BACKUP_LAST_KEY_PREFIX = "backup_last_";
@@ -99,10 +95,8 @@ function doGet(e) {
     if (action === "saveFcmToken") return handleSaveFcmTokenFromGet_(e);
     if (action === "testFcm") return handleTestFcm_(e);
     if (action === "backupProperties") return handleBackupProperties_(e);
-    if (action === "midtransCreateQris") return handleMidtransCreateQris_(e);
-    if (action === "midtransStatus") return handleMidtransStatus_(e);
-    if (action === "midtransConfigGet") return handleMidtransConfigGet_(e);
     if (action === "adminScriptInfo") return handleAdminScriptInfo_(e);
+    if (action === "adminMovePropsToFirestore") return handleAdminMovePropsToFirestore_(e);
 
     // Serve index.html for browser UI.
     return HtmlService.createHtmlOutputFromFile("index")
@@ -122,14 +116,7 @@ function doPost(e) {
   ensureBootstrapConfig_();
   ACTIVE_JSONP_CALLBACK = "";
   try {
-    if (e && e.parameter && e.parameter.action === "midtransNotification") {
-      return handleMidtransNotification_(e);
-    }
     var payload = parsePostBody_(e);
-
-    if (payload.action === "midtransNotification") {
-      return handleMidtransNotification_(e, payload);
-    }
 
     if (payload.action === "saveFcmToken") {
       return handleSaveFcmToken_(payload, e);
@@ -137,13 +124,6 @@ function doPost(e) {
     if (payload.action === "adminSetScriptProperties") {
       return handleAdminSetScriptProperties_(payload, e);
     }
-    if (payload.action === "midtransConfigSet") {
-      return handleMidtransConfigSet_(payload, e);
-    }
-    if (payload.action === "midtransCreateQris") {
-      return handleMidtransCreateQrisFromPost_(payload, e);
-    }
-
     validateWriteAuth_(payload, e);
     var year = getTargetYear_(payload, e);
     ensureYearData_(year);
@@ -693,6 +673,46 @@ function getFcmAccessToken_(clientEmail, privateKeyRaw) {
   }
 }
 
+function getFirestoreAccessToken_(clientEmail, privateKeyRaw) {
+  var privateKey = String(privateKeyRaw || "").replace(/\\n/g, "\n");
+  var nowSec = Math.floor(new Date().getTime() / 1000);
+  var header = {
+    alg: "RS256",
+    typ: "JWT"
+  };
+  var claim = {
+    iss: clientEmail,
+    scope: "https://www.googleapis.com/auth/datastore",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: nowSec,
+    exp: nowSec + 3600
+  };
+
+  var encHeader = base64UrlEncode_(JSON.stringify(header));
+  var encClaim = base64UrlEncode_(JSON.stringify(claim));
+  var toSign = encHeader + "." + encClaim;
+  var signatureBytes = Utilities.computeRsaSha256Signature(toSign, privateKey);
+  var signature = base64UrlEncodeBytes_(signatureBytes);
+  var jwt = toSign + "." + signature;
+
+  var resp = UrlFetchApp.fetch("https://oauth2.googleapis.com/token", {
+    method: "post",
+    payload: {
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: jwt
+    },
+    muteHttpExceptions: true
+  });
+  if (resp.getResponseCode() < 200 || resp.getResponseCode() >= 300) return "";
+
+  try {
+    var obj = JSON.parse(resp.getContentText());
+    return obj && obj.access_token ? String(obj.access_token) : "";
+  } catch (err) {
+    return "";
+  }
+}
+
 function base64UrlEncode_(text) {
   var bytes = Utilities.newBlob(text).getBytes();
   return base64UrlEncodeBytes_(bytes);
@@ -1186,7 +1206,10 @@ function validateAdminAuth_(provided) {
 }
 
 function getApiSecret_() {
-  return PropertiesService.getScriptProperties().getProperty(API_SECRET_KEY);
+  var value = PropertiesService.getScriptProperties().getProperty(API_SECRET_KEY);
+  if (value) return value;
+  var secureProps = getSecurePropsFromFirestore_();
+  return secureProps && secureProps[API_SECRET_KEY] ? String(secureProps[API_SECRET_KEY]) : "";
 }
 
 function normalizeEditorName_(value) {
@@ -2289,78 +2312,138 @@ function sanitizeJsonpCallback_(callback) {
   return value;
 }
 
-function getMidtransConfig_() {
-  var scriptProps = PropertiesService.getScriptProperties();
-  var userProps = PropertiesService.getUserProperties();
-  var serverKey = String(
-    scriptProps.getProperty(MIDTRANS_SERVER_KEY_PROP) ||
-      userProps.getProperty(MIDTRANS_SERVER_KEY_PROP) ||
-      ""
-  ).trim();
-  var env = String(
-    scriptProps.getProperty(MIDTRANS_ENV_PROP) ||
-      userProps.getProperty(MIDTRANS_ENV_PROP) ||
-      "sandbox"
-  ).trim().toLowerCase();
-  if (!serverKey) {
-    throw new Error("Midtrans server key belum diset di Script Properties.");
-  }
-  if (env !== "production" && env !== "sandbox") env = "sandbox";
-
-  var baseUrl = env === "production"
-    ? "https://api.midtrans.com"
-    : "https://api.sandbox.midtrans.com";
-
-  var notificationUrl = String(
-    scriptProps.getProperty(MIDTRANS_NOTIFICATION_URL_PROP) ||
-      userProps.getProperty(MIDTRANS_NOTIFICATION_URL_PROP) ||
-      ""
-  ).trim();
-  if (!notificationUrl) {
-    try {
-      notificationUrl = ScriptApp.getService().getUrl() + "?action=midtransNotification";
-    } catch (_) {
-      notificationUrl = "";
-    }
-  }
-
+function getFirestoreConfig_() {
+  var props = PropertiesService.getScriptProperties();
   return {
-    serverKey: serverKey,
-    env: env,
-    baseUrl: baseUrl,
-    notificationUrl: notificationUrl
+    projectId: props.getProperty(FCM_PROJECT_ID) || DEFAULT_FIREBASE_CONFIG.projectId || "",
+    clientEmail: props.getProperty(FCM_SA_CLIENT_EMAIL_KEY) || "",
+    privateKey: props.getProperty(FCM_SA_PRIVATE_KEY_KEY) || ""
   };
 }
 
-function buildMidtransAuthHeader_(serverKey) {
-  return "Basic " + Utilities.base64Encode(serverKey + ":");
-}
+function getSecurePropsFromFirestore_() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get("firestore_secure_props_v1");
+  if (cached) {
+    try {
+      var parsed = JSON.parse(cached);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (err) {
+      // ignore
+    }
+  }
 
-function parseMidtransMonths_(raw) {
-  var value = String(raw || "").trim();
-  if (!value) return [];
-  return value.split(",")
-    .map(function (item) { return parseInt(item, 10); })
-    .filter(function (item) { return item >= 1 && item <= 12; })
-    .filter(function (item, index, arr) { return arr.indexOf(item) === index; })
-    .sort(function (a, b) { return a - b; });
-}
+  var config = getFirestoreConfig_();
+  if (!config.projectId || !config.clientEmail || !config.privateKey) return {};
+  var token = getFirestoreAccessToken_(config.clientEmail, config.privateKey);
+  if (!token) return {};
 
-function getMidtransPendingPayments_() {
-  var raw = PropertiesService.getScriptProperties().getProperty(MIDTRANS_PENDING_PAYMENTS_PROP) || "{}";
+  var url =
+    "https://firestore.googleapis.com/v1/projects/" +
+    encodeURIComponent(config.projectId) +
+    "/databases/(default)/documents/secure_config/script_properties";
+  var resp = UrlFetchApp.fetch(url, {
+    method: "get",
+    headers: { Authorization: "Bearer " + token },
+    muteHttpExceptions: true
+  });
+  if (resp.getResponseCode() !== 200) return {};
+
+  var doc = {};
   try {
-    var parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
+    doc = JSON.parse(resp.getContentText() || "{}");
   } catch (err) {
     return {};
   }
+
+  var fields = (doc && doc.fields) || {};
+  var mapFields =
+    fields &&
+    fields.props &&
+    fields.props.mapValue &&
+    fields.props.mapValue.fields
+      ? fields.props.mapValue.fields
+      : {};
+  var out = {};
+  for (var key in mapFields) {
+    if (!mapFields.hasOwnProperty(key)) continue;
+    var value = mapFields[key] || {};
+    if (value.stringValue != null) {
+      out[key] = String(value.stringValue);
+    } else if (value.integerValue != null) {
+      out[key] = String(value.integerValue);
+    } else if (value.doubleValue != null) {
+      out[key] = String(value.doubleValue);
+    } else if (value.booleanValue != null) {
+      out[key] = value.booleanValue ? "true" : "false";
+    }
+  }
+
+  cache.put("firestore_secure_props_v1", JSON.stringify(out), 300);
+  return out;
 }
 
-function saveMidtransPendingPayments_(map) {
-  PropertiesService.getScriptProperties().setProperty(
-    MIDTRANS_PENDING_PAYMENTS_PROP,
-    JSON.stringify(map || {})
+function writeSecurePropsToFirestore_(propsMap, movedBy) {
+  var config = getFirestoreConfig_();
+  if (!config.projectId || !config.clientEmail || !config.privateKey) {
+    throw new Error("Firestore belum dikonfigurasi (service account / projectId).");
+  }
+  var token = getFirestoreAccessToken_(config.clientEmail, config.privateKey);
+  if (!token) {
+    throw new Error("Gagal mendapatkan access token Firestore.");
+  }
+
+  var fields = {};
+  var keys = Object.keys(propsMap || {});
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    fields[key] = { stringValue: String(propsMap[key] == null ? "" : propsMap[key]) };
+  }
+
+  var payload = {
+    fields: {
+      props: { mapValue: { fields: fields } },
+      updatedAt: { timestampValue: new Date().toISOString() },
+      movedBy: { stringValue: String(movedBy || "ADMIN") }
+    }
+  };
+
+  var url =
+    "https://firestore.googleapis.com/v1/projects/" +
+    encodeURIComponent(config.projectId) +
+    "/databases/(default)/documents/secure_config/script_properties";
+  var resp = UrlFetchApp.fetch(url, {
+    method: "patch",
+    contentType: "application/json",
+    headers: { Authorization: "Bearer " + token },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+
+  var code = resp.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error("Gagal simpan ke Firestore. Kode: " + code);
+  }
+
+  CacheService.getScriptCache().put(
+    "firestore_secure_props_v1",
+    JSON.stringify(propsMap || {}),
+    300
   );
+
+  return {
+    projectId: config.projectId,
+    count: keys.length
+  };
+}
+
+function getPropWithFirestoreFallback_(key) {
+  var scriptProps = PropertiesService.getScriptProperties();
+  var userProps = PropertiesService.getUserProperties();
+  var value = scriptProps.getProperty(key) || userProps.getProperty(key);
+  if (value) return String(value);
+  var secureProps = getSecurePropsFromFirestore_();
+  return secureProps && secureProps[key] ? String(secureProps[key]) : "";
 }
 
 function appendLog_(data, editor, aksi, ket) {
@@ -2606,48 +2689,12 @@ function handleMidtransStatus_(e) {
   }
 
   var result = applyMidtransStatusUpdate_(orderId, parsed);
-  result.midtrans = {
-    status: parsed.transaction_status || "",
-    status_code: parsed.status_code || "",
-    order_id: parsed.order_id || orderId
-  };
-  return jsonResponse_(result);
-}
-
-function handleMidtransConfigGet_(e) {
-  validateAdminAuth_((e && e.parameter && e.parameter.authToken) || "");
-  var scriptProps = PropertiesService.getScriptProperties();
-  var userProps = PropertiesService.getUserProperties();
-  var out = {
-    serverKey: scriptProps.getProperty(MIDTRANS_SERVER_KEY_PROP) || userProps.getProperty(MIDTRANS_SERVER_KEY_PROP) || "",
-    env: scriptProps.getProperty(MIDTRANS_ENV_PROP) || userProps.getProperty(MIDTRANS_ENV_PROP) || "sandbox",
-    notificationUrl: scriptProps.getProperty(MIDTRANS_NOTIFICATION_URL_PROP) || userProps.getProperty(MIDTRANS_NOTIFICATION_URL_PROP) || ""
-  };
-  return jsonResponse_({ ok: true, data: out });
-}
-
-function handleMidtransConfigSet_(payload, e) {
-  validateAdminPayloadAuth_(payload, e);
-  var scriptProps = PropertiesService.getScriptProperties();
-  var serverKey = String((payload && payload.serverKey) || "").trim();
-  var env = String((payload && payload.env) || "").trim().toLowerCase();
-  var notificationUrl = String((payload && payload.notificationUrl) || "").trim();
-  if (!serverKey) {
-    return jsonResponse_({ ok: false, error: "serverKey wajib diisi." });
-  }
-  if (env !== "production" && env !== "sandbox") env = "sandbox";
-  scriptProps.setProperty(MIDTRANS_SERVER_KEY_PROP, serverKey);
-  scriptProps.setProperty(MIDTRANS_ENV_PROP, env);
-  if (notificationUrl) {
-    scriptProps.setProperty(MIDTRANS_NOTIFICATION_URL_PROP, notificationUrl);
-  }
   return jsonResponse_({ ok: true });
 }
 
 function handleAdminScriptInfo_(e) {
   validateAdminAuth_((e && e.parameter && e.parameter.authToken) || "");
   var scriptProps = PropertiesService.getScriptProperties();
-  var userProps = PropertiesService.getUserProperties();
   var scriptId = "";
   var webUrl = "";
   try {
@@ -2661,12 +2708,49 @@ function handleAdminScriptInfo_(e) {
       scriptId: scriptId,
       webAppUrl: webUrl,
       hasApiSecret: !!scriptProps.getProperty(API_SECRET_KEY),
-      midtrans: {
-        hasServerKeyScript: !!scriptProps.getProperty(MIDTRANS_SERVER_KEY_PROP),
-        hasServerKeyUser: !!userProps.getProperty(MIDTRANS_SERVER_KEY_PROP),
-        env: (scriptProps.getProperty(MIDTRANS_ENV_PROP) || userProps.getProperty(MIDTRANS_ENV_PROP) || "sandbox")
+      firestore: {
+        projectId: scriptProps.getProperty(FCM_PROJECT_ID) || DEFAULT_FIREBASE_CONFIG.projectId || "",
+        hasServiceAccount: !!scriptProps.getProperty(FCM_SA_CLIENT_EMAIL_KEY) &&
+          !!scriptProps.getProperty(FCM_SA_PRIVATE_KEY_KEY)
       }
     }
+  });
+}
+
+function handleAdminMovePropsToFirestore_(e) {
+  validateAdminAuth_((e && e.parameter && e.parameter.authToken) || "");
+  var scriptProps = PropertiesService.getScriptProperties();
+  var allProps = scriptProps.getProperties() || {};
+  var keys = Object.keys(allProps || {});
+  if (!keys.length) {
+    return jsonResponse_({ ok: false, error: "Script Properties kosong." });
+  }
+
+  var skipKeys = {};
+  skipKeys[FCM_TOKENS_KEY] = true;
+  skipKeys[FCM_LAST_SEND_KEY] = true;
+
+  var sanitized = {};
+  var skipped = [];
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    var value = allProps[key];
+    if (skipKeys[key]) {
+      skipped.push(key);
+      continue;
+    }
+    if (String(value || "").length > 20000) {
+      skipped.push(key);
+      continue;
+    }
+    sanitized[key] = value;
+  }
+
+  var moved = writeSecurePropsToFirestore_(sanitized, "ADMIN");
+  moved.skipped = skipped;
+  return jsonResponse_({
+    ok: true,
+    data: moved
   });
 }
 
