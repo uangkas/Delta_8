@@ -2826,10 +2826,6 @@ async function syncAll() {
     memberActionHeaders.forEach((th) => {
         th.style.display = adminMode ? '' : 'none';
     });
-    document.querySelectorAll('#grid-driver tr, #grid-helper tr').forEach((row) => {
-        const actionCell = row.children[15];
-        if (actionCell) actionCell.style.display = adminMode ? '' : 'none';
-    });
 
     const transaksiActionHeader = document.querySelector('#table-transaksi thead th.col-aks');
     if (transaksiActionHeader) transaksiActionHeader.style.display = adminMode ? '' : 'none';
@@ -3402,6 +3398,5 @@ async function gantiTahun(tahun){
 </body>
 </html>
 
-< ! - -   R e d e p l o y   t r i g g e r   - - > 
- 
- 
+
+
