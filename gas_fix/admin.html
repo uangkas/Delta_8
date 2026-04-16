@@ -265,7 +265,7 @@
             <section class="admin-card">
                 <div class="admin-kicker">ADMIN SPACE</div>
                 <h1 class="admin-title">Delta 8 Control Room</h1>
-                <p class="admin-copy">Satu ruang kerja yang lebih tenang untuk mengelola pembayaran pending, tambah anggota, dan mencatat transaksi tanpa mengganggu halaman user.</p>
+                <p class="admin-copy">Satu ruang kerja yang lebih tenang untuk mengelola pembayaran pending, ceklis anggota, dan transaksi dengan kontrol admin lengkap di satu panel.</p>
                 <div class="admin-metrics">
                     <div class="metric">
                         <div class="metric-label">MODE</div>
@@ -284,8 +284,8 @@
 
             <section class="admin-card">
                 <div class="admin-actions">
-                    <button type="button" class="admin-link active" id="admin-panel-link">PANEL ADMIN</button>
-                    <button type="button" class="admin-link" id="user-site-link">HALAMAN USER</button>
+                    <button type="button" class="admin-link primary" id="add-member-link">+ ANGGOTA</button>
+                    <button type="button" class="admin-link" id="add-transaction-link">+ TRANSAKSI</button>
                 </div>
             </section>
         </aside>
@@ -294,7 +294,7 @@
             <div class="admin-topbar">
                 <div>
                     <h2 class="admin-topbar-title">PANEL ADMIN PEMBAYARAN</h2>
-                    <p class="admin-topbar-copy" id="admin-view-caption">Tampilan difokuskan untuk <strong>verifikasi QRIS</strong>, tambah anggota, dan transaksi admin.</p>
+                    <p class="admin-topbar-copy" id="admin-view-caption">Panel kanan menampilkan <strong>ceklis anggota</strong>, tabel lengkap, transaksi, dan kolom aksi khusus admin.</p>
                 </div>
                 <div class="admin-pill">LIVE CONTROL</div>
             </div>
@@ -303,7 +303,7 @@
                 <iframe
                     class="admin-frame"
                     id="admin-frame"
-                    src="https://kas-delta-8.web.app/index.html?mode=admin&panel=admin-payment-col"
+                    src="https://kas-delta-8.web.app/index.html?mode=admin"
                     title="Panel Admin Delta 8">
                 </iframe>
             </div>
@@ -311,33 +311,28 @@
     </div>
     <script>
         const USER_SITE_URL = 'https://kas-delta-8.web.app/index.html';
-        const ADMIN_PANEL_URL = `${USER_SITE_URL}?mode=admin&panel=admin-payment-col`;
+        const ADMIN_PANEL_URL = `${USER_SITE_URL}?mode=admin`;
 
         const frame = document.getElementById('admin-frame');
-        const userLink = document.getElementById('user-site-link');
-        const adminLink = document.getElementById('admin-panel-link');
-        const caption = document.getElementById('admin-view-caption');
+        const addMemberButton = document.getElementById('add-member-link');
+        const addTransactionButton = document.getElementById('add-transaction-link');
 
-        function setActiveView(mode) {
-            const isAdmin = mode === 'admin';
-            if (adminLink) adminLink.classList.toggle('active', isAdmin);
-            if (userLink) userLink.classList.toggle('active', !isAdmin);
-            if (caption) {
-                caption.innerHTML = isAdmin
-                    ? 'Tampilan difokuskan untuk <strong>verifikasi QRIS</strong>, tambah anggota, dan transaksi admin.'
-                    : 'Halaman user dimuat di panel ini dengan menu lengkap untuk <strong>tambah, edit, hapus anggota dan transaksi</strong>.';
-            }
-            if (frame) frame.src = isAdmin ? ADMIN_PANEL_URL : USER_SITE_URL;
+        function postAdminAction(action) {
+            if (!frame || !frame.contentWindow) return;
+            frame.contentWindow.postMessage({
+                type: 'delta8-admin-action',
+                action
+            }, '*');
         }
 
-        if (adminLink) {
-            adminLink.addEventListener('click', () => setActiveView('admin'));
+        if (addMemberButton) {
+            addMemberButton.addEventListener('click', () => postAdminAction('tambah'));
         }
-        if (userLink) {
-            userLink.addEventListener('click', () => setActiveView('user'));
+        if (addTransactionButton) {
+            addTransactionButton.addEventListener('click', () => postAdminAction('catat'));
         }
 
-        setActiveView('admin');
+        if (frame) frame.src = ADMIN_PANEL_URL;
     </script>
 </body>
 </html>

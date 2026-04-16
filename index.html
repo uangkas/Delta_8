@@ -1592,10 +1592,7 @@ body.tab-transaksi .nav-tabs {
             if (status) status.innerText = 'ADMIN CONTROL PANEL';
 
             const hideSelectors = [
-                '#mainTabs',
                 '#member-toolbar',
-                '.tab-content',
-                '#financial-area',
                 '.footer-app',
                 '.theme-container',
                 '#btn-enable-notif'
@@ -1625,6 +1622,16 @@ body.tab-transaksi .nav-tabs {
             const adminIcon = document.getElementById('admin-icon');
             if (adminIcon) adminIcon.innerText = '▲';
         }
+
+        window.addEventListener('message', (event) => {
+            try {
+                const data = event && event.data ? event.data : null;
+                if (!data || data.type !== 'delta8-admin-action') return;
+                const action = String(data.action || '').trim().toLowerCase();
+                if (action === 'tambah') askAuth('tambah');
+                if (action === 'catat') askAuth('catat');
+            } catch (err) {}
+        });
 
         async function saveFcmToken(token) {
             const session = getAuthSession();
