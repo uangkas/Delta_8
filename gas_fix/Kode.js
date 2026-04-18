@@ -14,6 +14,10 @@ var FCM_VAPID_KEY = "fcm_vapid_key";
 var FCM_SA_CLIENT_EMAIL_KEY = "fcm_sa_client_email";
 var FCM_SA_PRIVATE_KEY_KEY = "fcm_sa_private_key";
 var FCM_LAST_SEND_KEY = "fcm_last_send_json";
+var MIDTRANS_SERVER_KEY = "midtrans_server_key";
+var MIDTRANS_BASE_URL_KEY = "midtrans_base_url";
+var MIDTRANS_NOTIFICATION_URL_KEY = "midtrans_notification_url";
+var MIDTRANS_PENDING_PAYMENTS_KEY = "midtrans_pending_payments_json";
 var ACTIVE_JSONP_CALLBACK = "";
 var WRITE_SESSION_TTL_SEC = 21600; // 6 hours
 var BACKUP_LAST_KEY_PREFIX = "backup_last_";
@@ -97,6 +101,8 @@ function doGet(e) {
     if (action === "backupProperties") return handleBackupProperties_(e);
     if (action === "adminScriptInfo") return handleAdminScriptInfo_(e);
     if (action === "adminMovePropsToFirestore") return handleAdminMovePropsToFirestore_(e);
+    if (action === "midtransCreateQris") return handleMidtransCreateQris_(e);
+    if (action === "midtransStatus") return handleMidtransStatus_(e);
 
     // Serve index.html for browser UI.
     return HtmlService.createHtmlOutputFromFile("index")
@@ -123,6 +129,15 @@ function doPost(e) {
     }
     if (payload.action === "adminSetScriptProperties") {
       return handleAdminSetScriptProperties_(payload, e);
+    }
+    if (payload.action === "midtransCreateQris") {
+      return handleMidtransCreateQrisFromPost_(payload, e);
+    }
+    if (payload.action === "midtransNotification") {
+      return handleMidtransNotification_(e, payload);
+    }
+    if (payload.action === "midtransStatus") {
+      return handleMidtransStatus_(e);
     }
     validateWriteAuth_(payload, e);
     var year = getTargetYear_(payload, e);
@@ -2480,6 +2495,100 @@ function applyMemberStatusUpdate_(data, info, value) {
   return true;
 }
 
+function getMidtransConfig_() {
+  var serverKey = getPropWithFirestoreFallback_(MIDTRANS_SERVER_KEY);
+  if (!serverKey) {
+    throw new Error("Midtrans server key belum dikonfigurasi.");
+  }
+
+  var baseUrl = getPropWithFirestoreFallback_(MIDTRANS_BASE_URL_KEY) || "https://api.sandbox.midtrans.com";
+  var notificationUrl = getPropWithFirestoreFallback_(MIDTRANS_NOTIFICATION_URL_KEY) || "";
+
+  return {
+    serverKey: String(serverKey).trim(),
+    baseUrl: String(baseUrl).trim().replace(/\/+$/, ""),
+    notificationUrl: String(notificationUrl).trim()
+  };
+}
+
+function buildMidtransAuthHeader_(serverKey) {
+  return "Basic " + Utilities.base64Encode(String(serverKey || "") + ":");
+}
+
+function parseMidtransMonths_(raw) {
+  return String(raw || "")
+    .split(",")
+    .map(function (item) { return parseInt(String(item || "").trim(), 10); })
+    .filter(function (month, idx, list) {
+      return month >= 1 && month <= 12 && list.indexOf(month) === idx;
+    })
+    .sort(function (a, b) { return a - b; });
+}
+
+function getMidtransPendingPayments_() {
+  var raw = PropertiesService.getScriptProperties().getProperty(MIDTRANS_PENDING_PAYMENTS_KEY) || "{}";
+  try {
+    var parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (err) {
+    return {};
+  }
+}
+
+function saveMidtransPendingPayments_(pending) {
+  PropertiesService.getScriptProperties().setProperty(
+    MIDTRANS_PENDING_PAYMENTS_KEY,
+    JSON.stringify(pending || {})
+  );
+}
+
+function formatPaymentMonthList_(months, year) {
+  return (months || []).map(function (m) {
+    return (m < 10 ? "0" + m : "" + m) + "/" + String(year || "");
+  }).join(", ");
+}
+
+function buildMemberPaymentDescription_(info, paymentMethod) {
+  var monthNames = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"];
+  var labels = (info && info.months ? info.months : [])
+    .map(function (month) { return monthNames[month - 1] || ("BLN " + month); })
+    .join(", ");
+  return ("BAYAR IURAN " + String((info && info.kat) || "ANGGOTA").toUpperCase() + " " + labels + " VIA " + String(paymentMethod || "QRIS").toUpperCase()).trim();
+}
+
+function getMidtransTransactionDate_(body) {
+  var candidate = String((body && (body.settlement_time || body.transaction_time)) || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(candidate)) {
+    return candidate.slice(0, 10);
+  }
+  return Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "Asia/Jakarta", "yyyy-MM-dd");
+}
+
+function ensureMemberPaymentTransaction_(data, info, body, paymentMethod) {
+  if (!data || !info) return false;
+  if (!Array.isArray(data.transaksi)) data.transaksi = [];
+
+  var description = buildMemberPaymentDescription_(info, paymentMethod);
+  var nominal = Number(info.amount || 0);
+  var source = String(info.nama || "").trim().toUpperCase();
+  var exists = data.transaksi.some(function (row) {
+    return String((row && row.tp) || "").toUpperCase() === "PEMASUKAN" &&
+      String((row && row.p) || "").trim().toUpperCase() === source &&
+      String((row && row.k) || "").trim().toUpperCase() === description.toUpperCase() &&
+      Number((row && row.v) || 0) === nominal;
+  });
+  if (exists) return false;
+
+  data.transaksi.push({
+    d: getMidtransTransactionDate_(body),
+    tp: "Pemasukan",
+    p: source,
+    k: description,
+    v: nominal
+  });
+  return true;
+}
+
 function handleMidtransCreateQris_(e) {
   validateWriteAuth_(null, e);
   var year = getTargetYear_(null, e);
@@ -2501,7 +2610,8 @@ function handleMidtransCreateQris_(e) {
     nama: String((e && e.parameter && e.parameter.member_name) || ""),
     kat: String((e && e.parameter && e.parameter.kat) || "DRIVER").toUpperCase(),
     year: String(year),
-    months: parseMidtransMonths_((e && e.parameter && e.parameter.months) || "")
+    months: parseMidtransMonths_((e && e.parameter && e.parameter.months) || ""),
+    amount: amount
   };
 
   if (!info.id || !info.months.length) {
@@ -2558,7 +2668,7 @@ function handleMidtransCreateQris_(e) {
 
   applyMemberStatusUpdate_(data, info, "pending");
   appendLog_(data, "SYSTEM", "IURAN", info.kat + " - " + info.nama + " - " +
-    info.months.map(function (m) { return (m < 10 ? "0" + m : "" + m) + "/" + year; }).join(", ") +
+    formatPaymentMonthList_(info.months, year) +
     " - [⏳ - PENDING QRIS " + orderId + "]");
   writeYearData_(year, data);
 
@@ -2633,7 +2743,7 @@ function applyMidtransStatusUpdate_(orderId, body) {
   var pending = getMidtransPendingPayments_();
   var info = pending[orderId];
   if (!info) {
-    return { ok: true, ignored: true };
+    return { ok: true, ignored: true, status: String((body && body.transaction_status) || "").toLowerCase() };
   }
 
   var year = info.year;
@@ -2643,14 +2753,15 @@ function applyMidtransStatusUpdate_(orderId, body) {
   var status = String(body.transaction_status || "").toLowerCase();
   if (status === "settlement" || status === "capture") {
     applyMemberStatusUpdate_(data, info, true);
+    ensureMemberPaymentTransaction_(data, info, body, "QRIS");
     appendLog_(data, "SYSTEM", "IURAN", info.kat + " - " + info.nama + " - " +
-      info.months.map(function (m) { return (m < 10 ? "0" + m : "" + m) + "/" + year; }).join(", ") +
+      formatPaymentMonthList_(info.months, year) +
       " - [✅ - LUNAS MIDTRANS]");
     delete pending[orderId];
   } else if (status === "expire" || status === "cancel" || status === "deny") {
     applyMemberStatusUpdate_(data, info, null);
     appendLog_(data, "SYSTEM", "IURAN", info.kat + " - " + info.nama + " - " +
-      info.months.map(function (m) { return (m < 10 ? "0" + m : "" + m) + "/" + year; }).join(", ") +
+      formatPaymentMonthList_(info.months, year) +
       " - [❌ - MIDTRANS " + status.toUpperCase() + "]");
     delete pending[orderId];
   } else {
@@ -2689,7 +2800,7 @@ function handleMidtransStatus_(e) {
   }
 
   var result = applyMidtransStatusUpdate_(orderId, parsed);
-  return jsonResponse_({ ok: true });
+  return jsonResponse_(result);
 }
 
 function handleAdminScriptInfo_(e) {

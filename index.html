@@ -1122,7 +1122,7 @@ body.tab-transaksi .nav-tabs {
     <div class="modal" id="modalVerifyAuth" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">VERIFIKASI OTORITAS</h6><input type="text" id="inputEditorName" name="editor_verifikasi" class="form-control mb-2 text-center" placeholder="Nama Editor Terdaftar" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handleEditorNameInput(this)" onkeydown="if(event.key==='Enter'){focusPinAfterEditorCheck();}"><input type="password" id="inputPIN" name="pin_verifikasi" class="form-control mb-2 text-center" maxlength="4" placeholder="PIN 4 DIGIT" inputmode="numeric" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handlePinInput(this)" onkeydown="if(event.key==='Enter'){submitAuth();}"><div class="small auth-helper-text lh-sm">Hanya editor yang tercatat di sheet <b>allowed_editors</b> yang bisa edit, tambah, atau hapus data.</div></div></div></div></div>
     <div class="modal fade" id="modalPilihPembayaran" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PILIH PEMBAYARAN</h6><div class="payment-option-wrap"><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('CASH')">CASH</button><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('QRIS')">QRIS</button></div></div></div></div></div>
     <div class="modal fade" id="modalPilihBulanBayar" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-2">PILIH BULAN</h6><div class="small text-muted mb-3">Bisa pilih lebih dari satu bulan. Bulan yang sudah lunas dinonaktifkan.</div><div id="payment-month-grid" class="month-option-grid"></div><div class="payment-month-summary"><div class="label" id="payment-month-selection-label">Belum ada bulan dipilih</div><div class="value" id="payment-month-total">Rp 0</div></div><button type="button" id="payment-month-continue" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueMemberPayment()" disabled>LANJUT</button></div></div></div></div>
-    <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PEMBAYARAN QRIS</h6><div class="qris-preview-box"><div id="qris-code-wrap" class="mb-3"></div><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-3" id="qris-amount-value">Rp 0</div><div class="qris-detail">Scan kode QRIS yang tersedia, lalu lanjutkan agar pembayaran masuk ke daftar verifikasi admin.</div></div><button type="button" id="qris-continue-btn" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueQrisToAuth()">SAYA SUDAH BAYAR</button></div></div></div></div>
+    <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PEMBAYARAN QRIS</h6><div class="qris-preview-box"><div id="qris-code-wrap" class="mb-3"></div><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-2" id="qris-amount-value">Rp 0</div><div class="qris-detail mb-2" id="qris-order-info">Order: -</div><div class="qris-proof-status mb-2" id="qris-payment-status">Menyiapkan pembayaran QRIS...</div><div class="qris-detail">Scan kode QRIS ini, lalu tunggu status pembayaran diperiksa otomatis. Jika perlu, Anda tetap bisa cek status manual.</div></div><button type="button" id="qris-continue-btn" class="btn btn-warning w-100 fw-bold mt-3" onclick="checkPendingQrisStatus()">CEK STATUS PEMBAYARAN</button></div></div></div></div>
     <div class="modal" id="modalCatat" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><h6 class="fw-bold mb-3">CATAT TRANSAKSI</h6><form id="fTrans"><input type="hidden" id="editTransIdx"><select name="tp" id="trans_type" class="form-select mb-2"><option value="Pemasukan">Pemasukan</option><option value="Pengeluaran" selected>Pengeluaran</option></select><input type="date" name="d" id="trans_date" class="form-control mb-2" required><input type="text" name="p" id="trans_source" class="form-control mb-2" placeholder="Sumber/Penerima"><input type="text" name="k" id="trans_ket" class="form-control mb-2" placeholder="Keterangan"><input type="number" name="v" id="trans_val" class="form-control mb-3" placeholder="Nominal" required><button type="submit" class="btn btn-warning w-100 fw-bold">SIMPAN</button></form></div></div></div></div>
     <div class="modal fade" id="modalTambah" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><h6 class="fw-bold mb-3">TAMBAH/EDIT ANGGOTA</h6><form id="fAdd"><input type="hidden" id="editMemberId"><textarea id="n" class="form-control mb-2" style="height:100px" placeholder="Nama Anggota"></textarea><select id="k" class="form-select mb-3"><option value="Driver">Driver</option><option value="Helper">Helper</option></select><button type="submit" class="btn btn-warning w-100 fw-bold">SIMPAN</button></form></div></div></div></div>
     <div class="modal fade" id="modalKonfirmasiHapus" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><div class="mb-3" style="font-size: 2rem;">⚠️</div><h6 class="fw-bold mb-4">Hapus data ini?</h6><div class="d-flex gap-2"><button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal">BATAL</button><button type="button" class="btn btn-danger w-100" onclick="eksekusiHapus()">HAPUS</button></div></div></div></div></div>
@@ -1168,6 +1168,8 @@ body.tab-transaksi .nav-tabs {
         const PAYMENT_MONTH_NAMES = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
         const MONTHLY_IURAN_AMOUNT = 25000;
         let pendingIuranPaymentData = null;
+        let pendingQrisOrderData = null;
+        let qrisStatusPollTimer = null;
         const QRIS_STATIC_IMAGE_URL = '/QRIS.jpg';
         const QRIS_STATIC_PAYLOAD = '';
         const cloneData = (v) => JSON.parse(JSON.stringify(v));
@@ -2055,8 +2057,16 @@ body.tab-transaksi .nav-tabs {
                 const selectedMonths = Array.isArray(params && params.selectedMonths)
                     ? params.selectedMonths.map(Number).filter(m => m >= 1 && m <= 12).sort((a, b) => a - b)
                     : [Number(params && params.selectedMonth) || Number(params && params.m) || 0].filter(m => m >= 1 && m <= 12);
-                const selectedMonth = selectedMonths[0] || 0;
                 const paymentMethod = String(params && params.method ? params.method : 'CASH').toUpperCase();
+                if (paymentMethod === 'QRIS') {
+                    startSemiAutoQrisPayment({
+                        ...params,
+                        y: selectedYear,
+                        selectedMonths
+                    });
+                    return;
+                }
+                const selectedMonth = selectedMonths[0] || 0;
                 const now = new Date();
                 const defaultMonth = selectedMonth >= 1 && selectedMonth <= 12
                     ? selectedMonth
@@ -2152,6 +2162,14 @@ body.tab-transaksi .nav-tabs {
                 const statusValue = action === 'admin_verify_pending' ? true : null;
                 const person = setMemberPaymentStatusLocal(params, statusValue);
                 if (!person) return null;
+                if (statusValue === true) {
+                    ensureIuranTransactionLocal({
+                        ...params,
+                        nama: person.nama,
+                        selectedMonths: Array.isArray(params && params.months) ? params.months : [],
+                        nominal: Number(params && params.nominal) || 0
+                    }, 'QRIS');
+                }
                 const monthText = (params.months || []).map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
                 addLog(
                     "Iuran",
@@ -2298,6 +2316,62 @@ body.tab-transaksi .nav-tabs {
             }
         }
 
+        function setQrisPaymentStatus(message, type = '') {
+            const statusEl = document.getElementById('qris-payment-status');
+            if (!statusEl) return;
+            statusEl.className = 'qris-proof-status mb-2';
+            if (type === 'success') statusEl.classList.add('success');
+            if (type === 'error') statusEl.classList.add('error');
+            statusEl.innerText = message || '-';
+        }
+
+        function stopQrisStatusPolling() {
+            if (qrisStatusPollTimer) {
+                clearInterval(qrisStatusPollTimer);
+                qrisStatusPollTimer = null;
+            }
+        }
+
+        function startQrisStatusPolling() {
+            stopQrisStatusPolling();
+            qrisStatusPollTimer = setInterval(() => {
+                checkPendingQrisStatus(true).catch(() => {});
+            }, 8000);
+        }
+
+        function buildMemberPaymentDescription(params, paymentMethod = 'QRIS') {
+            const monthLabel = Array.isArray(params && params.selectedMonths)
+                ? params.selectedMonths.map(month => PAYMENT_MONTH_NAMES[month - 1]).filter(Boolean).join(', ')
+                : '';
+            return `BAYAR IURAN ${params && params.kat ? String(params.kat).toUpperCase() : 'ANGGOTA'} ${monthLabel} VIA ${String(paymentMethod || 'QRIS').toUpperCase()}`.trim();
+        }
+
+        function ensureIuranTransactionLocal(params, paymentMethod = 'QRIS') {
+            if (!params || !Array.isArray(params.selectedMonths) || !params.selectedMonths.length) return false;
+            const description = buildMemberPaymentDescription(params, paymentMethod);
+            const amount = Number(params.nominal || (params.selectedMonths.length * MONTHLY_IURAN_AMOUNT) || 0);
+            const source = String(params.nama || '').toUpperCase();
+            const existing = DB_TRANSAKSI.some(item =>
+                String(item && item.tp || '').toUpperCase() === 'PEMASUKAN' &&
+                String(item && item.p || '').toUpperCase() === source &&
+                String(item && item.k || '').toUpperCase() === description.toUpperCase() &&
+                Number(item && item.v || 0) === amount
+            );
+            if (existing) return false;
+
+            const dateValue = /^\d{4}-\d{2}-\d{2}/.test(String(params.date || ''))
+                ? String(params.date).slice(0, 10)
+                : new Date().toISOString().slice(0, 10);
+            DB_TRANSAKSI.push({
+                d: dateValue,
+                tp: 'Pemasukan',
+                p: source,
+                k: description,
+                v: amount
+            });
+            return true;
+        }
+
         function openQrisPaymentModal(params) {
             const amount = Array.isArray(params && params.selectedMonths)
                 ? params.selectedMonths.length * MONTHLY_IURAN_AMOUNT
@@ -2305,6 +2379,7 @@ body.tab-transaksi .nav-tabs {
             const memberInfo = document.getElementById('qris-member-info');
             const monthInfo = document.getElementById('qris-month-info');
             const amountInfo = document.getElementById('qris-amount-value');
+            const orderInfo = document.getElementById('qris-order-info');
             const continueBtn = document.getElementById('qris-continue-btn');
 
             if (memberInfo) memberInfo.innerText = `${String(params && params.kat || '').toUpperCase()} - ${String(params && params.nama || '').toUpperCase()}`;
@@ -2312,14 +2387,17 @@ body.tab-transaksi .nav-tabs {
                 ? `Bulan: ${params.selectedMonths.map(month => PAYMENT_MONTH_NAMES[month - 1]).join(', ')}`
                 : 'Bulan belum dipilih';
             if (amountInfo) amountInfo.innerText = `Rp ${amount.toLocaleString('id-ID')}`;
+            if (orderInfo) orderInfo.innerText = `Order: ${String(params && params.orderId || '-').trim() || '-'}`;
 
-            pendingPaymentContext = params || null;
+            pendingQrisOrderData = params || null;
             renderQrisCode(params && params.qrUrl, params && params.qrString);
             if (continueBtn) {
                 continueBtn.disabled = false;
-                continueBtn.innerText = 'SAYA SUDAH BAYAR';
+                continueBtn.innerText = 'CEK STATUS PEMBAYARAN';
             }
+            setQrisPaymentStatus('Menunggu pembayaran QRIS terdeteksi otomatis...');
             bootstrap.Modal.getOrCreateInstance('#modalQrisPayment').show();
+            startQrisStatusPolling();
         }
 
         function chooseMemberPayment(method) {
@@ -2374,29 +2452,130 @@ body.tab-transaksi .nav-tabs {
                 selectedMonths: pendingPaymentContext.selectedMonths.slice().sort((a, b) => a - b)
             };
             pendingPaymentContext = null;
-            if (String(params.method || '').toUpperCase() === 'QRIS') {
-                pendingPaymentContext = params;
-                openQrisPaymentModal(params);
-                return;
-            }
             askAuth('bayar_member', params);
         }
 
-        function continueQrisToAuth() {
-            const qrisModal = bootstrap.Modal.getInstance('#modalQrisPayment') || bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
-            qrisModal.hide();
-            if (!pendingPaymentContext) return;
-            const params = { ...pendingPaymentContext };
-            pendingPaymentContext = null;
-            askAuth('bayar_member', params);
+        async function startSemiAutoQrisPayment(params) {
+            const writeToken = getWriteToken();
+            const editor = getActiveEditor();
+            const deviceId = getDeviceId();
+            const selectedMonths = Array.isArray(params && params.selectedMonths)
+                ? params.selectedMonths.map(Number).filter(month => month >= 1 && month <= 12).sort((a, b) => a - b)
+                : [];
+            const amount = selectedMonths.length * MONTHLY_IURAN_AMOUNT;
+            if (!writeToken) {
+                showNotif('Write token belum tersedia. Verifikasi ulang dulu.', 'error');
+                return;
+            }
+            if (!selectedMonths.length || amount < 1) {
+                showNotif('Bulan pembayaran QRIS belum valid.', 'error');
+                return;
+            }
+
+            const query = new URLSearchParams({
+                action: 'midtransCreateQris',
+                authToken: writeToken,
+                editor: editor || 'ADMIN',
+                deviceId,
+                year: String(Number(params && params.y) || CURRENT_YEAR),
+                amount: String(amount),
+                member_id: String(params && params.id || ''),
+                member_name: String(params && params.nama || ''),
+                kat: String(params && params.kat || ''),
+                months: selectedMonths.join(',')
+            });
+
+            setQrisPaymentStatus('Membuat QRIS dinamis...');
+            renderQrisCode('', '');
+            try {
+                const data = await fetchJson(`${CLOUD_URL}?${query.toString()}`, 20000);
+                pendingQrisOrderData = {
+                    ...params,
+                    selectedMonths,
+                    nominal: amount,
+                    orderId: data.order_id || '',
+                    qrUrl: data.qr_url || '',
+                    qrString: data.qr_string || ''
+                };
+                openQrisPaymentModal(pendingQrisOrderData);
+                await loadFromCloud(CURRENT_YEAR);
+                showNotif('QRIS berhasil dibuat. Silakan scan lalu tunggu status pembayaran.', 'success');
+            } catch (err) {
+                pendingQrisOrderData = null;
+                stopQrisStatusPolling();
+                showNotif((err && err.message) ? err.message : 'Gagal membuat QRIS.', 'error');
+            }
+        }
+
+        async function checkPendingQrisStatus(isAutoCheck = false) {
+            if (!pendingQrisOrderData || !pendingQrisOrderData.orderId) return;
+            const continueBtn = document.getElementById('qris-continue-btn');
+            if (continueBtn && !isAutoCheck) {
+                continueBtn.disabled = true;
+                continueBtn.innerText = 'MEMERIKSA STATUS...';
+            }
+
+            try {
+                const query = new URLSearchParams({
+                    action: 'midtransStatus',
+                    authToken: getWriteToken(),
+                    editor: getActiveEditor() || 'ADMIN',
+                    deviceId: getDeviceId(),
+                    order_id: String(pendingQrisOrderData.orderId || '')
+                });
+                const data = await fetchJson(`${CLOUD_URL}?${query.toString()}`, 15000);
+                const status = String(data && data.status || '').toLowerCase();
+                if (data && data.ignored && !status) {
+                    await loadFromCloud(CURRENT_YEAR);
+                    setQrisPaymentStatus('Status QRIS sudah diproses sebelumnya. Data sedang disegarkan.');
+                    return;
+                }
+                if (status === 'settlement' || status === 'capture') {
+                    stopQrisStatusPolling();
+                    setQrisPaymentStatus('Pembayaran QRIS berhasil diterima.', 'success');
+                    await loadFromCloud(CURRENT_YEAR);
+                    bootstrap.Modal.getInstance('#modalQrisPayment')?.hide();
+                    pendingQrisOrderData = null;
+                    showNotif('Pembayaran QRIS berhasil dilunaskan otomatis.', 'success');
+                    return;
+                }
+                if (status === 'expire' || status === 'cancel' || status === 'deny') {
+                    stopQrisStatusPolling();
+                    setQrisPaymentStatus(`Pembayaran QRIS ${status.toUpperCase()}.`, 'error');
+                    await loadFromCloud(CURRENT_YEAR);
+                    showNotif(`Pembayaran QRIS ${status.toUpperCase()}.`, 'error');
+                    return;
+                }
+                setQrisPaymentStatus('Pembayaran masih menunggu. Coba cek lagi beberapa detik.');
+                if (!isAutoCheck) {
+                    showNotif('Pembayaran masih pending di gateway.', 'info');
+                }
+            } catch (err) {
+                if (!isAutoCheck) {
+                    setQrisPaymentStatus((err && err.message) ? err.message : 'Gagal cek status QRIS.', 'error');
+                    showNotif((err && err.message) ? err.message : 'Gagal cek status QRIS.', 'error');
+                }
+            } finally {
+                if (continueBtn) {
+                    continueBtn.disabled = false;
+                    continueBtn.innerText = 'CEK STATUS PEMBAYARAN';
+                }
+            }
         }
 
         window.openPaymentOptions = openPaymentOptions;
         window.togglePaymentMonthSelection = togglePaymentMonthSelection;
         window.continueMemberPayment = continueMemberPayment;
-        window.continueQrisToAuth = continueQrisToAuth;
+        window.checkPendingQrisStatus = checkPendingQrisStatus;
         window.chooseMemberPayment = chooseMemberPayment;
         window.triggerAdminPendingAction = triggerAdminPendingAction;
+
+        const qrisModalEl = document.getElementById('modalQrisPayment');
+        if (qrisModalEl) {
+            qrisModalEl.addEventListener('hidden.bs.modal', () => {
+                stopQrisStatusPolling();
+            });
+        }
 
         async function loadFromCloud(year = CURRENT_YEAR, options = {}) {
 
@@ -3397,6 +3576,3 @@ async function gantiTahun(tahun){
     </script>
 </body>
 </html>
-
-
-
