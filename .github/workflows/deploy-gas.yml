@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "Code.gs"
+      - "admin.html"
       - "index.html"
       - "gas_fix/**"
       - "scripts/sync-deploy-sources.ps1"
@@ -14,6 +15,7 @@ on:
   pull_request:
     paths:
       - "Code.gs"
+      - "admin.html"
       - "index.html"
       - "gas_fix/**"
       - "scripts/sync-deploy-sources.ps1"

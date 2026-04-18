@@ -24,7 +24,7 @@ Contoh file dan script bantu:
 
 Trigger deploy:
 
-- push ke branch `main` dengan perubahan di `Code.gs`, `index.html`, atau `gas_fix/**` akan deploy Apps Script
+- push ke branch `main` dengan perubahan di `Code.gs`, `admin.html`, `index.html`, atau `gas_fix/**` akan deploy Apps Script
 - push ke branch `main` dengan perubahan di `index.html`, `firebase-messaging-sw.js`, `public/**`, `firebase.json`, atau `.firebaserc` akan deploy Firebase Hosting live
 - pull request yang mengubah file hosting akan membuat preview channel Firebase
 
