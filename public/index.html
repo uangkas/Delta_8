@@ -2475,19 +2475,41 @@ body.tab-transaksi .nav-tabs {
             askAuth('bayar_member', params);
         }
 
-        function continueQrisToAuth() {
-            const qrisModal = bootstrap.Modal.getInstance('#modalQrisPayment') || bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
-            qrisModal.hide();
+        function submitQrisPaymentDirect() {
             if (!pendingPaymentContext) return;
             const params = { ...pendingPaymentContext };
+            const targetList = params.kat === 'Driver' ? DB_DRIVER : DB_HELPER;
+            const person = targetList.find(x => x.id == params.id);
+            if (!person) {
+                showNotif('Data anggota tidak ditemukan.', 'error');
+                return;
+            }
+            if (!person.status) person.status = {};
+            if (!person.status[params.y]) person.status[params.y] = {};
+            params.months.forEach(month => {
+                person.status[params.y][month] = 'pending';
+            });
+            const monthText = params.months.map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
+            addLog(
+                "Iuran",
+                `${String(params.kat || '').toUpperCase()} - ${String(params.nama || '').toUpperCase()} - ${monthText} - [⏳ - PENDING VERIFIKASI QRIS]`
+            );
+            const qrisModal = bootstrap.Modal.getInstance('#modalQrisPayment') || bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
+            qrisModal.hide();
+            syncAll();
+            showNotif('Pembayaran QRIS berhasil masuk verifikasi. Admin akan segera memproses.', 'success');
             pendingPaymentContext = null;
-            askAuth('bayar_member', params);
+        }
+
+        function continueQrisToAuth() {
+            submitQrisPaymentDirect();
         }
 
         window.openPaymentOptions = openPaymentOptions;
         window.togglePaymentMonthSelection = togglePaymentMonthSelection;
         window.continueMemberPayment = continueMemberPayment;
         window.continueQrisToAuth = continueQrisToAuth;
+        window.submitQrisPaymentDirect = submitQrisPaymentDirect;
         window.chooseMemberPayment = chooseMemberPayment;
         window.triggerAdminPendingAction = triggerAdminPendingAction;
 
