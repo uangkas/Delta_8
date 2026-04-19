@@ -2193,15 +2193,22 @@ body.tab-transaksi .nav-tabs {
                 return result;
             } else if (action === 'admin_verify_pending' || action === 'admin_cancel_pending') {
                 const statusValue = action === 'admin_verify_pending' ? true : null;
-                const person = setMemberPaymentStatusLocal(params, statusValue);
+                const targetList = params.kat === 'Driver' ? DB_DRIVER : DB_HELPER;
+                const person = targetList.find(x => x.id == params.id);
                 if (!person) return null;
-                const monthText = (params.months || []).map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
+                const pendingMonths = Array.isArray(params.months)
+                    ? params.months.map(Number).filter(month => month >= 1 && month <= 12 && person.status?.[params.y]?.[month] === 'pending')
+                    : [];
+                if (!pendingMonths.length) return null;
+                const updatedPerson = setMemberPaymentStatusLocal({ ...params, months: pendingMonths }, statusValue);
+                if (!updatedPerson) return null;
+                const monthText = pendingMonths.map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
                 addLog(
                     "Iuran",
-                    `${String(params.kat || '').toUpperCase()} - ${person.nama} - ${monthText} - [${statusValue === true ? "✅ - LUNAS VERIFIKASI ADMIN" : "❌ - PEMBAYARAN QRIS DIBATALKAN"}]`
+                    `${String(params.kat || '').toUpperCase()} - ${updatedPerson.nama} - ${monthText} - [${statusValue === true ? "✅ - LUNAS VERIFIKASI ADMIN" : "❌ - PEMBAYARAN QRIS DIBATALKAN"}]`
                 );
                 syncAll();
-                return { person, statusValue };
+                return { person: updatedPerson, statusValue };
             } else if (action === 'verify_payment') {
                 const statusValue = true; // Always verify to paid
                 const person = setMemberPaymentStatusLocal({ ...params, months: [params.m] }, statusValue);
@@ -2224,11 +2231,28 @@ body.tab-transaksi .nav-tabs {
             if (!person.status) person.status = {};
             if (!person.status[params.y]) person.status[params.y] = {};
             const months = Array.isArray(params && params.months) ? params.months : [];
+            let changed = false;
             months.forEach(month => {
-                if (statusValue === null) delete person.status[params.y][month];
-                else person.status[params.y][month] = statusValue;
+                const monthKey = Number(month);
+                const currentStatus = person.status[params.y][monthKey];
+                if (statusValue === null) {
+                    if (currentStatus === 'pending') {
+                        delete person.status[params.y][monthKey];
+                        changed = true;
+                    }
+                } else if (statusValue === true) {
+                    if (currentStatus === 'pending') {
+                        person.status[params.y][monthKey] = true;
+                        changed = true;
+                    }
+                } else {
+                    if (currentStatus !== statusValue) {
+                        person.status[params.y][monthKey] = statusValue;
+                        changed = true;
+                    }
+                }
             });
-            return person;
+            return changed ? person : null;
         }
 
         function getPendingPaymentRows() {
@@ -2464,7 +2488,10 @@ body.tab-transaksi .nav-tabs {
             monthModal.hide();
             const params = {
                 ...pendingPaymentContext,
-                selectedMonths: pendingPaymentContext.selectedMonths.slice().sort((a, b) => a - b)
+                selectedMonths: pendingPaymentContext.selectedMonths
+                    .map(Number)
+                    .filter(month => month >= 1 && month <= 12)
+                    .sort((a, b) => a - b)
             };
             pendingPaymentContext = null;
             if (String(params.method || '').toUpperCase() === 'QRIS') {
@@ -2491,7 +2518,13 @@ body.tab-transaksi .nav-tabs {
             }
             if (!person.status) person.status = {};
             if (!person.status[params.y]) person.status[params.y] = {};
-            const months = params.selectedMonths || [];
+            const months = Array.isArray(params.selectedMonths)
+                ? Array.from(new Set(params.selectedMonths.map(Number).filter(month => month >= 1 && month <= 12))).sort((a, b) => a - b)
+                : [];
+            if (!months.length) {
+                showNotif('Pilih bulan pembayaran terlebih dahulu.', 'error');
+                return;
+            }
             months.forEach(month => {
                 person.status[params.y][month] = 'pending';
             });
