@@ -2491,10 +2491,11 @@ body.tab-transaksi .nav-tabs {
             }
             if (!person.status) person.status = {};
             if (!person.status[params.y]) person.status[params.y] = {};
-            params.months.forEach(month => {
+            const months = params.selectedMonths || [];
+            months.forEach(month => {
                 person.status[params.y][month] = 'pending';
             });
-            const monthText = params.months.map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
+            const monthText = months.map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
             addLog(
                 "Iuran",
                 `${String(params.kat || '').toUpperCase()} - ${String(params.nama || '').toUpperCase()} - ${monthText} - [⏳ - PENDING VERIFIKASI QRIS]`
