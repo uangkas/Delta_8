@@ -339,13 +339,40 @@
             color: var(--muted);
             font-size: 13px;
             line-height: 1.7;
+            display: grid;
+            gap: 6px;
+        }
+
+        .admin-payment-detail {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            font-size: 12px;
+        }
+
+        .admin-payment-detail:last-child {
+            border-bottom: none;
+        }
+
+        .admin-payment-detail-label {
+            color: var(--muted);
+            font-weight: 700;
+        }
+
+        .admin-payment-detail-value {
+            color: var(--text);
+            font-weight: 800;
         }
 
         .admin-payment-amount {
-            margin-top: 8px;
+            margin-top: 12px;
             color: var(--gold);
             font-size: 16px;
             font-weight: 800;
+            padding-top: 12px;
+            border-top: 1px solid rgba(243, 199, 107, 0.2);
         }
 
         .admin-payment-actions {
@@ -627,6 +654,8 @@
                 const monthText = Array.isArray(item.monthLabels) && item.monthLabels.length
                     ? item.monthLabels.join(', ')
                     : (Array.isArray(item.months) ? item.months.join(', ') : '-');
+                const monthCount = Array.isArray(item.months) ? item.months.length : 0;
+                const monthlyAmount = 25000;
                 const payload = encodeURIComponent(JSON.stringify(item));
                 return `
                     <article class="admin-payment-item">
@@ -634,8 +663,29 @@
                             <div class="admin-payment-name">${String(item.kat || '').toUpperCase()} - ${item.nama}</div>
                             <div class="admin-payment-badge">PENDING</div>
                         </div>
-                        <div class="admin-payment-meta">Periode: ${monthText}</div>
-                        <div class="admin-payment-amount">${formatCurrency(item.nominal)}</div>
+                        <div class="admin-payment-meta">
+                            <div class="admin-payment-detail">
+                                <span class="admin-payment-detail-label">ID Anggota:</span>
+                                <span class="admin-payment-detail-value">${item.id || '-'}</span>
+                            </div>
+                            <div class="admin-payment-detail">
+                                <span class="admin-payment-detail-label">Periode:</span>
+                                <span class="admin-payment-detail-value">${monthText}</span>
+                            </div>
+                            <div class="admin-payment-detail">
+                                <span class="admin-payment-detail-label">Jumlah Bulan:</span>
+                                <span class="admin-payment-detail-value">${monthCount} bulan</span>
+                            </div>
+                            <div class="admin-payment-detail">
+                                <span class="admin-payment-detail-label">Metode:</span>
+                                <span class="admin-payment-detail-value">💳 QRIS</span>
+                            </div>
+                            <div class="admin-payment-detail">
+                                <span class="admin-payment-detail-label">Per Bulan:</span>
+                                <span class="admin-payment-detail-value">${formatCurrency(monthlyAmount)}</span>
+                            </div>
+                        </div>
+                        <div class="admin-payment-amount">Total: ${formatCurrency(item.nominal)}</div>
                         <div class="admin-payment-actions">
                             <button type="button" class="admin-ghost-button" data-payment-action="verify_pending" data-payment-payload="${payload}">LUNASKAN</button>
                             <button type="button" class="admin-danger-button" data-payment-action="cancel_pending" data-payment-payload="${payload}">BATALKAN</button>
