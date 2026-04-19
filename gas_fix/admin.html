@@ -7,15 +7,15 @@
     <style>
         :root {
             --bg: #07111f;
-            --bg-soft: #0d1829;
             --panel: rgba(9, 18, 34, 0.82);
-            --panel-strong: rgba(13, 24, 41, 0.94);
             --text: #edf2f7;
             --muted: #93a4ba;
             --line: rgba(148, 163, 184, 0.18);
             --gold: #f3c76b;
             --gold-strong: #e2a93b;
             --blue: #6dd3ff;
+            --danger: #fecaca;
+            --danger-border: rgba(248, 113, 113, 0.35);
             --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
         }
 
@@ -37,7 +37,9 @@
             position: fixed;
             inset: 0;
             pointer-events: none;
-            background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-image:
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
             background-size: 32px 32px;
             mask-image: radial-gradient(circle at center, black, transparent 80%);
             opacity: 0.35;
@@ -64,7 +66,7 @@
         }
 
         .admin-card,
-        .admin-frame-wrap {
+        .admin-view {
             border: 1px solid var(--line);
             border-radius: 24px;
             background: linear-gradient(180deg, rgba(12, 21, 38, 0.92), rgba(7, 17, 31, 0.88));
@@ -134,6 +136,13 @@
             gap: 10px;
         }
 
+        .admin-link,
+        .admin-mini-button,
+        .admin-ghost-button,
+        .admin-danger-button {
+            cursor: pointer;
+        }
+
         .admin-link {
             display: inline-flex;
             align-items: center;
@@ -141,14 +150,12 @@
             min-height: 46px;
             padding: 0 16px;
             border-radius: 14px;
-            text-decoration: none;
             border: 1px solid var(--line);
             color: var(--text);
             background: rgba(255,255,255,0.03);
             font-weight: 700;
             letter-spacing: 0.04em;
             transition: transform .18s ease, border-color .18s ease, background .18s ease;
-            cursor: pointer;
         }
 
         .admin-link:hover {
@@ -218,10 +225,16 @@
             white-space: nowrap;
         }
 
-        .admin-frame-wrap {
+        .admin-view {
+            display: none;
             flex: 1;
             min-height: 72vh;
             overflow: hidden;
+        }
+
+        .admin-view.active {
+            display: flex;
+            flex-direction: column;
         }
 
         .admin-frame {
@@ -232,24 +245,31 @@
             background: #fff;
         }
 
+        .admin-verification-wrap {
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            min-height: 100%;
+        }
+
         .admin-panel-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            margin-bottom: 12px;
         }
 
         .admin-panel-title {
             margin: 0;
-            font-size: 14px;
+            font-size: 18px;
             font-weight: 800;
             letter-spacing: 0.08em;
         }
 
         .admin-mini-button {
-            min-height: 34px;
-            padding: 0 12px;
+            min-height: 36px;
+            padding: 0 14px;
             border-radius: 999px;
             border: 1px solid rgba(109, 211, 255, 0.24);
             background: rgba(109, 211, 255, 0.08);
@@ -257,37 +277,31 @@
             font-size: 11px;
             font-weight: 800;
             letter-spacing: 0.08em;
-            cursor: pointer;
-        }
-
-        .admin-mini-button:hover {
-            background: rgba(109, 211, 255, 0.14);
         }
 
         .admin-payment-summary {
             color: var(--muted);
-            font-size: 13px;
-            line-height: 1.6;
+            font-size: 14px;
+            line-height: 1.7;
         }
 
         .admin-payment-list {
             display: grid;
-            gap: 10px;
-            margin-top: 14px;
+            gap: 12px;
         }
 
         .admin-payment-empty {
-            padding: 14px;
-            border-radius: 16px;
+            padding: 18px;
+            border-radius: 18px;
             border: 1px dashed rgba(148, 163, 184, 0.26);
             color: var(--muted);
-            font-size: 13px;
+            font-size: 14px;
             text-align: center;
             background: rgba(255,255,255,0.02);
         }
 
         .admin-payment-item {
-            padding: 14px;
+            padding: 16px;
             border-radius: 18px;
             border: 1px solid rgba(243, 199, 107, 0.18);
             background: rgba(255,255,255,0.04);
@@ -301,7 +315,7 @@
         }
 
         .admin-payment-name {
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 800;
             letter-spacing: 0.04em;
         }
@@ -323,32 +337,31 @@
         .admin-payment-meta {
             margin-top: 8px;
             color: var(--muted);
-            font-size: 12px;
-            line-height: 1.6;
+            font-size: 13px;
+            line-height: 1.7;
         }
 
         .admin-payment-amount {
-            margin-top: 6px;
+            margin-top: 8px;
             color: var(--gold);
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 800;
         }
 
         .admin-payment-actions {
             display: flex;
-            gap: 8px;
-            margin-top: 12px;
+            gap: 10px;
+            margin-top: 14px;
         }
 
         .admin-ghost-button,
         .admin-danger-button {
             flex: 1;
-            min-height: 38px;
+            min-height: 40px;
             border-radius: 12px;
             font-size: 11px;
             font-weight: 800;
             letter-spacing: 0.06em;
-            cursor: pointer;
         }
 
         .admin-ghost-button {
@@ -358,16 +371,15 @@
         }
 
         .admin-danger-button {
-            border: 1px solid rgba(248, 113, 113, 0.4);
+            border: 1px solid var(--danger-border);
             background: rgba(127, 29, 29, 0.18);
-            color: #fecaca;
+            color: var(--danger);
         }
 
         .admin-payment-footnote {
-            margin-top: 10px;
             color: var(--muted);
-            font-size: 11px;
-            line-height: 1.6;
+            font-size: 12px;
+            line-height: 1.7;
         }
 
         @media (max-width: 1080px) {
@@ -394,6 +406,10 @@
                 height: calc(100vh - 240px);
                 min-height: 560px;
             }
+
+            .admin-payment-actions {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
@@ -403,7 +419,7 @@
             <section class="admin-card">
                 <div class="admin-kicker">ADMIN SPACE</div>
                 <h1 class="admin-title">Delta 8 Control Room</h1>
-                <p class="admin-copy">Satu ruang kerja yang lebih tenang untuk mengelola pembayaran pending, ceklis anggota, dan transaksi dengan kontrol admin lengkap di satu panel.</p>
+                <p class="admin-copy">Panel utama dipakai untuk kelola anggota dan transaksi, sedangkan verifikasi QRIS sekarang dipusatkan di halaman khusus agar alurnya tidak bercampur.</p>
                 <div class="admin-metrics">
                     <div class="metric">
                         <div class="metric-label">MODE</div>
@@ -422,42 +438,45 @@
 
             <section class="admin-card">
                 <div class="admin-actions">
-                    <button type="button" class="admin-link primary" id="add-member-link">+ ANGGOTA</button>
+                    <button type="button" class="admin-link active" id="dashboard-link">PANEL UTAMA</button>
+                    <button type="button" class="admin-link" id="add-member-link">+ ANGGOTA</button>
                     <button type="button" class="admin-link" id="add-transaction-link">+ TRANSAKSI</button>
                     <button type="button" class="admin-link" id="payment-verification-link">VERIFIKASI QRIS</button>
                 </div>
-            </section>
-
-            <section class="admin-card">
-                <div class="admin-panel-header">
-                    <h2 class="admin-panel-title">VERIFIKASI PEMBAYARAN</h2>
-                    <button type="button" class="admin-mini-button" id="refresh-payments-link">MUAT ULANG</button>
-                </div>
-                <div class="admin-payment-summary" id="admin-payment-summary-card">Memuat daftar pembayaran QRIS yang masih menunggu verifikasi admin.</div>
-                <div class="admin-payment-list" id="admin-payment-list-card">
-                    <div class="admin-payment-empty">Belum ada data dari panel utama.</div>
-                </div>
-                <div class="admin-payment-footnote">Tombol verifikasi di kartu ini tetap memakai otorisasi admin dari panel utama agar status iuran dan log kas tetap sinkron.</div>
             </section>
         </aside>
 
         <main class="admin-main">
             <div class="admin-topbar">
                 <div>
-                    <h2 class="admin-topbar-title">PANEL ADMIN PEMBAYARAN</h2>
-                    <p class="admin-topbar-copy" id="admin-view-caption">Panel kiri sekarang juga menampilkan <strong>verifikasi pembayaran QRIS</strong>, sementara panel kanan tetap memuat ceklis anggota, tabel lengkap, transaksi, dan aksi admin.</p>
+                    <h2 class="admin-topbar-title" id="admin-topbar-title">PANEL ADMIN UTAMA</h2>
+                    <p class="admin-topbar-copy" id="admin-view-caption">Panel ini memuat <strong>ceklis anggota</strong>, tabel lengkap, transaksi, dan aksi admin harian.</p>
                 </div>
-                <div class="admin-pill">LIVE CONTROL</div>
+                <div class="admin-pill" id="admin-view-pill">LIVE CONTROL</div>
             </div>
 
-            <div class="admin-frame-wrap">
+            <section class="admin-view active" id="dashboard-view">
                 <iframe
                     class="admin-frame"
                     id="admin-frame"
                     src="https://kas-delta-8.web.app/index.html?mode=admin"
                     title="Panel Admin Delta 8">
                 </iframe>
-            </div>
+            </section>
+
+            <section class="admin-view" id="verification-view">
+                <div class="admin-verification-wrap">
+                    <div class="admin-panel-header">
+                        <h2 class="admin-panel-title">VERIFIKASI PEMBAYARAN QRIS</h2>
+                        <button type="button" class="admin-mini-button" id="refresh-payments-link">MUAT ULANG</button>
+                    </div>
+                    <div class="admin-payment-summary" id="admin-payment-summary-card">Memuat daftar pembayaran QRIS yang masih menunggu verifikasi admin.</div>
+                    <div class="admin-payment-list" id="admin-payment-list-card">
+                        <div class="admin-payment-empty">Belum ada data dari panel utama.</div>
+                    </div>
+                    <div class="admin-payment-footnote">Semua pembayaran QRIS yang menunggu persetujuan admin dikumpulkan di halaman ini. Status baru berubah setelah admin memilih <strong>LUNASKAN</strong> atau <strong>BATALKAN</strong>.</div>
+                </div>
+            </section>
         </main>
     </div>
     <script>
@@ -465,12 +484,20 @@
         const ADMIN_PANEL_URL = `${USER_SITE_URL}?mode=admin`;
 
         const frame = document.getElementById('admin-frame');
+        const dashboardButton = document.getElementById('dashboard-link');
         const addMemberButton = document.getElementById('add-member-link');
         const addTransactionButton = document.getElementById('add-transaction-link');
         const paymentVerificationButton = document.getElementById('payment-verification-link');
         const refreshPaymentsButton = document.getElementById('refresh-payments-link');
         const paymentSummaryCard = document.getElementById('admin-payment-summary-card');
         const paymentListCard = document.getElementById('admin-payment-list-card');
+        const dashboardView = document.getElementById('dashboard-view');
+        const verificationView = document.getElementById('verification-view');
+        const topbarTitle = document.getElementById('admin-topbar-title');
+        const topbarCopy = document.getElementById('admin-view-caption');
+        const topbarPill = document.getElementById('admin-view-pill');
+
+        let currentView = 'dashboard';
         let pendingPaymentState = { count: 0, totalNominal: 0, items: [], year: new Date().getFullYear() };
 
         function formatCurrency(value) {
@@ -494,6 +521,36 @@
                 action,
                 payload: payload || null
             }, '*');
+        }
+
+        function setActiveButton(target) {
+            [dashboardButton, paymentVerificationButton].forEach((button) => {
+                if (!button) return;
+                button.classList.toggle('active', button === target);
+                if (button !== addMemberButton && button !== addTransactionButton) {
+                    button.classList.toggle('primary', button === target);
+                }
+            });
+        }
+
+        function switchView(view) {
+            currentView = view === 'verification' ? 'verification' : 'dashboard';
+            const showVerification = currentView === 'verification';
+            if (dashboardView) dashboardView.classList.toggle('active', !showVerification);
+            if (verificationView) verificationView.classList.toggle('active', showVerification);
+
+            if (showVerification) {
+                if (topbarTitle) topbarTitle.innerText = 'HALAMAN VERIFIKASI QRIS';
+                if (topbarCopy) topbarCopy.innerHTML = 'Semua pembayaran QRIS yang <strong>menunggu verifikasi</strong> dipusatkan di sini.';
+                if (topbarPill) topbarPill.innerText = 'VERIFICATION MODE';
+                setActiveButton(paymentVerificationButton);
+                requestPendingSnapshot();
+            } else {
+                if (topbarTitle) topbarTitle.innerText = 'PANEL ADMIN UTAMA';
+                if (topbarCopy) topbarCopy.innerHTML = 'Panel ini memuat <strong>ceklis anggota</strong>, tabel lengkap, transaksi, dan aksi admin harian.';
+                if (topbarPill) topbarPill.innerText = 'LIVE CONTROL';
+                setActiveButton(dashboardButton);
+            }
         }
 
         function renderPendingPaymentsPanel() {
@@ -537,14 +594,23 @@
             postAdminAction('request_pending_snapshot');
         }
 
+        if (dashboardButton) {
+            dashboardButton.addEventListener('click', () => switchView('dashboard'));
+        }
         if (addMemberButton) {
-            addMemberButton.addEventListener('click', () => postAdminAction('tambah'));
+            addMemberButton.addEventListener('click', () => {
+                switchView('dashboard');
+                postAdminAction('tambah');
+            });
         }
         if (addTransactionButton) {
-            addTransactionButton.addEventListener('click', () => postAdminAction('catat'));
+            addTransactionButton.addEventListener('click', () => {
+                switchView('dashboard');
+                postAdminAction('catat');
+            });
         }
         if (paymentVerificationButton) {
-            paymentVerificationButton.addEventListener('click', () => postAdminAction('focus_pending'));
+            paymentVerificationButton.addEventListener('click', () => switchView('verification'));
         }
         if (refreshPaymentsButton) {
             refreshPaymentsButton.addEventListener('click', requestPendingSnapshot);
@@ -558,7 +624,6 @@
                 try {
                     const payload = JSON.parse(decodeURIComponent(rawPayload));
                     postAdminAction(action, payload);
-                    postAdminAction('focus_pending');
                 } catch (err) {}
             });
         }
@@ -577,6 +642,7 @@
             frame.src = ADMIN_PANEL_URL;
         }
 
+        switchView('dashboard');
         renderPendingPaymentsPanel();
     </script>
 </body>

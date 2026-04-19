@@ -1080,23 +1080,6 @@ body.tab-transaksi .nav-tabs {
                         <button class="btn-unduh-final" onclick="askAuth('download')">📥 UNDUH LAPORAN PDF</button>
                         <button class="btn-hapus-final" onclick="clearLogs()">HAPUS SEMUA LOG SISTEM</button>
                     </div>
-
-                    <div id="admin-payment-wrap" style="display:none;">
-                    <div class="luxe-dropdown" onclick="toggleCol('admin-payment-col')"><span>ðŸ›¡ PANEL ADMIN PEMBAYARAN</span><span id="admin-icon">â–¼</span></div>
-                    <div id="admin-payment-col" class="luxe-content">
-                        <div class="d-flex flex-wrap gap-2 mb-3">
-                            <button type="button" class="btn btn-warning fw-bold" onclick="askAuth('tambah')">+ ANGGOTA</button>
-                            <button type="button" class="btn btn-dark fw-bold" onclick="askAuth('catat')">+ TRANSAKSI</button>
-                        </div>
-                        <div id="admin-payment-summary" class="small text-muted mb-3">Belum ada pembayaran QRIS yang menunggu verifikasi.</div>
-                        <div class="table-responsive" style="max-height: 320px;">
-                            <table class="table" id="admin-payment-table">
-                                <thead><tr><th>ANGGOTA</th><th>BULAN</th><th>NOMINAL</th><th>STATUS</th><th>DETAIL</th><th>AKSI</th></tr></thead>
-                                <tbody id="admin-payment-list"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1643,22 +1626,16 @@ body.tab-transaksi .nav-tabs {
 
             const systemArea = document.getElementById('system-area');
             if (systemArea) systemArea.style.display = '';
-            const adminWrap = document.getElementById('admin-payment-wrap');
-            if (adminWrap) adminWrap.style.display = '';
 
             const logCol = document.getElementById('log-col');
             if (logCol) logCol.classList.remove('show');
             const exportCol = document.getElementById('export-col');
             if (exportCol) exportCol.classList.remove('show');
-            const adminCol = document.getElementById('admin-payment-col');
-            if (adminCol) adminCol.classList.add('show');
 
             const logIcon = document.getElementById('log-icon');
             if (logIcon) logIcon.innerText = '▼';
             const exportIcon = document.getElementById('export-icon');
             if (exportIcon) exportIcon.innerText = '▼';
-            const adminIcon = document.getElementById('admin-icon');
-            if (adminIcon) adminIcon.innerText = '▲';
         }
 
         window.addEventListener('message', (event) => {
@@ -1669,11 +1646,6 @@ body.tab-transaksi .nav-tabs {
                     const action = String(data.action || '').trim().toLowerCase();
                     if (action === 'tambah') askAuth('tambah');
                     if (action === 'catat') askAuth('catat');
-                    if (action === 'focus_pending') {
-                        applyAdminMode();
-                        ensureLaunchPanelOpen('admin-payment-col');
-                        focusLaunchTarget('admin-payment-wrap');
-                    }
                     if (action === 'request_pending_snapshot') {
                         postPendingPaymentsToParent();
                     }
@@ -2963,8 +2935,13 @@ async function syncAll() {
                 const isPaid = rawStatus === true;
                 const isPending = rawStatus === 'pending';
                 if (isPaid) count++;
+                const allowAdminCancel = adminMode && isPaid;
+                const cellAction = allowAdminCancel
+                    ? `onclick="askAuth('toggle', {id: '${p.id}', kat: '${kat}', y: ${y}, m: ${i}})"`
+                    : '';
+                const cellStyle = allowAdminCancel ? 'cursor: pointer;' : '';
                 cellParts.push(
-                    `<td class="status-toggle ${isPaid ? 'text-success' : (isPending ? 'text-warning' : 'text-danger')}" data-id="${p.id}" data-kat="${kat}" data-y="${y}" data-m="${i}">${isPaid ? '&#9989;' : (isPending ? '&#9203;' : '&#10060;')}</td>`
+                    `<td class="status-toggle ${isPaid ? 'text-success' : (isPending ? 'text-warning' : 'text-danger')}" data-id="${p.id}" data-kat="${kat}" data-y="${y}" data-m="${i}" style="${cellStyle}" ${cellAction}>${isPaid ? '&#9989;' : (isPending ? '&#9203;' : '&#10060;')}</td>`
                 );
             }
 
