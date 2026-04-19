@@ -232,6 +232,144 @@
             background: #fff;
         }
 
+        .admin-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .admin-panel-title {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+        }
+
+        .admin-mini-button {
+            min-height: 34px;
+            padding: 0 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(109, 211, 255, 0.24);
+            background: rgba(109, 211, 255, 0.08);
+            color: var(--blue);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+        }
+
+        .admin-mini-button:hover {
+            background: rgba(109, 211, 255, 0.14);
+        }
+
+        .admin-payment-summary {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .admin-payment-list {
+            display: grid;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .admin-payment-empty {
+            padding: 14px;
+            border-radius: 16px;
+            border: 1px dashed rgba(148, 163, 184, 0.26);
+            color: var(--muted);
+            font-size: 13px;
+            text-align: center;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .admin-payment-item {
+            padding: 14px;
+            border-radius: 18px;
+            border: 1px solid rgba(243, 199, 107, 0.18);
+            background: rgba(255,255,255,0.04);
+        }
+
+        .admin-payment-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .admin-payment-name {
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+
+        .admin-payment-badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 0 10px;
+            border-radius: 999px;
+            background: rgba(243, 199, 107, 0.16);
+            color: var(--gold);
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            white-space: nowrap;
+        }
+
+        .admin-payment-meta {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .admin-payment-amount {
+            margin-top: 6px;
+            color: var(--gold);
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+        .admin-payment-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .admin-ghost-button,
+        .admin-danger-button {
+            flex: 1;
+            min-height: 38px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            cursor: pointer;
+        }
+
+        .admin-ghost-button {
+            border: 1px solid rgba(243, 199, 107, 0.28);
+            background: linear-gradient(135deg, var(--gold-strong), var(--gold));
+            color: #111827;
+        }
+
+        .admin-danger-button {
+            border: 1px solid rgba(248, 113, 113, 0.4);
+            background: rgba(127, 29, 29, 0.18);
+            color: #fecaca;
+        }
+
+        .admin-payment-footnote {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.6;
+        }
+
         @media (max-width: 1080px) {
             .admin-shell {
                 grid-template-columns: 1fr;
@@ -286,7 +424,20 @@
                 <div class="admin-actions">
                     <button type="button" class="admin-link primary" id="add-member-link">+ ANGGOTA</button>
                     <button type="button" class="admin-link" id="add-transaction-link">+ TRANSAKSI</button>
+                    <button type="button" class="admin-link" id="payment-verification-link">VERIFIKASI QRIS</button>
                 </div>
+            </section>
+
+            <section class="admin-card">
+                <div class="admin-panel-header">
+                    <h2 class="admin-panel-title">VERIFIKASI PEMBAYARAN</h2>
+                    <button type="button" class="admin-mini-button" id="refresh-payments-link">MUAT ULANG</button>
+                </div>
+                <div class="admin-payment-summary" id="admin-payment-summary-card">Memuat daftar pembayaran QRIS yang masih menunggu verifikasi admin.</div>
+                <div class="admin-payment-list" id="admin-payment-list-card">
+                    <div class="admin-payment-empty">Belum ada data dari panel utama.</div>
+                </div>
+                <div class="admin-payment-footnote">Tombol verifikasi di kartu ini tetap memakai otorisasi admin dari panel utama agar status iuran dan log kas tetap sinkron.</div>
             </section>
         </aside>
 
@@ -294,7 +445,7 @@
             <div class="admin-topbar">
                 <div>
                     <h2 class="admin-topbar-title">PANEL ADMIN PEMBAYARAN</h2>
-                    <p class="admin-topbar-copy" id="admin-view-caption">Panel kanan menampilkan <strong>ceklis anggota</strong>, tabel lengkap, transaksi, dan kolom aksi khusus admin.</p>
+                    <p class="admin-topbar-copy" id="admin-view-caption">Panel kiri sekarang juga menampilkan <strong>verifikasi pembayaran QRIS</strong>, sementara panel kanan tetap memuat ceklis anggota, tabel lengkap, transaksi, dan aksi admin.</p>
                 </div>
                 <div class="admin-pill">LIVE CONTROL</div>
             </div>
@@ -316,13 +467,74 @@
         const frame = document.getElementById('admin-frame');
         const addMemberButton = document.getElementById('add-member-link');
         const addTransactionButton = document.getElementById('add-transaction-link');
+        const paymentVerificationButton = document.getElementById('payment-verification-link');
+        const refreshPaymentsButton = document.getElementById('refresh-payments-link');
+        const paymentSummaryCard = document.getElementById('admin-payment-summary-card');
+        const paymentListCard = document.getElementById('admin-payment-list-card');
+        let pendingPaymentState = { count: 0, totalNominal: 0, items: [], year: new Date().getFullYear() };
 
-        function postAdminAction(action) {
+        function formatCurrency(value) {
+            return `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
+        }
+
+        function formatUpdatedAt(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+            return date.toLocaleString('id-ID', {
+                dateStyle: 'medium',
+                timeStyle: 'short'
+            });
+        }
+
+        function postAdminAction(action, payload) {
             if (!frame || !frame.contentWindow) return;
             frame.contentWindow.postMessage({
                 type: 'delta8-admin-action',
-                action
+                action,
+                payload: payload || null
             }, '*');
+        }
+
+        function renderPendingPaymentsPanel() {
+            if (!paymentSummaryCard || !paymentListCard) return;
+            const state = pendingPaymentState || {};
+            const items = Array.isArray(state.items) ? state.items : [];
+            if (!items.length) {
+                const updatedText = formatUpdatedAt(state.updatedAt);
+                paymentSummaryCard.innerHTML = updatedText
+                    ? `Belum ada pembayaran QRIS yang menunggu verifikasi. Snapshot terakhir: <strong>${updatedText}</strong>.`
+                    : 'Belum ada pembayaran QRIS yang menunggu verifikasi.';
+                paymentListCard.innerHTML = '<div class="admin-payment-empty">Tidak ada pembayaran pending saat ini.</div>';
+                return;
+            }
+
+            const updatedText = formatUpdatedAt(state.updatedAt);
+            paymentSummaryCard.innerHTML = `${items.length} anggota menunggu verifikasi QRIS dengan total <strong>${formatCurrency(state.totalNominal)}</strong>${updatedText ? `. Diperbarui ${updatedText}.` : '.'}`;
+            paymentListCard.innerHTML = items.map((item) => {
+                const monthText = Array.isArray(item.monthLabels) && item.monthLabels.length
+                    ? item.monthLabels.join(', ')
+                    : (Array.isArray(item.months) ? item.months.join(', ') : '-');
+                const payload = encodeURIComponent(JSON.stringify(item));
+                return `
+                    <article class="admin-payment-item">
+                        <div class="admin-payment-row">
+                            <div class="admin-payment-name">${String(item.kat || '').toUpperCase()} - ${item.nama}</div>
+                            <div class="admin-payment-badge">PENDING</div>
+                        </div>
+                        <div class="admin-payment-meta">Periode: ${monthText}</div>
+                        <div class="admin-payment-amount">${formatCurrency(item.nominal)}</div>
+                        <div class="admin-payment-actions">
+                            <button type="button" class="admin-ghost-button" data-payment-action="verify_pending" data-payment-payload="${payload}">LUNASKAN</button>
+                            <button type="button" class="admin-danger-button" data-payment-action="cancel_pending" data-payment-payload="${payload}">BATALKAN</button>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+        }
+
+        function requestPendingSnapshot() {
+            postAdminAction('request_pending_snapshot');
         }
 
         if (addMemberButton) {
@@ -331,8 +543,41 @@
         if (addTransactionButton) {
             addTransactionButton.addEventListener('click', () => postAdminAction('catat'));
         }
+        if (paymentVerificationButton) {
+            paymentVerificationButton.addEventListener('click', () => postAdminAction('focus_pending'));
+        }
+        if (refreshPaymentsButton) {
+            refreshPaymentsButton.addEventListener('click', requestPendingSnapshot);
+        }
+        if (paymentListCard) {
+            paymentListCard.addEventListener('click', (event) => {
+                const button = event.target.closest('[data-payment-action]');
+                if (!button) return;
+                const action = button.getAttribute('data-payment-action');
+                const rawPayload = button.getAttribute('data-payment-payload') || '';
+                try {
+                    const payload = JSON.parse(decodeURIComponent(rawPayload));
+                    postAdminAction(action, payload);
+                    postAdminAction('focus_pending');
+                } catch (err) {}
+            });
+        }
 
-        if (frame) frame.src = ADMIN_PANEL_URL;
+        window.addEventListener('message', (event) => {
+            const data = event && event.data ? event.data : null;
+            if (!data || data.type !== 'delta8-admin-pending-state') return;
+            pendingPaymentState = data.payload || { count: 0, totalNominal: 0, items: [] };
+            renderPendingPaymentsPanel();
+        });
+
+        if (frame) {
+            frame.addEventListener('load', () => {
+                window.setTimeout(requestPendingSnapshot, 600);
+            });
+            frame.src = ADMIN_PANEL_URL;
+        }
+
+        renderPendingPaymentsPanel();
     </script>
 </body>
 </html>

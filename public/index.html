@@ -1669,6 +1669,18 @@ body.tab-transaksi .nav-tabs {
                     const action = String(data.action || '').trim().toLowerCase();
                     if (action === 'tambah') askAuth('tambah');
                     if (action === 'catat') askAuth('catat');
+                    if (action === 'focus_pending') {
+                        applyAdminMode();
+                        ensureLaunchPanelOpen('admin-payment-col');
+                        focusLaunchTarget('admin-payment-wrap');
+                    }
+                    if (action === 'request_pending_snapshot') {
+                        postPendingPaymentsToParent();
+                    }
+                    if ((action === 'verify_pending' || action === 'cancel_pending') && data.payload) {
+                        const authAction = action === 'verify_pending' ? 'admin_verify_pending' : 'admin_cancel_pending';
+                        askAuth(authAction, data.payload);
+                    }
                 } else if (data.type === 'delta8-admin-verify') {
                     const params = data.params;
                     if (params) askAuth('verify_payment', params);
@@ -2313,6 +2325,27 @@ body.tab-transaksi .nav-tabs {
                     </td>
                 </tr>`;
             }).join('');
+        }
+
+        function postPendingPaymentsToParent() {
+            if (window.parent === window) return;
+            try {
+                const pendingRows = getPendingPaymentRows().map(item => ({
+                    ...item,
+                    monthLabels: (item.months || []).map(month => PAYMENT_MONTH_NAMES[month - 1]).filter(Boolean)
+                }));
+                const totalNominal = pendingRows.reduce((sum, item) => sum + Number(item.nominal || 0), 0);
+                window.parent.postMessage({
+                    type: 'delta8-admin-pending-state',
+                    payload: {
+                        year: CURRENT_YEAR,
+                        count: pendingRows.length,
+                        totalNominal,
+                        items: pendingRows,
+                        updatedAt: new Date().toISOString()
+                    }
+                }, '*');
+            } catch (err) {}
         }
 
         function triggerAdminPendingAction(action, encodedPayload) {
@@ -3006,6 +3039,7 @@ async function syncAll() {
     }
     lg.innerHTML = logRows.join('');
     renderAdminPaymentPanel();
+    postPendingPaymentsToParent();
 
     document.getElementById('s-awal').innerText = "Rp " + sAwal.toLocaleString();
     document.getElementById('in').innerText = "Rp " + cIuran.toLocaleString();
