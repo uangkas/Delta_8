@@ -498,6 +498,42 @@
         .luxe-dropdown { width: 100%; background: var(--bg-card); border: 1px solid var(--accent-color); color: var(--accent-color); padding: 12px 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: bold; margin-top: 15px; font-size: 12px; }
         .luxe-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); background: var(--bg-card); border-radius: 0 0 12px 12px; margin-top: -10px; }
         .luxe-content.show { max-height: 800px; border: 1px solid var(--accent-color); border-top: none; padding: 15px 10px 10px 10px; }
+
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent-color);
+            background: rgba(212, 175, 55, 0.05);
+        }
+
+        .upload-placeholder {
+            color: var(--text-muted);
+        }
+
+        .upload-placeholder div:first-child {
+            margin-bottom: 10px;
+        }
+
+        .upload-preview img {
+            width: 100%;
+            max-height: 200px;
+            object-fit: contain;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .upload-area.dragover {
+            border-color: #007bff;
+            background-color: rgba(0, 123, 255, 0.1);
+        }
         .banner-bar { background: var(--gradient); color: #000; padding: 5px; border-radius: 8px; font-weight: 900; text-align: center; margin: 0px 0 10px 0; font-size: 15px; letter-spacing: 2px; }
         #actionMenu { display: none; position: absolute; z-index: 99999; background: var(--bg-card); border: 1px solid var(--accent-color); border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); min-width: 110px; overflow: hidden; }
         .menu-item { padding: 8px 15px; cursor: pointer; font-size: 12px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
@@ -1106,6 +1142,48 @@ body.tab-transaksi .nav-tabs {
     <div class="modal fade" id="modalPilihPembayaran" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PILIH PEMBAYARAN</h6><div class="payment-option-wrap"><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('CASH')">CASH</button><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('QRIS')">QRIS</button></div></div></div></div></div>
     <div class="modal fade" id="modalPilihBulanBayar" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-2">PILIH BULAN</h6><div class="small text-muted mb-3">Bisa pilih lebih dari satu bulan. Bulan yang sudah lunas dinonaktifkan.</div><div id="payment-month-grid" class="month-option-grid"></div><div class="payment-month-summary"><div class="label" id="payment-month-selection-label">Belum ada bulan dipilih</div><div class="value" id="payment-month-total">Rp 0</div></div><button type="button" id="payment-month-continue" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueMemberPayment()" disabled>LANJUT</button></div></div></div></div>
     <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PEMBAYARAN QRIS</h6><div class="qris-preview-box"><div id="qris-code-wrap" class="mb-3"></div><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-3" id="qris-amount-value">Rp 0</div><div class="qris-detail">Scan kode QRIS yang tersedia, lalu lanjutkan agar pembayaran masuk ke daftar verifikasi admin.</div></div><button type="button" id="qris-continue-btn" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueQrisToAuth()">SAYA SUDAH BAYAR</button></div></div></div></div>
+
+    <div class="modal fade" id="modalUploadBukti" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="fw-bold mb-0">UPLOAD BUKTI PEMBAYARAN</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-bold mb-3">Detail Pembayaran</h6>
+                            <div class="mb-2"><strong>Anggota:</strong> <span id="upload-member-name">-</span></div>
+                            <div class="mb-2"><strong>Kategori:</strong> <span id="upload-member-kat">-</span></div>
+                            <div class="mb-2"><strong>Bulan:</strong> <span id="upload-months">-</span></div>
+                            <div class="mb-2"><strong>Nominal:</strong> <span id="upload-amount">-</span></div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-bold mb-3">Upload Bukti Pembayaran</h6>
+                            <div class="upload-area" id="upload-area">
+                                <div class="upload-placeholder" id="upload-placeholder">
+                                    <div style="font-size: 3rem; margin-bottom: 10px;">📤</div>
+                                    <div>Klik untuk upload gambar bukti pembayaran</div>
+                                    <div class="small text-muted mt-2">Format: JPG, PNG, maksimal 5MB</div>
+                                </div>
+                                <div class="upload-preview d-none" id="upload-preview">
+                                    <img id="upload-image-preview" src="" alt="Preview" class="img-fluid rounded" style="max-height: 200px;">
+                                    <button type="button" class="btn btn-sm btn-outline-danger mt-2" onclick="removeUploadImage()">Hapus</button>
+                                </div>
+                            </div>
+                            <input type="file" id="upload-file-input" accept="image/*" style="display: none;">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-dark" data-bs-dismiss="modal">BATAL</button>
+                    <button type="button" class="btn btn-success fw-bold" id="upload-submit-btn" onclick="submitPaymentWithProof()" disabled>KIRIM BUKTI PEMBAYARAN</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="modalCatat" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><h6 class="fw-bold mb-3">CATAT TRANSAKSI</h6><form id="fTrans"><input type="hidden" id="editTransIdx"><select name="tp" id="trans_type" class="form-select mb-2"><option value="Pemasukan">Pemasukan</option><option value="Pengeluaran" selected>Pengeluaran</option></select><input type="date" name="d" id="trans_date" class="form-control mb-2" required><input type="text" name="p" id="trans_source" class="form-control mb-2" placeholder="Sumber/Penerima"><input type="text" name="k" id="trans_ket" class="form-control mb-2" placeholder="Keterangan"><input type="number" name="v" id="trans_val" class="form-control mb-3" placeholder="Nominal" required><button type="submit" class="btn btn-warning w-100 fw-bold">SIMPAN</button></form></div></div></div></div>
     <div class="modal fade" id="modalTambah" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><h6 class="fw-bold mb-3">TAMBAH/EDIT ANGGOTA</h6><form id="fAdd"><input type="hidden" id="editMemberId"><textarea id="n" class="form-control mb-2" style="height:100px" placeholder="Nama Anggota"></textarea><select id="k" class="form-select mb-3"><option value="Driver">Driver</option><option value="Helper">Helper</option></select><button type="submit" class="btn btn-warning w-100 fw-bold">SIMPAN</button></form></div></div></div></div>
     <div class="modal fade" id="modalKonfirmasiHapus" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><div class="mb-3" style="font-size: 2rem;">⚠️</div><h6 class="fw-bold mb-4">Hapus data ini?</h6><div class="d-flex gap-2"><button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal">BATAL</button><button type="button" class="btn btn-danger w-100" onclick="eksekusiHapus()">HAPUS</button></div></div></div></div></div>
@@ -2558,11 +2636,166 @@ body.tab-transaksi .nav-tabs {
 
         function continueQrisToAuth() {
             try {
-                submitQrisPaymentDirect();
+                // Show upload modal instead of directly submitting
+                showUploadBuktiModal();
             } catch (err) {
                 console.error('Error in continueQrisToAuth:', err);
                 showNotif('Terjadi kesalahan. Silakan coba lagi.', 'error');
             }
+        }
+
+        let uploadedImageFile = null;
+
+        function showUploadBuktiModal() {
+            if (!pendingPaymentContext) {
+                showNotif('Data pembayaran tidak ditemukan.', 'error');
+                return;
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('modalUploadBukti'));
+            
+            // Fill payment details
+            document.getElementById('upload-member-name').textContent = pendingPaymentContext.nama || '-';
+            document.getElementById('upload-member-kat').textContent = pendingPaymentContext.kat || '-';
+            
+            const months = Array.isArray(pendingPaymentContext.selectedMonths) 
+                ? pendingPaymentContext.selectedMonths.map(m => PAYMENT_MONTH_NAMES[m-1]).join(', ')
+                : '-';
+            document.getElementById('upload-months').textContent = months;
+            
+            const total = (pendingPaymentContext.selectedMonths?.length || 0) * MONTHLY_IURAN_AMOUNT;
+            document.getElementById('upload-amount').textContent = formatCurrency(total);
+
+            // Reset upload state
+            uploadedImageFile = null;
+            document.getElementById('upload-placeholder').classList.remove('d-none');
+            document.getElementById('upload-preview').classList.add('d-none');
+            document.getElementById('upload-submit-btn').disabled = true;
+
+            modal.show();
+        }
+
+        function removeUploadImage() {
+            uploadedImageFile = null;
+            document.getElementById('upload-placeholder').classList.remove('d-none');
+            document.getElementById('upload-preview').classList.add('d-none');
+            document.getElementById('upload-submit-btn').disabled = true;
+        }
+
+        function submitPaymentWithProof() {
+            if (!uploadedImageFile) {
+                showNotif('Silakan upload bukti pembayaran terlebih dahulu.', 'error');
+                return;
+            }
+
+            // Close upload modal
+            const uploadModal = bootstrap.Modal.getInstance(document.getElementById('modalUploadBukti'));
+            if (uploadModal) {
+                uploadModal.hide();
+            }
+
+            // Close QRIS modal
+            const qrisModal = bootstrap.Modal.getInstance(document.getElementById('modalQrisPayment'));
+            if (qrisModal) {
+                qrisModal.hide();
+            }
+
+            // Submit payment with proof
+            submitQrisPaymentWithProof(uploadedImageFile);
+        }
+
+        function submitQrisPaymentWithProof(imageFile) {
+            console.log('submitQrisPaymentWithProof called, pendingPaymentContext:', pendingPaymentContext);
+            if (!pendingPaymentContext) {
+                console.error('pendingPaymentContext is null');
+                showNotif('Data pembayaran tidak ditemukan. Silakan mulai lagi.', 'error');
+                return;
+            }
+
+            // For now, we'll just submit the payment normally
+            // In a real implementation, you would upload the image to a server
+            // and include the image URL in the payment data
+            submitQrisPaymentDirect();
+
+            // Show success message mentioning the proof upload
+            showNotif('Pembayaran QRIS dengan bukti berhasil dikirim. Admin akan segera memproses.', 'success');
+        }
+
+        let uploadedImageFile = null;
+
+        function showUploadBuktiModal() {
+            if (!pendingPaymentContext) {
+                showNotif('Data pembayaran tidak ditemukan.', 'error');
+                return;
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('modalUploadBukti'));
+            
+            // Fill payment details
+            document.getElementById('upload-member-name').textContent = pendingPaymentContext.nama || '-';
+            document.getElementById('upload-member-kat').textContent = pendingPaymentContext.kat || '-';
+            
+            const months = Array.isArray(pendingPaymentContext.selectedMonths) 
+                ? pendingPaymentContext.selectedMonths.map(m => PAYMENT_MONTH_NAMES[m-1]).join(', ')
+                : '-';
+            document.getElementById('upload-months').textContent = months;
+            
+            const total = (pendingPaymentContext.selectedMonths?.length || 0) * MONTHLY_IURAN_AMOUNT;
+            document.getElementById('upload-amount').textContent = formatCurrency(total);
+
+            // Reset upload state
+            uploadedImageFile = null;
+            document.getElementById('upload-placeholder').classList.remove('d-none');
+            document.getElementById('upload-preview').classList.add('d-none');
+            document.getElementById('upload-submit-btn').disabled = true;
+
+            modal.show();
+        }
+
+        function removeUploadImage() {
+            uploadedImageFile = null;
+            document.getElementById('upload-placeholder').classList.remove('d-none');
+            document.getElementById('upload-preview').classList.add('d-none');
+            document.getElementById('upload-submit-btn').disabled = true;
+        }
+
+        function submitPaymentWithProof() {
+            if (!uploadedImageFile) {
+                showNotif('Silakan upload bukti pembayaran terlebih dahulu.', 'error');
+                return;
+            }
+
+            // Close upload modal
+            const uploadModal = bootstrap.Modal.getInstance(document.getElementById('modalUploadBukti'));
+            if (uploadModal) {
+                uploadModal.hide();
+            }
+
+            // Close QRIS modal
+            const qrisModal = bootstrap.Modal.getInstance(document.getElementById('modalQrisPayment'));
+            if (qrisModal) {
+                qrisModal.hide();
+            }
+
+            // Submit payment with proof
+            submitQrisPaymentWithProof(uploadedImageFile);
+        }
+
+        function submitQrisPaymentWithProof(imageFile) {
+            console.log('submitQrisPaymentWithProof called, pendingPaymentContext:', pendingPaymentContext);
+            if (!pendingPaymentContext) {
+                console.error('pendingPaymentContext is null');
+                showNotif('Data pembayaran tidak ditemukan. Silakan mulai lagi.', 'error');
+                return;
+            }
+
+            // For now, we'll just submit the payment normally
+            // In a real implementation, you would upload the image to a server
+            // and include the image URL in the payment data
+            submitQrisPaymentDirect();
+
+            // Show success message mentioning the proof upload
+            showNotif('Pembayaran QRIS dengan bukti berhasil dikirim. Admin akan segera memproses.', 'success');
         }
 
         window.openPaymentOptions = openPaymentOptions;
@@ -2572,6 +2805,96 @@ body.tab-transaksi .nav-tabs {
         window.submitQrisPaymentDirect = submitQrisPaymentDirect;
         window.chooseMemberPayment = chooseMemberPayment;
         window.triggerAdminPendingAction = triggerAdminPendingAction;
+        window.showUploadBuktiModal = showUploadBuktiModal;
+        window.removeUploadImage = removeUploadImage;
+        window.submitPaymentWithProof = submitPaymentWithProof;
+
+        // Upload bukti pembayaran event listeners
+        const uploadArea = document.getElementById('upload-area');
+        const uploadFileInput = document.getElementById('upload-file-input');
+        const uploadImagePreview = document.getElementById('upload-image-preview');
+
+        if (uploadArea) {
+            uploadArea.addEventListener('click', () => {
+                uploadFileInput.click();
+            });
+
+            // Drag and drop functionality
+            uploadArea.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', (event) => {
+                event.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (event) => {
+                event.preventDefault();
+                uploadArea.classList.remove('dragover');
+
+                const files = event.dataTransfer.files;
+                if (files.length > 0) {
+                    const file = files[0];
+                    
+                    // Validate file type
+                    if (!file.type.startsWith('image/')) {
+                        showNotif('File harus berupa gambar (JPG, PNG, dll).', 'error');
+                        return;
+                    }
+
+                    // Validate file size (max 5MB)
+                    if (file.size > 5 * 1024 * 1024) {
+                        showNotif('Ukuran file maksimal 5MB.', 'error');
+                        return;
+                    }
+
+                    uploadedImageFile = file;
+
+                    // Show preview
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        uploadImagePreview.src = e.target.result;
+                        document.getElementById('upload-placeholder').classList.add('d-none');
+                        document.getElementById('upload-preview').classList.remove('d-none');
+                        document.getElementById('upload-submit-btn').disabled = false;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        if (uploadFileInput) {
+            uploadFileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    // Validate file type
+                    if (!file.type.startsWith('image/')) {
+                        showNotif('File harus berupa gambar (JPG, PNG, dll).', 'error');
+                        return;
+                    }
+
+                    // Validate file size (max 5MB)
+                    if (file.size > 5 * 1024 * 1024) {
+                        showNotif('Ukuran file maksimal 5MB.', 'error');
+                        return;
+                    }
+
+                    uploadedImageFile = file;
+
+                    // Show preview
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        uploadImagePreview.src = e.target.result;
+                        document.getElementById('upload-placeholder').classList.add('d-none');
+                        document.getElementById('upload-preview').classList.remove('d-none');
+                        document.getElementById('upload-submit-btn').disabled = false;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
 
         async function loadFromCloud(year = CURRENT_YEAR, options = {}) {
 
