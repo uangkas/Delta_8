@@ -54,7 +54,8 @@ var DRIVER_HELPER_HEADERS = [
   "OKT",
   "NOV",
   "DES",
-  "TOTAL"
+  "TOTAL",
+  "META"
 ];
 var TRANSAKSI_HEADERS = [
   "TANGGAL",
@@ -1735,8 +1736,8 @@ function writeYearSheet_(sheet, data, year) {
 
 function buildYearSheetLayout_(data, year) {
   var leftCol = 1;   // A
-  var rightCol = 17; // Q
-  var logCol = 23;   // W
+  var rightCol = 18; // R
+  var logCol = 24;   // X
   var sections = [];
 
   var driverSection = buildSectionBlock_(1, leftCol, "driver", data.driver, year);
@@ -2066,7 +2067,8 @@ function toRowByType_(type, item, idx, year) {
       monthMarks[9],
       monthMarks[10],
       monthMarks[11],
-      totalPaid + "/12"
+      totalPaid + "/12",
+      serializeMemberMeta_(item, yy)
     ];
   }
 
@@ -2091,6 +2093,7 @@ function toRowByType_(type, item, idx, year) {
 function fromRowByType_(type, row, year) {
   if (type === "driver" || type === "helper") {
     if (!row[1] && !row[2]) return null;
+    var yy = String(year || new Date().getFullYear());
 
     // Backward compatibility: old 3-column format (id, nama, status_json).
     if (row[0] && row[1] && row[2] && String(row[2]).trim().indexOf("{") === 0) {
@@ -2100,14 +2103,15 @@ function fromRowByType_(type, row, year) {
       } catch (_) {
         legacyStatus = {};
       }
+      var legacyMeta = parseMemberMeta_(row[15], yy);
       return {
         id: String(row[0] || ""),
         nama: String(row[1] || ""),
-        status: legacyStatus
+        status: legacyStatus,
+        pendingProofs: legacyMeta.pendingProofs || {}
       };
     }
 
-    var yy = String(year || new Date().getFullYear());
     var status = {};
     status[yy] = {};
 
@@ -2121,10 +2125,12 @@ function fromRowByType_(type, row, year) {
       status[yy] = {};
     }
 
+    var meta = parseMemberMeta_(row[15], yy);
     return {
       id: makeMemberId_(yy, row[1], row[0]),
       nama: String(row[1] || ""),
-      status: status
+      status: status,
+      pendingProofs: meta.pendingProofs || {}
     };
   }
 
@@ -2210,6 +2216,8 @@ function applyMemberSheetStyle_(sheet, rowCount) {
   sheet.setColumnWidth(2, 240);  // NAMA
   for (var c = 3; c <= 14; c++) sheet.setColumnWidth(c, 55); // JAN-DES
   sheet.setColumnWidth(15, 80);  // TOTAL
+  sheet.setColumnWidth(16, 2);   // META (hidden helper data)
+  sheet.hideColumns(16);
 
   if (rowCount > 0) {
     sheet.getRange(2, 1, rowCount, 1).setHorizontalAlignment("center");
@@ -2307,6 +2315,45 @@ function normalizePayload_(payload) {
     transaksi: Array.isArray(payload.transaksi) ? payload.transaksi : [],
     logs: Array.isArray(payload.logs) ? payload.logs : []
   };
+}
+
+function serializeMemberMeta_(item, year) {
+  var yy = String(year || new Date().getFullYear());
+  var pendingProofs = {};
+  var source = item && item.pendingProofs && item.pendingProofs[yy];
+  if (source && typeof source === "object") {
+    Object.keys(source).forEach(function(monthKey) {
+      var value = source[monthKey];
+      if (typeof value === "string" && value.trim()) {
+        pendingProofs[String(Number(monthKey) || monthKey)] = value.trim();
+      }
+    });
+  }
+  if (!Object.keys(pendingProofs).length) return "";
+  return JSON.stringify({ pendingProofs: pendingProofs });
+}
+
+function parseMemberMeta_(raw, year) {
+  var yy = String(year || new Date().getFullYear());
+  var out = { pendingProofs: {} };
+  var text = String(raw || "").trim();
+  if (!text) return out;
+  try {
+    var parsed = JSON.parse(text);
+    if (parsed && parsed.pendingProofs && typeof parsed.pendingProofs === "object") {
+      out.pendingProofs[yy] = {};
+      Object.keys(parsed.pendingProofs).forEach(function(monthKey) {
+        var value = parsed.pendingProofs[monthKey];
+        if (typeof value === "string" && value.trim()) {
+          out.pendingProofs[yy][String(Number(monthKey) || monthKey)] = value.trim();
+        }
+      });
+      if (!Object.keys(out.pendingProofs[yy]).length) {
+        delete out.pendingProofs[yy];
+      }
+    }
+  } catch (err) {}
+  return out;
 }
 
 function jsonResponse_(obj) {

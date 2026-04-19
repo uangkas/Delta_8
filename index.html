@@ -348,6 +348,78 @@
             background: var(--gradient);
             color: #000;
         }
+
+        .upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: var(--bg-card);
+            margin-bottom: 15px;
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent-color);
+            background: rgba(212, 175, 55, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: #007bff;
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+
+        .upload-method-options {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .upload-method-btn {
+            flex: 1;
+            padding: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--bg-card);
+            color: var(--text-main);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-method-btn:hover {
+            border-color: var(--accent-color);
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        .upload-method-btn.active {
+            border-color: var(--accent-color);
+            background: rgba(212, 175, 55, 0.2);
+        }
+
+        .method-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .method-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .method-desc {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .upload-section {
+            margin-top: 20px;
+        }
+
+        .whatsapp-instructions {
+            text-align: center;
+        }
         .payment-option-btn:disabled {
             opacity: 0.45;
             cursor: not-allowed;
@@ -1106,6 +1178,95 @@ body.tab-transaksi .nav-tabs {
     <div class="modal fade" id="modalPilihPembayaran" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PILIH PEMBAYARAN</h6><div class="payment-option-wrap"><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('CASH')">CASH</button><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('QRIS')">QRIS</button></div></div></div></div></div>
     <div class="modal fade" id="modalPilihBulanBayar" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-2">PILIH BULAN</h6><div class="small text-muted mb-3">Bisa pilih lebih dari satu bulan. Bulan yang sudah lunas dinonaktifkan.</div><div id="payment-month-grid" class="month-option-grid"></div><div class="payment-month-summary"><div class="label" id="payment-month-selection-label">Belum ada bulan dipilih</div><div class="value" id="payment-month-total">Rp 0</div></div><button type="button" id="payment-month-continue" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueMemberPayment()" disabled>LANJUT</button></div></div></div></div>
     <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PEMBAYARAN QRIS</h6><div class="qris-preview-box"><div id="qris-code-wrap" class="mb-3"></div><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-3" id="qris-amount-value">Rp 0</div><div class="qris-detail">Scan kode QRIS yang tersedia, lalu lanjutkan agar pembayaran masuk ke daftar verifikasi admin.</div></div><button type="button" id="qris-continue-btn" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueQrisToAuth()">SAYA SUDAH BAYAR</button></div></div></div></div>
+
+    <!-- Modal Upload Bukti Pembayaran -->
+    <div class="modal fade" id="modalUploadBukti" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="fw-bold mb-0">UPLOAD BUKTI PEMBAYARAN</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Detail Pembayaran -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="fw-bold mb-3">Detail Pembayaran</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-2"><strong>Nama:</strong> <span id="upload-member-name">-</span></div>
+                                    <div class="mb-2"><strong>Kategori:</strong> <span id="upload-member-kat">-</span></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-2"><strong>Bulan:</strong> <span id="upload-months">-</span></div>
+                                    <div class="mb-2"><strong>Total:</strong> <span id="upload-amount">-</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pilihan Metode Upload -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="fw-bold mb-3">Pilih Metode Upload Bukti</h6>
+                            <div class="upload-method-options">
+                                <button type="button" class="upload-method-btn active" onclick="selectUploadMethod('web')" id="method-web">
+                                    <div class="method-icon">💻</div>
+                                    <div class="method-title">Upload via Web</div>
+                                    <div class="method-desc">Upload gambar langsung dari device</div>
+                                </button>
+                                <button type="button" class="upload-method-btn" onclick="selectUploadMethod('whatsapp')" id="method-whatsapp">
+                                    <div class="method-icon">📱</div>
+                                    <div class="method-title">Kirim via WhatsApp</div>
+                                    <div class="method-desc">Kirim bukti ke admin via WhatsApp</div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upload Area untuk Web -->
+                    <div id="upload-web-section" class="upload-section">
+                        <div class="upload-area" id="upload-area">
+                            <div id="upload-placeholder">
+                                <div style="font-size: 3rem; margin-bottom: 10px;">📸</div>
+                                <div>Klik untuk upload atau drag & drop gambar</div>
+                                <div class="small text-muted mt-2">Format: JPG, PNG, Max: 5MB</div>
+                            </div>
+                            <div id="upload-preview" class="d-none">
+                                <img id="upload-image-preview" src="" alt="Preview" style="max-width: 100%; max-height: 200px; object-fit: contain; border-radius: 8px; margin-bottom: 10px;">
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeUploadImage()">Hapus Gambar</button>
+                            </div>
+                        </div>
+                        <input type="file" id="upload-file-input" accept="image/*" style="display: none;">
+                    </div>
+
+                    <!-- WhatsApp Section -->
+                    <div id="upload-whatsapp-section" class="upload-section d-none">
+                        <div class="whatsapp-instructions">
+                            <div class="alert alert-info">
+                                <h6 class="fw-bold mb-2">📱 Instruksi Kirim via WhatsApp</h6>
+                                <ol class="mb-0">
+                                    <li>Ambil screenshot bukti transfer QRIS</li>
+                                    <li>Kirim ke nomor admin: <strong id="admin-whatsapp-number">-</strong></li>
+                                    <li>Sertakan informasi: Nama, Bulan, Nominal</li>
+                                    <li>Tunggu konfirmasi dari admin</li>
+                                </ol>
+                            </div>
+                            <div class="text-center">
+                                <a id="whatsapp-link" href="#" target="_blank" class="btn btn-success btn-lg">
+                                    📱 Kirim via WhatsApp
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-dark" data-bs-dismiss="modal">BATAL</button>
+                    <button type="button" class="btn btn-warning fw-bold" id="upload-submit-btn" onclick="submitPaymentWithProof()" disabled>KIRIM PEMBAYARAN</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="modal" id="modalCatat" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><h6 class="fw-bold mb-3">CATAT TRANSAKSI</h6><form id="fTrans"><input type="hidden" id="editTransIdx"><select name="tp" id="trans_type" class="form-select mb-2"><option value="Pemasukan">Pemasukan</option><option value="Pengeluaran" selected>Pengeluaran</option></select><input type="date" name="d" id="trans_date" class="form-control mb-2" required><input type="text" name="p" id="trans_source" class="form-control mb-2" placeholder="Sumber/Penerima"><input type="text" name="k" id="trans_ket" class="form-control mb-2" placeholder="Keterangan"><input type="number" name="v" id="trans_val" class="form-control mb-3" placeholder="Nominal" required><button type="submit" class="btn btn-warning w-100 fw-bold">SIMPAN</button></form></div></div></div></div>
     <div class="modal fade" id="modalTambah" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body"><h6 class="fw-bold mb-3">TAMBAH/EDIT ANGGOTA</h6><form id="fAdd"><input type="hidden" id="editMemberId"><textarea id="n" class="form-control mb-2" style="height:100px" placeholder="Nama Anggota"></textarea><select id="k" class="form-select mb-3"><option value="Driver">Driver</option><option value="Helper">Helper</option></select><button type="submit" class="btn btn-warning w-100 fw-bold">SIMPAN</button></form></div></div></div></div>
     <div class="modal fade" id="modalKonfirmasiHapus" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><div class="mb-3" style="font-size: 2rem;">⚠️</div><h6 class="fw-bold mb-4">Hapus data ini?</h6><div class="d-flex gap-2"><button type="button" class="btn btn-dark w-100" data-bs-dismiss="modal">BATAL</button><button type="button" class="btn btn-danger w-100" onclick="eksekusiHapus()">HAPUS</button></div></div></div></div></div>
@@ -1191,6 +1352,7 @@ body.tab-transaksi .nav-tabs {
         let pendingIuranPaymentData = null;
         const QRIS_STATIC_IMAGE_URL = '/QRIS.jpg';
         const QRIS_STATIC_PAYLOAD = '';
+        const ADMIN_WHATSAPP_NUMBER = '628XXXXXXXXXX';
         const cloneData = (v) => JSON.parse(JSON.stringify(v));
 
         function showNotif(message, type = 'info') {
@@ -2200,6 +2362,8 @@ body.tab-transaksi .nav-tabs {
             if (!person) return null;
             if (!person.status) person.status = {};
             if (!person.status[params.y]) person.status[params.y] = {};
+            person.pendingProofs = person.pendingProofs || {};
+            person.pendingProofs[params.y] = person.pendingProofs[params.y] || {};
             const months = Array.isArray(params && params.months) ? params.months : [];
             let changed = false;
             months.forEach(month => {
@@ -2208,11 +2372,13 @@ body.tab-transaksi .nav-tabs {
                 if (statusValue === null) {
                     if (currentStatus === 'pending') {
                         delete person.status[params.y][monthKey];
+                        delete person.pendingProofs[params.y][monthKey];
                         changed = true;
                     }
                 } else if (statusValue === true) {
                     if (currentStatus === 'pending') {
                         person.status[params.y][monthKey] = true;
+                        delete person.pendingProofs[params.y][monthKey];
                         changed = true;
                     }
                 } else {
@@ -2236,13 +2402,23 @@ body.tab-transaksi .nav-tabs {
                         .filter(month => yearStatus[month] === 'pending')
                         .sort((a, b) => a - b);
                     if (!months.length) return;
+                    let proofData = null;
+                    if (person.pendingProofs && person.pendingProofs[CURRENT_YEAR]) {
+                        for (const month of months) {
+                            if (person.pendingProofs[CURRENT_YEAR][month]) {
+                                proofData = person.pendingProofs[CURRENT_YEAR][month];
+                                break;
+                            }
+                        }
+                    }
                     rows.push({
                         id: person.id,
                         nama: person.nama,
                         kat,
                         y: CURRENT_YEAR,
                         months,
-                        nominal: months.length * MONTHLY_IURAN_AMOUNT
+                        nominal: months.length * MONTHLY_IURAN_AMOUNT,
+                        proofData
                     });
                 });
             };
@@ -2329,14 +2505,33 @@ body.tab-transaksi .nav-tabs {
                 document.getElementById('verify-months').innerText = monthLabel;
                 document.getElementById('verify-amount').innerText = `Rp ${(params.months.length * MONTHLY_IURAN_AMOUNT).toLocaleString('id-ID')}`;
 
-                // For now, show placeholder for proof (could be extended to show uploaded images)
-                document.getElementById('verify-proof-placeholder').classList.remove('d-none');
-                document.getElementById('verify-proof-image').classList.add('d-none');
+                const proofData = params.proofData || getPendingProofData(params);
+                if (proofData) {
+                    document.getElementById('verify-proof-image').classList.remove('d-none');
+                    document.getElementById('verify-proof-placeholder').classList.add('d-none');
+                    document.getElementById('proof-image').src = proofData;
+                } else {
+                    document.getElementById('verify-proof-placeholder').classList.remove('d-none');
+                    document.getElementById('verify-proof-image').classList.add('d-none');
+                    document.getElementById('proof-image').src = '';
+                }
 
                 bootstrap.Modal.getOrCreateInstance('#modalVerifikasiPembayaran').show();
             } catch (err) {
                 showNotif('Gagal membuka detail verifikasi.', 'error');
             }
+        }
+
+        function getPendingProofData(params) {
+            if (!params) return null;
+            const targetList = params.kat === 'Driver' ? DB_DRIVER : DB_HELPER;
+            const person = targetList.find(x => String(x.id) === String(params.id));
+            if (!person || !person.pendingProofs || !person.pendingProofs[params.y]) return null;
+            for (const month of params.months) {
+                const proof = person.pendingProofs[params.y][month];
+                if (proof) return proof;
+            }
+            return null;
         }
 
         function verifyPendingPayment() {
@@ -2493,7 +2688,7 @@ body.tab-transaksi .nav-tabs {
             askAuth('bayar_member', params);
         }
 
-        function submitQrisPaymentDirect() {
+        function submitQrisPaymentDirect(proofBase64 = null) {
             console.log('submitQrisPaymentDirect called, pendingPaymentContext:', pendingPaymentContext);
             if (!pendingPaymentContext) {
                 console.error('pendingPaymentContext is null');
@@ -2519,6 +2714,14 @@ body.tab-transaksi .nav-tabs {
             months.forEach(month => {
                 person.status[params.y][month] = 'pending';
             });
+
+            if (proofBase64) {
+                person.pendingProofs = person.pendingProofs || {};
+                person.pendingProofs[params.y] = person.pendingProofs[params.y] || {};
+                months.forEach(month => {
+                    person.pendingProofs[params.y][month] = proofBase64;
+                });
+            }
             const monthText = months.map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
             addLog(
                 "Iuran",
@@ -2533,11 +2736,230 @@ body.tab-transaksi .nav-tabs {
 
         function continueQrisToAuth() {
             try {
-                submitQrisPaymentDirect();
+                // Show upload modal instead of directly submitting
+                showUploadBuktiModal();
             } catch (err) {
                 console.error('Error in continueQrisToAuth:', err);
                 showNotif('Terjadi kesalahan. Silakan coba lagi.', 'error');
             }
+        }
+
+        let uploadedImageFile = null;
+        let currentUploadProofBase64 = null;
+        let selectedUploadMethod = 'web';
+
+        function compressProofImage(file) {
+            return new Promise((resolve, reject) => {
+                if (!file) {
+                    reject(new Error('File bukti pembayaran tidak ditemukan.'));
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onerror = () => reject(new Error('Gagal membaca file gambar.'));
+                reader.onload = () => {
+                    const img = new Image();
+                    img.onerror = () => reject(new Error('File gambar tidak bisa diproses.'));
+                    img.onload = () => {
+                        const maxWidth = 720;
+                        const maxHeight = 1280;
+                        let { width, height } = img;
+                        const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
+                        width = Math.max(1, Math.round(width * ratio));
+                        height = Math.max(1, Math.round(height * ratio));
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const context = canvas.getContext('2d');
+                        if (!context) {
+                            reject(new Error('Browser tidak mendukung kompresi gambar.'));
+                            return;
+                        }
+
+                        context.fillStyle = '#ffffff';
+                        context.fillRect(0, 0, width, height);
+                        context.drawImage(img, 0, 0, width, height);
+
+                        let quality = 0.82;
+                        let output = canvas.toDataURL('image/jpeg', quality);
+                        while (output.length > 45000 && quality > 0.3) {
+                            quality -= 0.08;
+                            output = canvas.toDataURL('image/jpeg', quality);
+                        }
+
+                        if (output.length > 45000) {
+                            reject(new Error('Bukti pembayaran terlalu besar. Coba foto yang lebih ringan atau crop dulu.'));
+                            return;
+                        }
+
+                        resolve(output);
+                    };
+                    img.src = reader.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function handleSelectedUploadFile(file) {
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                showNotif('File harus berupa gambar (JPG, PNG, dll).', 'error');
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                showNotif('Ukuran file maksimal 5MB.', 'error');
+                return;
+            }
+
+            try {
+                const compressedProof = await compressProofImage(file);
+                uploadedImageFile = file;
+                currentUploadProofBase64 = compressedProof;
+                uploadImagePreview.src = compressedProof;
+                document.getElementById('upload-placeholder').classList.add('d-none');
+                document.getElementById('upload-preview').classList.remove('d-none');
+                document.getElementById('upload-submit-btn').disabled = false;
+            } catch (err) {
+                uploadedImageFile = null;
+                currentUploadProofBase64 = null;
+                document.getElementById('upload-placeholder').classList.remove('d-none');
+                document.getElementById('upload-preview').classList.add('d-none');
+                document.getElementById('upload-submit-btn').disabled = true;
+                showNotif((err && err.message) ? err.message : 'Bukti pembayaran gagal diproses.', 'error');
+            }
+        }
+
+        function selectUploadMethod(method) {
+            selectedUploadMethod = method;
+            
+            // Update button states
+            document.getElementById('method-web').classList.toggle('active', method === 'web');
+            document.getElementById('method-whatsapp').classList.toggle('active', method === 'whatsapp');
+            
+            // Show/hide sections
+            document.getElementById('upload-web-section').classList.toggle('d-none', method !== 'web');
+            document.getElementById('upload-whatsapp-section').classList.toggle('d-none', method !== 'whatsapp');
+            
+            // Update submit button
+            const submitBtn = document.getElementById('upload-submit-btn');
+            if (method === 'web') {
+                submitBtn.disabled = !uploadedImageFile;
+                submitBtn.textContent = 'KIRIM PEMBAYARAN';
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'LANJUT KE WHATSAPP';
+            }
+        }
+
+        function showUploadBuktiModal() {
+            if (!pendingPaymentContext) {
+                showNotif('Data pembayaran tidak ditemukan.', 'error');
+                return;
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('modalUploadBukti'));
+            
+            // Fill payment details
+            document.getElementById('upload-member-name').textContent = pendingPaymentContext.nama || '-';
+            document.getElementById('upload-member-kat').textContent = pendingPaymentContext.kat || '-';
+            
+            const months = Array.isArray(pendingPaymentContext.selectedMonths) 
+                ? pendingPaymentContext.selectedMonths.map(m => PAYMENT_MONTH_NAMES[m-1]).join(', ')
+                : '-';
+            document.getElementById('upload-months').textContent = months;
+            
+            const total = (pendingPaymentContext.selectedMonths?.length || 0) * MONTHLY_IURAN_AMOUNT;
+            document.getElementById('upload-amount').textContent = formatCurrency(total);
+
+            // Set admin WhatsApp number (you can configure this)
+            document.getElementById('admin-whatsapp-number').textContent = `+${ADMIN_WHATSAPP_NUMBER}`;
+            
+            // Create WhatsApp link
+            const whatsappMessage = encodeURIComponent(
+                `Halo Admin, saya sudah transfer pembayaran iuran:\n\n` +
+                `Nama: ${pendingPaymentContext.nama}\n` +
+                `Kategori: ${pendingPaymentContext.kat}\n` +
+                `Bulan: ${months}\n` +
+                `Nominal: ${formatCurrency(total)}\n\n` +
+                `Mohon verifikasi pembayaran saya.`
+            );
+            document.getElementById('whatsapp-link').href = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${whatsappMessage}`;
+
+            // Reset state
+            uploadedImageFile = null;
+            selectedUploadMethod = 'web';
+            selectUploadMethod('web');
+
+            modal.show();
+        }
+
+        function removeUploadImage() {
+            uploadedImageFile = null;
+            currentUploadProofBase64 = null;
+            if (uploadFileInput) uploadFileInput.value = '';
+            document.getElementById('upload-placeholder').classList.remove('d-none');
+            document.getElementById('upload-preview').classList.add('d-none');
+            document.getElementById('upload-submit-btn').disabled = true;
+        }
+
+        function submitPaymentWithProof() {
+            if (selectedUploadMethod === 'web') {
+                if (!uploadedImageFile) {
+                    showNotif('Silakan upload bukti pembayaran terlebih dahulu.', 'error');
+                    return;
+                }
+                submitPaymentWithImageProof(uploadedImageFile);
+            } else {
+                // WhatsApp method - just submit payment and redirect to WhatsApp
+                submitPaymentWithWhatsAppProof();
+            }
+        }
+
+        function submitPaymentWithImageProof(imageFile) {
+            // Close upload modal
+            const uploadModal = bootstrap.Modal.getInstance(document.getElementById('modalUploadBukti'));
+            if (uploadModal) {
+                uploadModal.hide();
+            }
+
+            // Close QRIS modal
+            const qrisModal = bootstrap.Modal.getInstance(document.getElementById('modalQrisPayment'));
+            if (qrisModal) {
+                qrisModal.hide();
+            }
+
+            // Submit payment with proof
+            submitQrisPaymentDirect(currentUploadProofBase64);
+
+            // Show success message
+            showNotif('Pembayaran QRIS dengan bukti berhasil dikirim. Admin akan segera memproses.', 'success');
+        }
+
+        function submitPaymentWithWhatsAppProof() {
+            // Close upload modal
+            const uploadModal = bootstrap.Modal.getInstance(document.getElementById('modalUploadBukti'));
+            if (uploadModal) {
+                uploadModal.hide();
+            }
+
+            // Close QRIS modal
+            const qrisModal = bootstrap.Modal.getInstance(document.getElementById('modalQrisPayment'));
+            if (qrisModal) {
+                qrisModal.hide();
+            }
+
+            // Submit payment
+            submitQrisPaymentDirect();
+
+            // Show WhatsApp redirect message
+            showNotif('Pembayaran dikirim. Silakan kirim bukti via WhatsApp untuk verifikasi.', 'info');
+            
+            // Open WhatsApp after a short delay
+            setTimeout(() => {
+                const whatsappLink = document.getElementById('whatsapp-link').href;
+                window.open(whatsappLink, '_blank');
+            }, 1000);
         }
 
         window.openPaymentOptions = openPaymentOptions;
@@ -2547,6 +2969,49 @@ body.tab-transaksi .nav-tabs {
         window.submitQrisPaymentDirect = submitQrisPaymentDirect;
         window.chooseMemberPayment = chooseMemberPayment;
         window.triggerAdminPendingAction = triggerAdminPendingAction;
+        window.showUploadBuktiModal = showUploadBuktiModal;
+        window.removeUploadImage = removeUploadImage;
+        window.submitPaymentWithProof = submitPaymentWithProof;
+        window.selectUploadMethod = selectUploadMethod;
+
+        // Upload bukti pembayaran event listeners
+        const uploadArea = document.getElementById('upload-area');
+        const uploadFileInput = document.getElementById('upload-file-input');
+        const uploadImagePreview = document.getElementById('upload-image-preview');
+
+        if (uploadArea) {
+            uploadArea.addEventListener('click', () => {
+                uploadFileInput.click();
+            });
+
+            // Drag and drop functionality
+            uploadArea.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', (event) => {
+                event.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (event) => {
+                event.preventDefault();
+                uploadArea.classList.remove('dragover');
+
+                const files = event.dataTransfer.files;
+                if (files.length > 0) {
+                    handleSelectedUploadFile(files[0]);
+                }
+            });
+        }
+
+        if (uploadFileInput) {
+            uploadFileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) handleSelectedUploadFile(file);
+            });
+        }
 
         async function loadFromCloud(year = CURRENT_YEAR, options = {}) {
 

@@ -354,6 +354,7 @@
             margin-top: 14px;
         }
 
+        .admin-secondary-button,
         .admin-ghost-button,
         .admin-danger-button {
             flex: 1;
@@ -370,6 +371,12 @@
             color: #111827;
         }
 
+        .admin-secondary-button {
+            border: 1px solid rgba(109, 211, 255, 0.24);
+            background: rgba(109, 211, 255, 0.08);
+            color: var(--blue);
+        }
+
         .admin-danger-button {
             border: 1px solid var(--danger-border);
             background: rgba(127, 29, 29, 0.18);
@@ -380,6 +387,134 @@
             color: var(--muted);
             font-size: 12px;
             line-height: 1.7;
+        }
+
+        .admin-proof-pill {
+            display: inline-flex;
+            align-items: center;
+            margin-top: 10px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(109, 211, 255, 0.08);
+            color: var(--blue);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+        }
+
+        .admin-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(2, 6, 23, 0.74);
+            backdrop-filter: blur(8px);
+            z-index: 20;
+        }
+
+        .admin-modal.active {
+            display: flex;
+        }
+
+        .admin-modal-card {
+            width: min(100%, 720px);
+            max-height: min(92vh, 900px);
+            overflow: auto;
+            padding: 22px;
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(12, 21, 38, 0.98), rgba(7, 17, 31, 0.96));
+            box-shadow: var(--shadow);
+        }
+
+        .admin-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .admin-modal-title {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+        }
+
+        .admin-modal-close {
+            min-width: 42px;
+            min-height: 42px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .admin-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .admin-detail-card {
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.03);
+        }
+
+        .admin-detail-label {
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 0.08em;
+        }
+
+        .admin-detail-value {
+            margin-top: 6px;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .admin-proof-wrap {
+            margin-top: 18px;
+            padding: 16px;
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.03);
+        }
+
+        .admin-proof-title {
+            margin: 0 0 12px;
+            font-size: 13px;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+        }
+
+        .admin-proof-empty {
+            padding: 18px;
+            border-radius: 14px;
+            border: 1px dashed rgba(148, 163, 184, 0.26);
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .admin-proof-image {
+            width: 100%;
+            max-height: 420px;
+            object-fit: contain;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .admin-modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
         }
 
         @media (max-width: 1080px) {
@@ -409,6 +544,12 @@
 
             .admin-payment-actions {
                 flex-direction: column;
+            }
+
+            .admin-detail-grid,
+            .admin-modal-actions {
+                grid-template-columns: 1fr;
+                display: grid;
             }
         }
     </style>
@@ -479,6 +620,44 @@
             </section>
         </main>
     </div>
+    <div class="admin-modal" id="payment-detail-modal" aria-hidden="true">
+        <div class="admin-modal-card">
+            <div class="admin-modal-header">
+                <div>
+                    <h3 class="admin-modal-title">DETAIL VERIFIKASI PEMBAYARAN</h3>
+                    <p class="admin-copy">Admin memeriksa detail tagihan dan bukti bayar di satu tempat sebelum mengubah status.</p>
+                </div>
+                <button type="button" class="admin-modal-close" id="payment-detail-close" aria-label="Tutup">×</button>
+            </div>
+            <div class="admin-detail-grid">
+                <div class="admin-detail-card">
+                    <div class="admin-detail-label">ANGGOTA</div>
+                    <div class="admin-detail-value" id="detail-member-name">-</div>
+                </div>
+                <div class="admin-detail-card">
+                    <div class="admin-detail-label">KATEGORI</div>
+                    <div class="admin-detail-value" id="detail-member-category">-</div>
+                </div>
+                <div class="admin-detail-card">
+                    <div class="admin-detail-label">PERIODE</div>
+                    <div class="admin-detail-value" id="detail-member-period">-</div>
+                </div>
+                <div class="admin-detail-card">
+                    <div class="admin-detail-label">NOMINAL</div>
+                    <div class="admin-detail-value" id="detail-member-amount">-</div>
+                </div>
+            </div>
+            <div class="admin-proof-wrap">
+                <h4 class="admin-proof-title">BUKTI PEMBAYARAN</h4>
+                <div class="admin-proof-empty" id="detail-proof-empty">Belum ada bukti pembayaran yang diupload dari web.</div>
+                <img id="detail-proof-image" class="admin-proof-image" alt="Bukti pembayaran QRIS" style="display:none;">
+            </div>
+            <div class="admin-modal-actions">
+                <button type="button" class="admin-secondary-button" id="detail-cancel-button">BATALKAN</button>
+                <button type="button" class="admin-ghost-button" id="detail-verify-button">LUNASKAN</button>
+            </div>
+        </div>
+    </div>
     <script>
         const USER_SITE_URL = 'https://kas-delta-8.web.app/index.html';
         const ADMIN_PANEL_URL = `${USER_SITE_URL}?mode=admin`;
@@ -496,9 +675,20 @@
         const topbarTitle = document.getElementById('admin-topbar-title');
         const topbarCopy = document.getElementById('admin-view-caption');
         const topbarPill = document.getElementById('admin-view-pill');
+        const paymentDetailModal = document.getElementById('payment-detail-modal');
+        const paymentDetailClose = document.getElementById('payment-detail-close');
+        const detailMemberName = document.getElementById('detail-member-name');
+        const detailMemberCategory = document.getElementById('detail-member-category');
+        const detailMemberPeriod = document.getElementById('detail-member-period');
+        const detailMemberAmount = document.getElementById('detail-member-amount');
+        const detailProofEmpty = document.getElementById('detail-proof-empty');
+        const detailProofImage = document.getElementById('detail-proof-image');
+        const detailVerifyButton = document.getElementById('detail-verify-button');
+        const detailCancelButton = document.getElementById('detail-cancel-button');
 
         let currentView = 'dashboard';
         let pendingPaymentState = { count: 0, totalNominal: 0, items: [], year: new Date().getFullYear() };
+        let activePaymentDetail = null;
 
         function formatCurrency(value) {
             return `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
@@ -568,11 +758,10 @@
 
             const updatedText = formatUpdatedAt(state.updatedAt);
             paymentSummaryCard.innerHTML = `${items.length} anggota menunggu verifikasi QRIS dengan total <strong>${formatCurrency(state.totalNominal)}</strong>${updatedText ? `. Diperbarui ${updatedText}.` : '.'}`;
-            paymentListCard.innerHTML = items.map((item) => {
+            paymentListCard.innerHTML = items.map((item, index) => {
                 const monthText = Array.isArray(item.monthLabels) && item.monthLabels.length
                     ? item.monthLabels.join(', ')
                     : (Array.isArray(item.months) ? item.months.join(', ') : '-');
-                const payload = encodeURIComponent(JSON.stringify(item));
                 return `
                     <article class="admin-payment-item">
                         <div class="admin-payment-row">
@@ -581,13 +770,42 @@
                         </div>
                         <div class="admin-payment-meta">Periode: ${monthText}</div>
                         <div class="admin-payment-amount">${formatCurrency(item.nominal)}</div>
+                        ${item.proofData ? '<div class="admin-proof-pill">BUKTI WEB TERSEDIA</div>' : ''}
                         <div class="admin-payment-actions">
-                            <button type="button" class="admin-ghost-button" data-payment-action="verify_pending" data-payment-payload="${payload}">LUNASKAN</button>
-                            <button type="button" class="admin-danger-button" data-payment-action="cancel_pending" data-payment-payload="${payload}">BATALKAN</button>
+                            <button type="button" class="admin-secondary-button" data-payment-action="open_detail" data-payment-index="${index}">DETAIL</button>
+                            <button type="button" class="admin-ghost-button" data-payment-action="verify_pending" data-payment-index="${index}">LUNASKAN</button>
+                            <button type="button" class="admin-danger-button" data-payment-action="cancel_pending" data-payment-index="${index}">BATALKAN</button>
                         </div>
                     </article>
                 `;
             }).join('');
+        }
+
+        function closePaymentDetail() {
+            activePaymentDetail = null;
+            if (paymentDetailModal) paymentDetailModal.classList.remove('active');
+        }
+
+        function openPaymentDetail(item) {
+            activePaymentDetail = item || null;
+            if (!activePaymentDetail || !paymentDetailModal) return;
+            const monthText = Array.isArray(activePaymentDetail.monthLabels) && activePaymentDetail.monthLabels.length
+                ? activePaymentDetail.monthLabels.join(', ')
+                : (Array.isArray(activePaymentDetail.months) ? activePaymentDetail.months.join(', ') : '-');
+            detailMemberName.textContent = activePaymentDetail.nama || '-';
+            detailMemberCategory.textContent = String(activePaymentDetail.kat || '-').toUpperCase();
+            detailMemberPeriod.textContent = monthText;
+            detailMemberAmount.textContent = formatCurrency(activePaymentDetail.nominal);
+            if (activePaymentDetail.proofData) {
+                detailProofImage.src = activePaymentDetail.proofData;
+                detailProofImage.style.display = 'block';
+                detailProofEmpty.style.display = 'none';
+            } else {
+                detailProofImage.src = '';
+                detailProofImage.style.display = 'none';
+                detailProofEmpty.style.display = 'block';
+            }
+            paymentDetailModal.classList.add('active');
         }
 
         function requestPendingSnapshot() {
@@ -620,11 +838,40 @@
                 const button = event.target.closest('[data-payment-action]');
                 if (!button) return;
                 const action = button.getAttribute('data-payment-action');
-                const rawPayload = button.getAttribute('data-payment-payload') || '';
-                try {
-                    const payload = JSON.parse(decodeURIComponent(rawPayload));
-                    postAdminAction(action, payload);
-                } catch (err) {}
+                const itemIndex = Number(button.getAttribute('data-payment-index'));
+                const payload = Number.isFinite(itemIndex) ? (pendingPaymentState.items || [])[itemIndex] : null;
+                if (!payload) return;
+                if (action === 'open_detail') {
+                    openPaymentDetail(payload);
+                    return;
+                }
+                postAdminAction(action, payload);
+                if (action === 'verify_pending' || action === 'cancel_pending') {
+                    closePaymentDetail();
+                }
+            });
+        }
+
+        if (paymentDetailClose) {
+            paymentDetailClose.addEventListener('click', closePaymentDetail);
+        }
+        if (paymentDetailModal) {
+            paymentDetailModal.addEventListener('click', (event) => {
+                if (event.target === paymentDetailModal) closePaymentDetail();
+            });
+        }
+        if (detailVerifyButton) {
+            detailVerifyButton.addEventListener('click', () => {
+                if (!activePaymentDetail) return;
+                postAdminAction('verify_pending', activePaymentDetail);
+                closePaymentDetail();
+            });
+        }
+        if (detailCancelButton) {
+            detailCancelButton.addEventListener('click', () => {
+                if (!activePaymentDetail) return;
+                postAdminAction('cancel_pending', activePaymentDetail);
+                closePaymentDetail();
             });
         }
 
@@ -633,6 +880,16 @@
             if (!data || data.type !== 'delta8-admin-pending-state') return;
             pendingPaymentState = data.payload || { count: 0, totalNominal: 0, items: [] };
             renderPendingPaymentsPanel();
+            if (activePaymentDetail) {
+                const nextDetail = (pendingPaymentState.items || []).find((item) =>
+                    String(item.id) === String(activePaymentDetail.id) &&
+                    String(item.kat) === String(activePaymentDetail.kat) &&
+                    String(item.y) === String(activePaymentDetail.y) &&
+                    JSON.stringify(item.months || []) === JSON.stringify(activePaymentDetail.months || [])
+                );
+                if (nextDetail) openPaymentDetail(nextDetail);
+                else closePaymentDetail();
+            }
         });
 
         if (frame) {
