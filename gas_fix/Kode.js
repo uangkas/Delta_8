@@ -14,10 +14,6 @@ var FCM_VAPID_KEY = "fcm_vapid_key";
 var FCM_SA_CLIENT_EMAIL_KEY = "fcm_sa_client_email";
 var FCM_SA_PRIVATE_KEY_KEY = "fcm_sa_private_key";
 var FCM_LAST_SEND_KEY = "fcm_last_send_json";
-var MIDTRANS_SERVER_KEY = "midtrans_server_key";
-var MIDTRANS_BASE_URL_KEY = "midtrans_base_url";
-var MIDTRANS_NOTIFICATION_URL_KEY = "midtrans_notification_url";
-var MIDTRANS_PENDING_PAYMENTS_KEY = "midtrans_pending_payments_json";
 var ACTIVE_JSONP_CALLBACK = "";
 var WRITE_SESSION_TTL_SEC = 21600; // 6 hours
 var BACKUP_LAST_KEY_PREFIX = "backup_last_";
@@ -101,8 +97,6 @@ function doGet(e) {
     if (action === "backupProperties") return handleBackupProperties_(e);
     if (action === "adminScriptInfo") return handleAdminScriptInfo_(e);
     if (action === "adminMovePropsToFirestore") return handleAdminMovePropsToFirestore_(e);
-    if (action === "midtransCreateQris") return handleMidtransCreateQris_(e);
-    if (action === "midtransStatus") return handleMidtransStatus_(e);
 
     // Serve index.html for browser UI.
     return HtmlService.createHtmlOutputFromFile("index")
@@ -129,15 +123,6 @@ function doPost(e) {
     }
     if (payload.action === "adminSetScriptProperties") {
       return handleAdminSetScriptProperties_(payload, e);
-    }
-    if (payload.action === "midtransCreateQris") {
-      return handleMidtransCreateQrisFromPost_(payload, e);
-    }
-    if (payload.action === "midtransNotification") {
-      return handleMidtransNotification_(e, payload);
-    }
-    if (payload.action === "midtransStatus") {
-      return handleMidtransStatus_(e);
     }
     validateWriteAuth_(payload, e);
     var year = getTargetYear_(payload, e);
@@ -244,7 +229,7 @@ function buildActivityNotificationMeta_(logEntry) {
   );
 
   var meta = {
-    title: "🔔 Aktivitas Aplikasi",
+    title: "ðŸ”” Aktivitas Aplikasi",
     body: ket || "Ada aktivitas baru di aplikasi.",
     tag: "delta8-activity-general",
     view: "transaksi",
@@ -256,36 +241,36 @@ function buildActivityNotificationMeta_(logEntry) {
   if (!aksi) return meta;
 
   if (aksi === "TAMBAH TRANSAKSI") {
-    meta.title = "💸 Tambah Transaksi";
+    meta.title = "ðŸ’¸ Tambah Transaksi";
     meta.tag = "delta8-activity-transaksi-add";
     return meta;
   }
   if (aksi === "EDIT TRANSAKSI") {
-    meta.title = "📝 Edit Transaksi";
+    meta.title = "ðŸ“ Edit Transaksi";
     meta.tag = "delta8-activity-transaksi-edit";
     return meta;
   }
   if (aksi === "HAPUS TRANSAKSI") {
-    meta.title = "🗑️ Hapus Transaksi";
+    meta.title = "ðŸ—‘ï¸ Hapus Transaksi";
     meta.tag = "delta8-activity-transaksi-delete";
     return meta;
   }
   if (aksi === "TAMBAH ANGGOTA") {
-    meta.title = "👥 Tambah Anggota";
+    meta.title = "ðŸ‘¥ Tambah Anggota";
     meta.tag = "delta8-activity-member-add";
     meta.view = "driver";
     meta.focusTarget = "grid-driver";
     return meta;
   }
   if (aksi === "EDIT ANGGOTA") {
-    meta.title = "🪪 Edit Anggota";
+    meta.title = "ðŸªª Edit Anggota";
     meta.tag = "delta8-activity-member-edit";
     meta.view = "driver";
     meta.focusTarget = "grid-driver";
     return meta;
   }
   if (aksi === "HAPUS ANGGOTA") {
-    meta.title = "❌ Hapus Anggota";
+    meta.title = "âŒ Hapus Anggota";
     meta.tag = "delta8-activity-member-delete";
     meta.view = "driver";
     meta.focusTarget = "grid-driver";
@@ -293,7 +278,7 @@ function buildActivityNotificationMeta_(logEntry) {
   }
   if (aksi === "IURAN") {
     meta.title =
-      ket.indexOf("LUNAS") !== -1 ? "✅ Iuran Lunas" : "💰 Update Iuran";
+      ket.indexOf("LUNAS") !== -1 ? "âœ… Iuran Lunas" : "ðŸ’° Update Iuran";
     meta.tag = "delta8-activity-iuran";
     meta.view = "driver";
     meta.focusTarget = "grid-driver";
@@ -301,14 +286,14 @@ function buildActivityNotificationMeta_(logEntry) {
   }
   if (aksi === "SYSTEM") {
     meta.title =
-      ket.indexOf("BERSIHKAN") !== -1 ? "🧹 Bersihkan Log" : "⚙️ Aktivitas Sistem";
+      ket.indexOf("BERSIHKAN") !== -1 ? "ðŸ§¹ Bersihkan Log" : "âš™ï¸ Aktivitas Sistem";
     meta.tag = "delta8-activity-system";
     meta.focusTarget = "log-list-table";
     meta.openPanel = "log-col";
     return meta;
   }
 
-  meta.title = "🔔 " + normalizeNotificationText_(aksi, 70);
+  meta.title = "ðŸ”” " + normalizeNotificationText_(aksi, 70);
   meta.tag = "delta8-activity-custom";
   return meta;
 }
@@ -2179,9 +2164,9 @@ function isPaidMark_(v) {
     s === "yes" ||
     s === "lunas" ||
     s === "paid" ||
-    s === "✅" ||
-    s === "✔" ||
-    s === "✓"
+    s === "âœ…" ||
+    s === "âœ”" ||
+    s === "âœ“"
   );
 }
 
@@ -2493,314 +2478,6 @@ function applyMemberStatusUpdate_(data, info, value) {
     }
   });
   return true;
-}
-
-function getMidtransConfig_() {
-  var serverKey = getPropWithFirestoreFallback_(MIDTRANS_SERVER_KEY);
-  if (!serverKey) {
-    throw new Error("Midtrans server key belum dikonfigurasi.");
-  }
-
-  var baseUrl = getPropWithFirestoreFallback_(MIDTRANS_BASE_URL_KEY) || "https://api.sandbox.midtrans.com";
-  var notificationUrl = getPropWithFirestoreFallback_(MIDTRANS_NOTIFICATION_URL_KEY) || "";
-
-  return {
-    serverKey: String(serverKey).trim(),
-    baseUrl: String(baseUrl).trim().replace(/\/+$/, ""),
-    notificationUrl: String(notificationUrl).trim()
-  };
-}
-
-function buildMidtransAuthHeader_(serverKey) {
-  return "Basic " + Utilities.base64Encode(String(serverKey || "") + ":");
-}
-
-function parseMidtransMonths_(raw) {
-  return String(raw || "")
-    .split(",")
-    .map(function (item) { return parseInt(String(item || "").trim(), 10); })
-    .filter(function (month, idx, list) {
-      return month >= 1 && month <= 12 && list.indexOf(month) === idx;
-    })
-    .sort(function (a, b) { return a - b; });
-}
-
-function getMidtransPendingPayments_() {
-  var raw = PropertiesService.getScriptProperties().getProperty(MIDTRANS_PENDING_PAYMENTS_KEY) || "{}";
-  try {
-    var parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch (err) {
-    return {};
-  }
-}
-
-function saveMidtransPendingPayments_(pending) {
-  PropertiesService.getScriptProperties().setProperty(
-    MIDTRANS_PENDING_PAYMENTS_KEY,
-    JSON.stringify(pending || {})
-  );
-}
-
-function formatPaymentMonthList_(months, year) {
-  return (months || []).map(function (m) {
-    return (m < 10 ? "0" + m : "" + m) + "/" + String(year || "");
-  }).join(", ");
-}
-
-function buildMemberPaymentDescription_(info, paymentMethod) {
-  var monthNames = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"];
-  var labels = (info && info.months ? info.months : [])
-    .map(function (month) { return monthNames[month - 1] || ("BLN " + month); })
-    .join(", ");
-  return ("BAYAR IURAN " + String((info && info.kat) || "ANGGOTA").toUpperCase() + " " + labels + " VIA " + String(paymentMethod || "QRIS").toUpperCase()).trim();
-}
-
-function getMidtransTransactionDate_(body) {
-  var candidate = String((body && (body.settlement_time || body.transaction_time)) || "").trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(candidate)) {
-    return candidate.slice(0, 10);
-  }
-  return Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "Asia/Jakarta", "yyyy-MM-dd");
-}
-
-function ensureMemberPaymentTransaction_(data, info, body, paymentMethod) {
-  if (!data || !info) return false;
-  if (!Array.isArray(data.transaksi)) data.transaksi = [];
-
-  var description = buildMemberPaymentDescription_(info, paymentMethod);
-  var nominal = Number(info.amount || 0);
-  var source = String(info.nama || "").trim().toUpperCase();
-  var exists = data.transaksi.some(function (row) {
-    return String((row && row.tp) || "").toUpperCase() === "PEMASUKAN" &&
-      String((row && row.p) || "").trim().toUpperCase() === source &&
-      String((row && row.k) || "").trim().toUpperCase() === description.toUpperCase() &&
-      Number((row && row.v) || 0) === nominal;
-  });
-  if (exists) return false;
-
-  data.transaksi.push({
-    d: getMidtransTransactionDate_(body),
-    tp: "Pemasukan",
-    p: source,
-    k: description,
-    v: nominal
-  });
-  return true;
-}
-
-function handleMidtransCreateQris_(e) {
-  validateWriteAuth_(null, e);
-  var year = getTargetYear_(null, e);
-  ensureYearData_(year);
-  var data = readYearData_(year);
-
-  var amount = parseInt((e && e.parameter && e.parameter.amount) || "0", 10);
-  if (!amount || amount < 1) {
-    return jsonResponse_({ ok: false, error: "Nominal Midtrans tidak valid." });
-  }
-
-  var orderId = String((e && e.parameter && e.parameter.order_id) || "").trim();
-  if (!orderId) {
-    orderId = "KAS-" + year + "-" + Utilities.getUuid().slice(0, 8).toUpperCase();
-  }
-
-  var info = {
-    id: String((e && e.parameter && e.parameter.member_id) || ""),
-    nama: String((e && e.parameter && e.parameter.member_name) || ""),
-    kat: String((e && e.parameter && e.parameter.kat) || "DRIVER").toUpperCase(),
-    year: String(year),
-    months: parseMidtransMonths_((e && e.parameter && e.parameter.months) || ""),
-    amount: amount
-  };
-
-  if (!info.id || !info.months.length) {
-    return jsonResponse_({ ok: false, error: "Data anggota/bulan tidak lengkap." });
-  }
-
-  var config = getMidtransConfig_();
-
-  var payload = {
-    payment_type: "qris",
-    transaction_details: {
-      order_id: orderId,
-      gross_amount: amount
-    }
-  };
-
-  var headers = {
-    Accept: "application/json",
-    Authorization: buildMidtransAuthHeader_(config.serverKey)
-  };
-  if (config.notificationUrl) {
-    headers["X-Override-Notification"] = config.notificationUrl;
-  }
-
-  var response = UrlFetchApp.fetch(config.baseUrl + "/v2/charge", {
-    method: "post",
-    contentType: "application/json",
-    headers: headers,
-    muteHttpExceptions: true,
-    payload: JSON.stringify(payload)
-  });
-
-  var raw = response.getContentText();
-  var parsed = {};
-  try {
-    parsed = JSON.parse(raw || "{}");
-  } catch (err) {
-    return jsonResponse_({ ok: false, error: "Respon Midtrans tidak valid." });
-  }
-
-  if (String(parsed.status_code) !== "201") {
-    return jsonResponse_({ ok: false, error: parsed.status_message || "Gagal membuat QRIS Midtrans." });
-  }
-
-  var qrUrl = "";
-  if (parsed.actions && parsed.actions.length) {
-    for (var i = 0; i < parsed.actions.length; i++) {
-      if (parsed.actions[i] && parsed.actions[i].name === "generate-qr-code") {
-        qrUrl = parsed.actions[i].url;
-        break;
-      }
-    }
-  }
-
-  applyMemberStatusUpdate_(data, info, "pending");
-  appendLog_(data, "SYSTEM", "IURAN", info.kat + " - " + info.nama + " - " +
-    formatPaymentMonthList_(info.months, year) +
-    " - [⏳ - PENDING QRIS " + orderId + "]");
-  writeYearData_(year, data);
-
-  var pending = getMidtransPendingPayments_();
-  pending[orderId] = info;
-  saveMidtransPendingPayments_(pending);
-
-  return jsonResponse_({
-    ok: true,
-    order_id: orderId,
-    transaction_id: parsed.transaction_id || "",
-    qr_url: qrUrl,
-    qr_string: parsed.qr_string || "",
-    status: parsed.transaction_status || "pending"
-  });
-}
-
-function handleMidtransCreateQrisFromPost_(payload, e) {
-  var params = payload || {};
-  var year = getTargetYear_(payload, e);
-  var query = {
-    parameter: {
-      amount: params.amount,
-      order_id: params.order_id,
-      member_id: params.member_id,
-      member_name: params.member_name,
-      kat: params.kat,
-      months: params.months,
-      editor: params.editor,
-      deviceId: params.deviceId,
-      authToken: params.authToken
-    }
-  };
-  return handleMidtransCreateQris_(query);
-}
-
-function handleMidtransNotification_(e, payload) {
-  var body = payload || {};
-  if (!payload && e && e.postData && e.postData.contents) {
-    try {
-      body = JSON.parse(e.postData.contents || "{}");
-    } catch (err) {
-      body = {};
-    }
-  }
-
-  var orderId = String(body.order_id || "").trim();
-  if (!orderId) {
-    return jsonResponse_({ ok: false, error: "order_id kosong." });
-  }
-
-  var config = getMidtransConfig_();
-  var signature = String(body.signature_key || "").trim();
-  if (signature) {
-    var base = String(body.order_id || "") + String(body.status_code || "") + String(body.gross_amount || "") + config.serverKey;
-    var expected = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_512, base)
-      .map(function (b) {
-        var s = (b < 0 ? b + 256 : b).toString(16);
-        return s.length === 1 ? "0" + s : s;
-      })
-      .join("");
-    if (expected !== signature) {
-      return jsonResponse_({ ok: false, error: "Signature Midtrans tidak valid." });
-    }
-  }
-
-  var result = applyMidtransStatusUpdate_(orderId, body);
-  return jsonResponse_(result);
-}
-
-function applyMidtransStatusUpdate_(orderId, body) {
-  var pending = getMidtransPendingPayments_();
-  var info = pending[orderId];
-  if (!info) {
-    return { ok: true, ignored: true, status: String((body && body.transaction_status) || "").toLowerCase() };
-  }
-
-  var year = info.year;
-  ensureYearData_(year);
-  var data = readYearData_(year);
-
-  var status = String(body.transaction_status || "").toLowerCase();
-  if (status === "settlement" || status === "capture") {
-    applyMemberStatusUpdate_(data, info, true);
-    ensureMemberPaymentTransaction_(data, info, body, "QRIS");
-    appendLog_(data, "SYSTEM", "IURAN", info.kat + " - " + info.nama + " - " +
-      formatPaymentMonthList_(info.months, year) +
-      " - [✅ - LUNAS MIDTRANS]");
-    delete pending[orderId];
-  } else if (status === "expire" || status === "cancel" || status === "deny") {
-    applyMemberStatusUpdate_(data, info, null);
-    appendLog_(data, "SYSTEM", "IURAN", info.kat + " - " + info.nama + " - " +
-      formatPaymentMonthList_(info.months, year) +
-      " - [❌ - MIDTRANS " + status.toUpperCase() + "]");
-    delete pending[orderId];
-  } else {
-    saveMidtransPendingPayments_(pending);
-    return { ok: true, status: status, pending: true };
-  }
-
-  writeYearData_(year, data);
-  saveMidtransPendingPayments_(pending);
-  return { ok: true, status: status };
-}
-
-function handleMidtransStatus_(e) {
-  validateWriteAuth_(null, e);
-  var orderId = String((e && e.parameter && e.parameter.order_id) || "").trim();
-  if (!orderId) {
-    return jsonResponse_({ ok: false, error: "order_id kosong." });
-  }
-
-  var config = getMidtransConfig_();
-  var response = UrlFetchApp.fetch(config.baseUrl + "/v2/" + encodeURIComponent(orderId) + "/status", {
-    method: "get",
-    headers: {
-      Accept: "application/json",
-      Authorization: buildMidtransAuthHeader_(config.serverKey)
-    },
-    muteHttpExceptions: true
-  });
-
-  var raw = response.getContentText();
-  var parsed = {};
-  try {
-    parsed = JSON.parse(raw || "{}");
-  } catch (err) {
-    return jsonResponse_({ ok: false, error: "Respon Midtrans tidak valid." });
-  }
-
-  var result = applyMidtransStatusUpdate_(orderId, parsed);
-  return jsonResponse_(result);
 }
 
 function handleAdminScriptInfo_(e) {
