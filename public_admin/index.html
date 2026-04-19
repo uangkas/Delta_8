@@ -442,6 +442,7 @@
                     <button type="button" class="admin-link" id="add-member-link">+ ANGGOTA</button>
                     <button type="button" class="admin-link" id="add-transaction-link">+ TRANSAKSI</button>
                     <button type="button" class="admin-link" id="payment-verification-link">VERIFIKASI QRIS</button>
+                    <button type="button" class="admin-link" id="logs-link">📋 LOG SISTEM</button>
                 </div>
             </section>
         </aside>
@@ -477,6 +478,25 @@
                     <div class="admin-payment-footnote">Semua pembayaran QRIS yang menunggu persetujuan admin dikumpulkan di halaman ini. Status baru berubah setelah admin memilih <strong>LUNASKAN</strong> atau <strong>BATALKAN</strong>.</div>
                 </div>
             </section>
+
+            <section class="admin-view" id="logs-view">
+                <div class="admin-verification-wrap">
+                    <div class="admin-panel-header">
+                        <h2 class="admin-panel-title">LOG SISTEM AKTIFITAS</h2>
+                        <button type="button" class="admin-mini-button" id="refresh-logs-link">MUAT ULANG</button>
+                    </div>
+                    <div class="table-responsive" style="max-height: calc(100vh - 200px); overflow-y: auto; flex: 1;">
+                        <table class="table" id="admin-log-table" style="margin-bottom: 0;">
+                            <thead style="position: sticky; top: 0; background: var(--panel);"><tr><th style="width: 100px;">WAKTU</th><th style="width: 100px;">EDITOR</th><th style="width: 120px;">AKSI</th><th>KETERANGAN</th></tr></thead>
+                            <tbody id="admin-log-list" style="font-size: 12px;"></tbody>
+                        </table>
+                    </div>
+                    <div class="admin-payment-actions" style="margin-top: 16px;">
+                        <button type="button" class="admin-ghost-button" id="download-pdf-link">📥 UNDUH PDF</button>
+                        <button type="button" class="admin-danger-button" id="clear-logs-link">🗑️ HAPUS SEMUA</button>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
     <script>
@@ -488,16 +508,23 @@
         const addMemberButton = document.getElementById('add-member-link');
         const addTransactionButton = document.getElementById('add-transaction-link');
         const paymentVerificationButton = document.getElementById('payment-verification-link');
+        const logsButton = document.getElementById('logs-link');
         const refreshPaymentsButton = document.getElementById('refresh-payments-link');
+        const refreshLogsButton = document.getElementById('refresh-logs-link');
         const paymentSummaryCard = document.getElementById('admin-payment-summary-card');
         const paymentListCard = document.getElementById('admin-payment-list-card');
+        const logListTable = document.getElementById('admin-log-list');
+        const downloadPdfLink = document.getElementById('download-pdf-link');
+        const clearLogsLink = document.getElementById('clear-logs-link');
         const dashboardView = document.getElementById('dashboard-view');
         const verificationView = document.getElementById('verification-view');
+        const logsView = document.getElementById('logs-view');
         const topbarTitle = document.getElementById('admin-topbar-title');
         const topbarCopy = document.getElementById('admin-view-caption');
         const topbarPill = document.getElementById('admin-view-pill');
 
         let currentView = 'dashboard';
+        let systemLogs = [];
         let pendingPaymentState = { count: 0, totalNominal: 0, items: [], year: new Date().getFullYear() };
 
         function formatCurrency(value) {
@@ -524,7 +551,7 @@
         }
 
         function setActiveButton(target) {
-            [dashboardButton, paymentVerificationButton].forEach((button) => {
+            [dashboardButton, paymentVerificationButton, logsButton].forEach((button) => {
                 if (!button) return;
                 button.classList.toggle('active', button === target);
                 if (button !== addMemberButton && button !== addTransactionButton) {
@@ -534,23 +561,51 @@
         }
 
         function switchView(view) {
-            currentView = view === 'verification' ? 'verification' : 'dashboard';
-            const showVerification = currentView === 'verification';
-            if (dashboardView) dashboardView.classList.toggle('active', !showVerification);
-            if (verificationView) verificationView.classList.toggle('active', showVerification);
+            const isVerification = view === 'verification';
+            const isLogs = view === 'logs';
+            currentView = isVerification ? 'verification' : (isLogs ? 'logs' : 'dashboard');
+            
+            if (dashboardView) dashboardView.classList.toggle('active', currentView === 'dashboard');
+            if (verificationView) verificationView.classList.toggle('active', currentView === 'verification');
+            if (logsView) logsView.classList.toggle('active', currentView === 'logs');
 
-            if (showVerification) {
+            if (isVerification) {
                 if (topbarTitle) topbarTitle.innerText = 'HALAMAN VERIFIKASI QRIS';
                 if (topbarCopy) topbarCopy.innerHTML = 'Semua pembayaran QRIS yang <strong>menunggu verifikasi</strong> dipusatkan di sini.';
                 if (topbarPill) topbarPill.innerText = 'VERIFICATION MODE';
                 setActiveButton(paymentVerificationButton);
                 requestPendingSnapshot();
+            } else if (isLogs) {
+                if (topbarTitle) topbarTitle.innerText = 'LOG SISTEM AKTIFITAS';
+                if (topbarCopy) topbarCopy.innerHTML = 'Catatan lengkap semua aksi yang dilakukan dalam sistem untuk keperluan audit dan <strong>transparansi</strong>.';
+                if (topbarPill) topbarPill.innerText = 'AUDIT LOG';
+                setActiveButton(logsButton);
+                requestLogsSnapshot();
             } else {
                 if (topbarTitle) topbarTitle.innerText = 'PANEL ADMIN UTAMA';
                 if (topbarCopy) topbarCopy.innerHTML = 'Panel ini memuat <strong>ceklis anggota</strong>, tabel lengkap, transaksi, dan aksi admin harian.';
                 if (topbarPill) topbarPill.innerText = 'LIVE CONTROL';
                 setActiveButton(dashboardButton);
             }
+        }
+
+        function requestLogsSnapshot() {
+            postAdminAction('request_logs_snapshot');
+        }
+
+        function renderLogsPanel() {
+            if (!logListTable) return;
+            if (!Array.isArray(systemLogs) || !systemLogs.length) {
+                logListTable.innerHTML = '<tr><td colspan="4" class="text-center text-muted p-3">Belum ada log sistem.</td></tr>';
+                return;
+            }
+            logListTable.innerHTML = systemLogs.map((log) => {
+                const time = log.waktu ? new Date(log.waktu).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                const editor = String(log.editor || '-').substring(0, 30);
+                const aksi = String(log.aksi || '-').toUpperCase();
+                const keterangan = String(log.keterangan || '-');
+                return `<tr><td>${time}</td><td>${editor}</td><td>${aksi}</td><td>${keterangan}</td></tr>`;
+            }).join('');
         }
 
         function renderPendingPaymentsPanel() {
@@ -594,6 +649,10 @@
             postAdminAction('request_pending_snapshot');
         }
 
+        function requestLogsSnapshot() {
+            postAdminAction('request_logs_snapshot');
+        }
+
         if (dashboardButton) {
             dashboardButton.addEventListener('click', () => switchView('dashboard'));
         }
@@ -612,8 +671,24 @@
         if (paymentVerificationButton) {
             paymentVerificationButton.addEventListener('click', () => switchView('verification'));
         }
+        if (logsButton) {
+            logsButton.addEventListener('click', () => switchView('logs'));
+        }
         if (refreshPaymentsButton) {
             refreshPaymentsButton.addEventListener('click', requestPendingSnapshot);
+        }
+        if (refreshLogsButton) {
+            refreshLogsButton.addEventListener('click', requestLogsSnapshot);
+        }
+        if (downloadPdfLink) {
+            downloadPdfLink.addEventListener('click', () => postAdminAction('download'));
+        }
+        if (clearLogsLink) {
+            clearLogsLink.addEventListener('click', () => {
+                if (confirm('Yakin ingin menghapus SEMUA log sistem? Tindakan ini tidak dapat dibatalkan!')) {
+                    postAdminAction('clearLogs');
+                }
+            });
         }
         if (paymentListCard) {
             paymentListCard.addEventListener('click', (event) => {
@@ -630,9 +705,15 @@
 
         window.addEventListener('message', (event) => {
             const data = event && event.data ? event.data : null;
-            if (!data || data.type !== 'delta8-admin-pending-state') return;
-            pendingPaymentState = data.payload || { count: 0, totalNominal: 0, items: [] };
-            renderPendingPaymentsPanel();
+            if (!data) return;
+            if (data.type === 'delta8-admin-pending-state') {
+                pendingPaymentState = data.payload || { count: 0, totalNominal: 0, items: [] };
+                renderPendingPaymentsPanel();
+            }
+            if (data.type === 'delta8-admin-logs-state') {
+                systemLogs = Array.isArray(data.payload) ? data.payload : [];
+                renderLogsPanel();
+            }
         });
 
         if (frame) {
@@ -644,6 +725,7 @@
 
         switchView('dashboard');
         renderPendingPaymentsPanel();
+        renderLogsPanel();
     </script>
 </body>
 </html>

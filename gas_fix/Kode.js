@@ -97,6 +97,7 @@ function doGet(e) {
     if (action === "backupProperties") return handleBackupProperties_(e);
     if (action === "adminScriptInfo") return handleAdminScriptInfo_(e);
     if (action === "adminMovePropsToFirestore") return handleAdminMovePropsToFirestore_(e);
+    if (action === "clearLogs") return handleClearLogs_(e);
 
     // Serve index.html for browser UI.
     return HtmlService.createHtmlOutputFromFile("index")
@@ -1153,6 +1154,27 @@ function handleInstallBackupTrigger_(e) {
   validateActionAuth_(e);
   installDailyBackupTrigger_();
   return jsonResponse_({ ok: true, triggerInstalled: true });
+}
+
+function handleClearLogs_(e) {
+  validateActionAuth_(e);
+  var year = getYearFromRequest_(e);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+      var data = readYearData_(year);
+      var beforeData = JSON.parse(JSON.stringify(data));
+      data.logs = []; // Kosongkan log
+      
+      writeYearData_(year, data);
+      
+      // Kirim notifikasi bahwa log telah dibersihkan
+      maybeBroadcastFcmAfterWrite_(beforeData, data, { editor: "ADMIN" }, year);
+      
+      return jsonResponse_({ ok: true, message: "Log tahun " + year + " berhasil dihapus." });
+  } finally {
+      lock.releaseLock();
+  }
 }
 
 function validateActionAuth_(e) {

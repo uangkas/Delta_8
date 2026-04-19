@@ -1649,6 +1649,15 @@ body.tab-transaksi .nav-tabs {
                     if (action === 'request_pending_snapshot') {
                         postPendingPaymentsToParent();
                     }
+                    if (action === 'request_logs_snapshot') {
+                        postLogsToParent();
+                    }
+                    if (action === 'download') {
+                        askAuth('download');
+                    }
+                    if (action === 'clearlogs') {
+                        eksekusiHapusLog();
+                    }
                     if ((action === 'verify_pending' || action === 'cancel_pending') && data.payload) {
                         const authAction = action === 'verify_pending' ? 'admin_verify_pending' : 'admin_cancel_pending';
                         askAuth(authAction, data.payload);
@@ -2302,6 +2311,22 @@ body.tab-transaksi .nav-tabs {
                         items: pendingRows,
                         updatedAt: new Date().toISOString()
                     }
+                }, '*');
+            } catch (err) {}
+        }
+
+        function postLogsToParent() {
+            if (window.parent === window) return;
+            try {
+                const logsToSend = (DB_LOGS || []).map(log => ({
+                    waktu: log.time || log.waktu,
+                    editor: log.editor,
+                    aksi: log.aksi,
+                    keterangan: log.ket || log.keterangan
+                }));
+                window.parent.postMessage({
+                    type: 'delta8-admin-logs-state',
+                    payload: logsToSend
                 }, '*');
             } catch (err) {}
         }
