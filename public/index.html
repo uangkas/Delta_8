@@ -1681,9 +1681,6 @@ body.tab-transaksi .nav-tabs {
                         const authAction = action === 'verify_pending' ? 'admin_verify_pending' : 'admin_cancel_pending';
                         askAuth(authAction, data.payload);
                     }
-                } else if (data.type === 'delta8-admin-verify') {
-                    const params = data.params;
-                    if (params) askAuth('verify_payment', params);
                 }
             } catch (err) {}
         });
@@ -2221,17 +2218,6 @@ body.tab-transaksi .nav-tabs {
                 );
                 syncAll();
                 return { person: updatedPerson, statusValue };
-            } else if (action === 'verify_payment') {
-                const statusValue = true; // Always verify to paid
-                const person = setMemberPaymentStatusLocal({ ...params, months: [params.m] }, statusValue);
-                if (!person) return null;
-                const monthText = `${String(params.m).padStart(2, '0')}/${params.y}`;
-                addLog(
-                    "Iuran",
-                    `${String(params.kat || '').toUpperCase()} - ${person.nama} - ${monthText} - [✅ - LUNAS VERIFIKASI ADMIN]`
-                );
-                syncAll();
-                return { person, statusValue };
             }
         }
 
@@ -2977,11 +2963,8 @@ async function syncAll() {
                 const isPaid = rawStatus === true;
                 const isPending = rawStatus === 'pending';
                 if (isPaid) count++;
-
-                const clickHandler = isPending ? `onclick="askAuth('verify_payment', {id: '${p.id}', kat: '${kat}', y: ${y}, m: ${i}})"` : '';
-                const cursorStyle = isPending ? 'cursor: pointer;' : '';
                 cellParts.push(
-                    `<td class="status-toggle ${isPaid ? 'text-success' : (isPending ? 'text-warning' : 'text-danger')}" data-id="${p.id}" data-kat="${kat}" data-y="${y}" data-m="${i}" style="${cursorStyle}" ${clickHandler}>${isPaid ? '&#9989;' : (isPending ? '&#9203;' : '&#10060;')}</td>`
+                    `<td class="status-toggle ${isPaid ? 'text-success' : (isPending ? 'text-warning' : 'text-danger')}" data-id="${p.id}" data-kat="${kat}" data-y="${y}" data-m="${i}">${isPaid ? '&#9989;' : (isPending ? '&#9203;' : '&#10060;')}</td>`
                 );
             }
 

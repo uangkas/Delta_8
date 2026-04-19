@@ -2044,9 +2044,11 @@ function toRowByType_(type, item, idx, year) {
     var totalPaid = 0;
 
     for (var m = 1; m <= 12; m++) {
-      var paid = !!yearStatus[m];
-      monthMarks.push(paid ? "\u2705" : "\u274C");
-      if (paid) totalPaid++;
+      var rawStatus = yearStatus[m];
+      var isPending = rawStatus === "pending";
+      var isPaid = rawStatus === true;
+      monthMarks.push(isPending ? "\u23F3" : (isPaid ? "\u2705" : "\u274C"));
+      if (isPaid) totalPaid++;
     }
 
     return [
@@ -2110,7 +2112,7 @@ function fromRowByType_(type, row, year) {
     status[yy] = {};
 
     for (var m = 1; m <= 12; m++) {
-      status[yy][m] = isPaidMark_(row[m + 1]);
+      status[yy][m] = parseMemberStatusMark_(row[m + 1]);
     }
 
     try {
@@ -2168,6 +2170,24 @@ function isPaidMark_(v) {
     s === "âœ”" ||
     s === "âœ“"
   );
+}
+
+function parseMemberStatusMark_(v) {
+  var raw = String(v || "").trim();
+  if (!raw) return false;
+
+  var s = raw.toLowerCase();
+  if (
+    raw === "\u23F3" ||
+    raw === "\u231B" ||
+    s === "pending" ||
+    s === "menunggu" ||
+    s === "qris_pending"
+  ) {
+    return "pending";
+  }
+
+  return isPaidMark_(raw);
 }
 
 function extractYearFromSheetName_(name) {
