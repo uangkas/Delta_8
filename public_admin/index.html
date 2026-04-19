@@ -409,6 +409,131 @@
             line-height: 1.7;
         }
 
+        .admin-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .admin-modal-overlay.active {
+            display: flex;
+        }
+
+        .admin-modal {
+            background: linear-gradient(180deg, rgba(12, 21, 38, 0.98), rgba(7, 17, 31, 0.95));
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 480px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .admin-modal-title {
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            color: var(--gold);
+        }
+
+        .admin-modal-body {
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .admin-modal-member {
+            color: var(--text);
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .admin-modal-amount {
+            color: var(--gold);
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .admin-modal-question {
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
+        .admin-modal-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .admin-modal-option-btn {
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            border: 1px solid;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .admin-modal-option-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .admin-modal-upload-btn {
+            background: linear-gradient(135deg, var(--gold-strong), var(--gold));
+            color: #111827;
+            border-color: rgba(243, 199, 107, 0.5);
+        }
+
+        .admin-modal-upload-btn:hover {
+            box-shadow: 0 8px 20px rgba(243, 199, 107, 0.3);
+        }
+
+        .admin-modal-wa-btn {
+            background: rgba(37, 150, 91, 0.2);
+            color: #86efac;
+            border-color: rgba(37, 150, 91, 0.5);
+        }
+
+        .admin-modal-wa-btn:hover {
+            box-shadow: 0 8px 20px rgba(37, 150, 91, 0.2);
+        }
+
+        .admin-modal-close-btn {
+            width: 100%;
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(148, 163, 184, 0.1);
+            color: var(--muted);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .admin-modal-close-btn:hover {
+            background: rgba(148, 163, 184, 0.15);
+        }
+
         @media (max-width: 1080px) {
             .admin-shell {
                 grid-template-columns: 1fr;
@@ -526,6 +651,23 @@
             </section>
         </main>
     </div>
+
+    <div class="admin-modal-overlay" id="payment-method-modal">
+        <div class="admin-modal">
+            <h3 class="admin-modal-title">Verifikasi Pembayaran</h3>
+            <div class="admin-modal-body">
+                <div class="admin-modal-member" id="modal-member-name">-</div>
+                <div class="admin-modal-amount" id="modal-payment-amount">-</div>
+                <div class="admin-modal-question">Bagaimana cara anggota mengirimkan bukti pembayaran?</div>
+            </div>
+            <div class="admin-modal-actions">
+                <button type="button" class="admin-modal-option-btn admin-modal-upload-btn" id="modal-upload-btn">📤 UPLOAD</button>
+                <button type="button" class="admin-modal-option-btn admin-modal-wa-btn" id="modal-wa-btn">💬 WHATSAPP</button>
+            </div>
+            <button type="button" class="admin-modal-close-btn" id="modal-close-btn">Tutup</button>
+        </div>
+    </div>
+
     <script>
         const USER_SITE_URL = 'https://kas-delta-8.web.app/index.html';
         const ADMIN_PANEL_URL = `${USER_SITE_URL}?mode=admin`;
@@ -703,6 +845,54 @@
             postAdminAction('request_logs_snapshot');
         }
 
+        let currentPaymentItem = null;
+
+        function showPaymentMethodModal(paymentItem) {
+            currentPaymentItem = paymentItem;
+            const modal = document.getElementById('payment-method-modal');
+            const memberNameEl = document.getElementById('modal-member-name');
+            const paymentAmountEl = document.getElementById('modal-payment-amount');
+            
+            if (memberNameEl) {
+                const kat = String(paymentItem.kat || '').toUpperCase();
+                const nama = paymentItem.nama || '-';
+                memberNameEl.textContent = `${kat} - ${nama}`;
+            }
+            if (paymentAmountEl) {
+                paymentAmountEl.textContent = `Total: ${formatCurrency(paymentItem.nominal)}`;
+            }
+            
+            if (modal) {
+                modal.classList.add('active');
+            }
+        }
+
+        function closePaymentMethodModal() {
+            const modal = document.getElementById('payment-method-modal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+            currentPaymentItem = null;
+        }
+
+        function handlePaymentUpload() {
+            if (!currentPaymentItem) {
+                closePaymentMethodModal();
+                return;
+            }
+            postAdminAction('verify_pending_upload_mode', currentPaymentItem);
+            closePaymentMethodModal();
+        }
+
+        function handlePaymentWhatsApp() {
+            if (!currentPaymentItem) {
+                closePaymentMethodModal();
+                return;
+            }
+            postAdminAction('verify_pending_wa_mode', currentPaymentItem);
+            closePaymentMethodModal();
+        }
+
         if (dashboardButton) {
             dashboardButton.addEventListener('click', () => switchView('dashboard'));
         }
@@ -748,9 +938,38 @@
                 const rawPayload = button.getAttribute('data-payment-payload') || '';
                 try {
                     const payload = JSON.parse(decodeURIComponent(rawPayload));
-                    postAdminAction(action, payload);
+                    if (action === 'verify_pending') {
+                        showPaymentMethodModal(payload);
+                    } else {
+                        postAdminAction(action, payload);
+                    }
                 } catch (err) {}
             });
+        }
+
+        const paymentMethodModal = document.getElementById('payment-method-modal');
+        const modalUploadBtn = document.getElementById('modal-upload-btn');
+        const modalWaBtn = document.getElementById('modal-wa-btn');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        if (paymentMethodModal) {
+            paymentMethodModal.addEventListener('click', (event) => {
+                if (event.target === paymentMethodModal) {
+                    closePaymentMethodModal();
+                }
+            });
+        }
+
+        if (modalUploadBtn) {
+            modalUploadBtn.addEventListener('click', handlePaymentUpload);
+        }
+
+        if (modalWaBtn) {
+            modalWaBtn.addEventListener('click', handlePaymentWhatsApp);
+        }
+
+        if (modalCloseBtn) {
+            modalCloseBtn.addEventListener('click', closePaymentMethodModal);
         }
 
         window.addEventListener('message', (event) => {
