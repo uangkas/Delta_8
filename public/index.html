@@ -1354,6 +1354,7 @@ body.tab-transaksi .nav-tabs {
         const QRIS_STATIC_PAYLOAD = '';
         const ADMIN_WHATSAPP_NUMBER = '628XXXXXXXXXX';
         const cloneData = (v) => JSON.parse(JSON.stringify(v));
+        const formatCurrency = (value) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
 
         function showNotif(message, type = 'info') {
             const wrap = document.getElementById('notify-wrap');
@@ -1585,9 +1586,10 @@ body.tab-transaksi .nav-tabs {
         }
 
         function postToAppsScript(payload) {
-            if (navigator.sendBeacon) {
+            const serializedPayload = JSON.stringify(payload);
+            if (navigator.sendBeacon && serializedPayload.length <= 24000) {
                 try {
-                    const body = new Blob([JSON.stringify(payload)], {
+                    const body = new Blob([serializedPayload], {
                         type: 'text/plain;charset=UTF-8'
                     });
                     const queued = navigator.sendBeacon(CLOUD_URL, body);
@@ -1613,7 +1615,7 @@ body.tab-transaksi .nav-tabs {
                 const input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = 'payload';
-                input.value = JSON.stringify(payload);
+                input.value = serializedPayload;
                 form.appendChild(input);
                 document.body.appendChild(form);
 
@@ -2718,9 +2720,10 @@ body.tab-transaksi .nav-tabs {
             if (proofBase64) {
                 person.pendingProofs = person.pendingProofs || {};
                 person.pendingProofs[params.y] = person.pendingProofs[params.y] || {};
-                months.forEach(month => {
-                    person.pendingProofs[params.y][month] = proofBase64;
-                });
+                const proofMonth = months[0];
+                if (proofMonth) {
+                    person.pendingProofs[params.y][proofMonth] = proofBase64;
+                }
             }
             const monthText = months.map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
             addLog(
@@ -2747,6 +2750,29 @@ body.tab-transaksi .nav-tabs {
         let uploadedImageFile = null;
         let currentUploadProofBase64 = null;
         let selectedUploadMethod = 'web';
+
+        function getUploadModalElements() {
+            return {
+                modalEl: document.getElementById('modalUploadBukti'),
+                memberNameEl: document.getElementById('upload-member-name'),
+                memberKatEl: document.getElementById('upload-member-kat'),
+                monthsEl: document.getElementById('upload-months'),
+                amountEl: document.getElementById('upload-amount'),
+                adminWhatsappEl: document.getElementById('admin-whatsapp-number'),
+                whatsappLinkEl: document.getElementById('whatsapp-link'),
+                submitBtn: document.getElementById('upload-submit-btn'),
+                methodWebBtn: document.getElementById('method-web'),
+                methodWhatsappBtn: document.getElementById('method-whatsapp'),
+                uploadWebSection: document.getElementById('upload-web-section'),
+                uploadWhatsappSection: document.getElementById('upload-whatsapp-section'),
+                uploadPlaceholder: document.getElementById('upload-placeholder'),
+                uploadPreview: document.getElementById('upload-preview')
+            };
+        }
+
+        function getConfiguredAdminWhatsappNumber() {
+            return String(ADMIN_WHATSAPP_NUMBER || '').replace(/[^\d]/g, '');
+        }
 
         function compressProofImage(file) {
             return new Promise((resolve, reject) => {
@@ -2781,14 +2807,14 @@ body.tab-transaksi .nav-tabs {
                         context.fillRect(0, 0, width, height);
                         context.drawImage(img, 0, 0, width, height);
 
-                        let quality = 0.82;
+                        let quality = 0.78;
                         let output = canvas.toDataURL('image/jpeg', quality);
-                        while (output.length > 45000 && quality > 0.3) {
+                        while (output.length > 14000 && quality > 0.26) {
                             quality -= 0.08;
                             output = canvas.toDataURL('image/jpeg', quality);
                         }
 
-                        if (output.length > 45000) {
+                        if (output.length > 14000) {
                             reject(new Error('Bukti pembayaran terlalu besar. Coba foto yang lebih ringan atau crop dulu.'));
                             return;
                         }
@@ -2832,17 +2858,19 @@ body.tab-transaksi .nav-tabs {
 
         function selectUploadMethod(method) {
             selectedUploadMethod = method;
-            
-            // Update button states
-            document.getElementById('method-web').classList.toggle('active', method === 'web');
-            document.getElementById('method-whatsapp').classList.toggle('active', method === 'whatsapp');
-            
-            // Show/hide sections
-            document.getElementById('upload-web-section').classList.toggle('d-none', method !== 'web');
-            document.getElementById('upload-whatsapp-section').classList.toggle('d-none', method !== 'whatsapp');
-            
-            // Update submit button
-            const submitBtn = document.getElementById('upload-submit-btn');
+            const {
+                methodWebBtn,
+                methodWhatsappBtn,
+                uploadWebSection,
+                uploadWhatsappSection,
+                submitBtn
+            } = getUploadModalElements();
+
+            if (methodWebBtn) methodWebBtn.classList.toggle('active', method === 'web');
+            if (methodWhatsappBtn) methodWhatsappBtn.classList.toggle('active', method === 'whatsapp');
+            if (uploadWebSection) uploadWebSection.classList.toggle('d-none', method !== 'web');
+            if (uploadWhatsappSection) uploadWhatsappSection.classList.toggle('d-none', method !== 'whatsapp');
+            if (!submitBtn) return;
             if (method === 'web') {
                 submitBtn.disabled = !uploadedImageFile;
                 submitBtn.textContent = 'KIRIM PEMBAYARAN';
@@ -2858,24 +2886,33 @@ body.tab-transaksi .nav-tabs {
                 return;
             }
 
-            const modal = new bootstrap.Modal(document.getElementById('modalUploadBukti'));
-            
-            // Fill payment details
-            document.getElementById('upload-member-name').textContent = pendingPaymentContext.nama || '-';
-            document.getElementById('upload-member-kat').textContent = pendingPaymentContext.kat || '-';
-            
+            const {
+                modalEl,
+                memberNameEl,
+                memberKatEl,
+                monthsEl,
+                amountEl,
+                adminWhatsappEl,
+                whatsappLinkEl
+            } = getUploadModalElements();
+
+            if (!modalEl) {
+                showNotif('Popup upload bukti belum tersedia.', 'error');
+                return;
+            }
+
             const months = Array.isArray(pendingPaymentContext.selectedMonths) 
                 ? pendingPaymentContext.selectedMonths.map(m => PAYMENT_MONTH_NAMES[m-1]).join(', ')
                 : '-';
-            document.getElementById('upload-months').textContent = months;
-            
             const total = (pendingPaymentContext.selectedMonths?.length || 0) * MONTHLY_IURAN_AMOUNT;
-            document.getElementById('upload-amount').textContent = formatCurrency(total);
+            const adminWhatsappNumber = getConfiguredAdminWhatsappNumber();
 
-            // Set admin WhatsApp number (you can configure this)
-            document.getElementById('admin-whatsapp-number').textContent = `+${ADMIN_WHATSAPP_NUMBER}`;
-            
-            // Create WhatsApp link
+            if (memberNameEl) memberNameEl.textContent = pendingPaymentContext.nama || '-';
+            if (memberKatEl) memberKatEl.textContent = pendingPaymentContext.kat || '-';
+            if (monthsEl) monthsEl.textContent = months;
+            if (amountEl) amountEl.textContent = formatCurrency(total);
+            if (adminWhatsappEl) adminWhatsappEl.textContent = adminWhatsappNumber ? `+${adminWhatsappNumber}` : '-';
+
             const whatsappMessage = encodeURIComponent(
                 `Halo Admin, saya sudah transfer pembayaran iuran:\n\n` +
                 `Nama: ${pendingPaymentContext.nama}\n` +
@@ -2884,23 +2921,36 @@ body.tab-transaksi .nav-tabs {
                 `Nominal: ${formatCurrency(total)}\n\n` +
                 `Mohon verifikasi pembayaran saya.`
             );
-            document.getElementById('whatsapp-link').href = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${whatsappMessage}`;
+            if (whatsappLinkEl) {
+                whatsappLinkEl.href = adminWhatsappNumber
+                    ? `https://wa.me/${adminWhatsappNumber}?text=${whatsappMessage}`
+                    : '#';
+                whatsappLinkEl.classList.toggle('disabled', !adminWhatsappNumber);
+                whatsappLinkEl.setAttribute('aria-disabled', adminWhatsappNumber ? 'false' : 'true');
+            }
 
-            // Reset state
             uploadedImageFile = null;
+            currentUploadProofBase64 = null;
             selectedUploadMethod = 'web';
+            removeUploadImage();
             selectUploadMethod('web');
 
-            modal.show();
+            const qrisModalEl = document.getElementById('modalQrisPayment');
+            const qrisModal = qrisModalEl ? bootstrap.Modal.getInstance(qrisModalEl) : null;
+            if (qrisModal) qrisModal.hide();
+
+            const uploadModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            window.setTimeout(() => uploadModal.show(), 180);
         }
 
         function removeUploadImage() {
+            const { uploadPlaceholder, uploadPreview, submitBtn } = getUploadModalElements();
             uploadedImageFile = null;
             currentUploadProofBase64 = null;
             if (uploadFileInput) uploadFileInput.value = '';
-            document.getElementById('upload-placeholder').classList.remove('d-none');
-            document.getElementById('upload-preview').classList.add('d-none');
-            document.getElementById('upload-submit-btn').disabled = true;
+            if (uploadPlaceholder) uploadPlaceholder.classList.remove('d-none');
+            if (uploadPreview) uploadPreview.classList.add('d-none');
+            if (submitBtn) submitBtn.disabled = true;
         }
 
         function submitPaymentWithProof() {
@@ -2937,6 +2987,13 @@ body.tab-transaksi .nav-tabs {
         }
 
         function submitPaymentWithWhatsAppProof() {
+            const { whatsappLinkEl } = getUploadModalElements();
+            const whatsappLink = whatsappLinkEl ? String(whatsappLinkEl.href || '').trim() : '';
+            if (!whatsappLink || whatsappLink === '#') {
+                showNotif('Nomor WhatsApp admin belum dikonfigurasi.', 'error');
+                return;
+            }
+
             // Close upload modal
             const uploadModal = bootstrap.Modal.getInstance(document.getElementById('modalUploadBukti'));
             if (uploadModal) {
@@ -2957,7 +3014,6 @@ body.tab-transaksi .nav-tabs {
             
             // Open WhatsApp after a short delay
             setTimeout(() => {
-                const whatsappLink = document.getElementById('whatsapp-link').href;
                 window.open(whatsappLink, '_blank');
             }, 1000);
         }

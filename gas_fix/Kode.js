@@ -1906,8 +1906,8 @@ function migrateYearSheetLayoutIfNeeded_(sheet, year) {
   if (!markers.transaksi || !markers.logs) return;
 
   var alreadyNew =
-    Number(markers.transaksi.col) === 17 &&
-    Number(markers.logs.col) === 23;
+    Number(markers.transaksi.col) === 18 &&
+    Number(markers.logs.col) === 24;
 
   if (alreadyNew) return;
 
@@ -1939,16 +1939,18 @@ function applyYearSheetStyle_(sheet, lastRow, lastCol) {
   for (var c = 3; c <= 14; c++) sheet.setColumnWidth(c, 55); // C-N
   sheet.setColumnWidth(15, 90);  // O
 
-  // Right side: transaksi + logs at Q
-  sheet.setColumnWidth(17, 110); // Q
-  sheet.setColumnWidth(18, 120); // R
-  sheet.setColumnWidth(19, 220); // S
+  // Right side: transaksi + logs after the hidden META column
+  sheet.setColumnWidth(16, 2);   // P (META helper)
+  sheet.hideColumns(16);
+  sheet.setColumnWidth(18, 110); // R
+  sheet.setColumnWidth(19, 120); // S
   sheet.setColumnWidth(20, 220); // T
-  sheet.setColumnWidth(21, 120); // U
-  sheet.setColumnWidth(23, 140); // W
+  sheet.setColumnWidth(21, 220); // U
+  sheet.setColumnWidth(22, 120); // V
   sheet.setColumnWidth(24, 140); // X
-  sheet.setColumnWidth(25, 120); // Y
-  sheet.setColumnWidth(26, 260); // Z
+  sheet.setColumnWidth(25, 140); // Y
+  sheet.setColumnWidth(26, 120); // Z
+  sheet.setColumnWidth(27, 260); // AA
 
   var values = sheet.getRange(1, 1, lastRow, lastCol).getValues();
   for (var r = 0; r < values.length; r++) {
