@@ -2476,7 +2476,12 @@ body.tab-transaksi .nav-tabs {
         }
 
         function submitQrisPaymentDirect() {
-            if (!pendingPaymentContext) return;
+            console.log('submitQrisPaymentDirect called, pendingPaymentContext:', pendingPaymentContext);
+            if (!pendingPaymentContext) {
+                console.error('pendingPaymentContext is null');
+                showNotif('Data pembayaran tidak ditemukan. Silakan mulai lagi.', 'error');
+                return;
+            }
             const params = { ...pendingPaymentContext };
             const targetList = params.kat === 'Driver' ? DB_DRIVER : DB_HELPER;
             const person = targetList.find(x => x.id == params.id);
@@ -2502,7 +2507,12 @@ body.tab-transaksi .nav-tabs {
         }
 
         function continueQrisToAuth() {
-            submitQrisPaymentDirect();
+            try {
+                submitQrisPaymentDirect();
+            } catch (err) {
+                console.error('Error in continueQrisToAuth:', err);
+                showNotif('Terjadi kesalahan. Silakan coba lagi.', 'error');
+            }
         }
 
         window.openPaymentOptions = openPaymentOptions;
