@@ -78,6 +78,7 @@ function doGet(e) {
     var action = (e.parameter && e.parameter.action) || "";
 
     if (action === "read") return handleRead_(e);
+    if (action === "submitPendingPayment") return handleSubmitPendingPaymentFromGet_(e);
     if (action === "ensureYear") return handleEnsureYear_(e);
     if (action === "sheetInfo") return handleSheetInfo_(e);
     if (action === "sheetId") return handleSheetId_(e);
@@ -113,6 +114,26 @@ function doGet(e) {
   }
 }
 
+function handleSubmitPendingPaymentFromGet_(e) {
+  var payload = {
+    action: "submitPendingPayment",
+    year: e && e.parameter ? e.parameter.year : "",
+    id: e && e.parameter ? e.parameter.id : "",
+    nama: e && e.parameter ? e.parameter.nama : "",
+    kat: e && e.parameter ? e.parameter.kat : "",
+    proofData: e && e.parameter ? e.parameter.proofData : "",
+    months: []
+  };
+  var rawMonths = e && e.parameter ? (e.parameter.months || "") : "";
+  if (rawMonths) {
+    payload.months = String(rawMonths)
+      .split(",")
+      .map(function(month) { return Number(String(month).trim()); })
+      .filter(function(month) { return month >= 1 && month <= 12; });
+  }
+  return handleSubmitPendingPayment_(payload, e);
+}
+
 function doPost(e) {
   ensureBootstrapConfig_();
   ACTIVE_JSONP_CALLBACK = "";
@@ -121,6 +142,9 @@ function doPost(e) {
 
     if (payload.action === "saveFcmToken") {
       return handleSaveFcmToken_(payload, e);
+    }
+    if (payload.action === "submitPendingPayment") {
+      return handleSubmitPendingPayment_(payload, e);
     }
     if (payload.action === "adminSetScriptProperties") {
       return handleAdminSetScriptProperties_(payload, e);
@@ -151,6 +175,64 @@ function doPost(e) {
       error: err && err.message ? err.message : String(err)
     });
   }
+}
+
+function handleSubmitPendingPayment_(payload, e) {
+  var year = getTargetYear_(payload, e);
+  ensureYearData_(year);
+  var beforeData = readYearData_(year);
+  var data = cloneData_(beforeData);
+  var kat = String((payload && payload.kat) || "").trim().toUpperCase();
+  var memberId = String((payload && payload.id) || "").trim();
+  var memberName = String((payload && payload.nama) || "").trim().toUpperCase();
+  var proofData = String((payload && payload.proofData) || "").trim();
+  var months = Array.isArray(payload && payload.months)
+    ? payload.months
+    : [payload && payload.month];
+
+  months = months
+    .map(function(month) { return Number(month); })
+    .filter(function(month) { return month >= 1 && month <= 12; })
+    .filter(function(month, index, arr) { return arr.indexOf(month) === index; })
+    .sort(function(a, b) { return a - b; });
+
+  if (!memberId) throw new Error("ID anggota wajib disertakan.");
+  if (!months.length) throw new Error("Bulan pembayaran tidak valid.");
+
+  var list = kat === "HELPER" ? data.helper : data.driver;
+  if (!Array.isArray(list)) throw new Error("Kategori anggota tidak valid.");
+
+  var member = list.filter(function(item) {
+    return String(item && item.id) === memberId;
+  })[0];
+  if (!member) throw new Error("Anggota tidak ditemukan.");
+
+  if (!member.status) member.status = {};
+  if (!member.status[year]) member.status[year] = {};
+  if (!member.pendingProofs) member.pendingProofs = {};
+  if (!member.pendingProofs[year]) member.pendingProofs[year] = {};
+
+  months.forEach(function(month) {
+    member.status[year][month] = "pending";
+  });
+  if (proofData && months[0]) {
+    member.pendingProofs[year][months[0]] = proofData;
+  }
+
+  var monthText = months.map(function(month) {
+    return ("0" + month).slice(-2) + "/" + year;
+  }).join(", ");
+
+  appendLog_(
+    data,
+    "WEB QRIS",
+    "IURAN",
+    kat + " - " + (memberName || String(member.nama || "").toUpperCase()) + " - " + monthText + " - [PENDING VERIFIKASI QRIS]"
+  );
+
+  writeYearData_(year, data);
+  maybeBroadcastFcmAfterWrite_(beforeData, data, { editor: "WEB QRIS" }, year);
+  return jsonResponse_({ ok: true, year: year, months: months });
 }
 
 function maybeBroadcastFcmAfterWrite_(beforeData, afterData, payload, year) {

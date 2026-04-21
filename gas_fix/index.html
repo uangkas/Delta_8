@@ -969,6 +969,7 @@ body.tab-transaksi .nav-tabs {
     <div class="container-fluid" id="app-content">
         <div id="header-section" class="text-center pt-4 pb-1">
             <h3 class="judul-utama">DATA UANG KAS DRIVER HELPER DELTA 8</h3>
+            
             <p id="sync-status" class="small fw-bold" style="color: var(--text-muted); letter-spacing: 3px; margin: 0; font-size: 10px;">☁️ MENGHUBUNGKAN...</p>
             <div class="theme-container d-flex justify-content-center gap-3 mt-3">
                 <div id="dot-luxury" class="theme-dot active" style="background: #d4af37;" onclick="setTheme('luxury')"></div>
@@ -1162,6 +1163,48 @@ body.tab-transaksi .nav-tabs {
             <div class="footer-divider"></div>
             <div class="footer-info">Sistem Manajemen Uang KAS Driver Helper</div>
             <div class="copyright-text">&copy; 2026 ALL MANAGEMENT MEMBERS.</div>
+            
+            <div class="footer-service-info" style="margin-top: 30px; padding: 20px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color); max-width: 800px; margin-left: auto; margin-right: auto;">
+                <div class="luxe-dropdown mb-3" onclick="toggleCol('tentang-col')"><span>?? Tentang Layanan</span><span id="tentang-icon">?</span></div>
+                <div id="tentang-col" class="luxe-content mb-3">
+                    <div class="tentang-layanan">
+                        <p style="color: var(--text-main); font-size: 14px; line-height: 1.6; margin-bottom: 12px;">
+                            Mstore_168 adalah platform berbasis web yang digunakan untuk pengelolaan pembayaran iuran dan jasa operasional.
+                        </p>
+                        <p style="color: var(--text-main); font-size: 14px; line-height: 1.6; margin-bottom: 12px;">
+                            Pengguna (driver/helper) dapat melakukan pembayaran iuran secara berkala melalui sistem ini menggunakan metode pembayaran digital seperti QRIS dan transfer bank.
+                        </p>
+                        <p style="color: var(--text-main); font-size: 14px; line-height: 1.6; margin-bottom: 0;">
+                            Setiap transaksi akan tercatat secara otomatis dan status pembayaran akan diperbarui secara real-time tanpa proses manual.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="luxe-dropdown mb-3" onclick="toggleCol('cara-col')"><span>?? Cara Pembayaran</span><span id="cara-icon">?</span></div>
+                <div id="cara-col" class="luxe-content mb-3">
+                    <div class="cara-pembayaran">
+                        <ol style="color: var(--text-main); font-size: 14px; line-height: 1.8; padding-left: 20px;">
+                            <li style="margin-bottom: 8px;">Pilih periode/bulan yang ingin dibayar</li>
+                            <li style="margin-bottom: 8px;">Klik tombol bayar</li>
+                            <li style="margin-bottom: 8px;">Pilih metode pembayaran (QRIS / Transfer Bank)</li>
+                            <li style="margin-bottom: 8px;">Selesaikan pembayaran</li>
+                            <li style="margin-bottom: 0;">Status akan otomatis terverifikasi</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <div class="luxe-dropdown" onclick="toggleCol('info-col')"><span>?? Informasi Layanan</span><span id="info-icon">?</span></div>
+                <div id="info-col" class="luxe-content">
+                    <div class="informasi-layanan">
+                        <ul style="color: var(--text-main); font-size: 14px; line-height: 1.8; padding-left: 20px;">
+                            <li style="margin-bottom: 8px;">Layanan: Pembayaran iuran operasional</li>
+                            <li style="margin-bottom: 8px;">Jenis: Digital (non-fisik)</li>
+                            <li style="margin-bottom: 8px;">Pengguna: Internal driver dan helper</li>
+                            <li style="margin-bottom: 0;">Sistem: Pembayaran otomatis & pencatatan real-time</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
             <div style="margin-top: 10px;">
                 <strong style="font-size: 8px; color: var(--accent-color); letter-spacing: 2px;">
                     ---<{SUPPORTED BY : MANCUNG_168}>---
@@ -1176,6 +1219,7 @@ body.tab-transaksi .nav-tabs {
     </div>
     <div class="modal" id="modalVerifyAuth" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">VERIFIKASI OTORITAS</h6><input type="text" id="inputEditorName" name="editor_verifikasi" class="form-control mb-2 text-center" placeholder="Nama Editor Terdaftar" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handleEditorNameInput(this)" onkeydown="if(event.key==='Enter'){focusPinAfterEditorCheck();}"><input type="password" id="inputPIN" name="pin_verifikasi" class="form-control mb-2 text-center" maxlength="4" placeholder="PIN 4 DIGIT" inputmode="numeric" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handlePinInput(this)" onkeydown="if(event.key==='Enter'){submitAuth();}"><div class="small auth-helper-text lh-sm">Hanya editor yang tercatat di sheet <b>allowed_editors</b> yang bisa edit, tambah, atau hapus data.</div></div></div></div></div>
     <div class="modal fade" id="modalPilihPembayaran" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PILIH PEMBAYARAN</h6><div class="payment-option-wrap"><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('CASH')">CASH</button><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('QRIS')">QRIS</button></div></div></div></div></div>
+    <div class="modal fade" id="modalPendingPaymentAction" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-2">PEMBAYARAN PENDING</h6><div class="small text-muted mb-3" id="pending-action-copy">Pilih aksi untuk pembayaran yang masih menunggu verifikasi.</div><div class="d-grid gap-2"><button type="button" class="btn btn-warning fw-bold" onclick="openPendingProofUpload()">UPLOAD BUKTI PEMBAYARAN</button><button type="button" class="btn btn-outline-danger fw-bold" onclick="cancelPendingPayment()">BATALKAN</button></div></div></div></div></div>
     <div class="modal fade" id="modalPilihBulanBayar" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-2">PILIH BULAN</h6><div class="small text-muted mb-3">Bisa pilih lebih dari satu bulan. Bulan yang sudah lunas dinonaktifkan.</div><div id="payment-month-grid" class="month-option-grid"></div><div class="payment-month-summary"><div class="label" id="payment-month-selection-label">Belum ada bulan dipilih</div><div class="value" id="payment-month-total">Rp 0</div></div><button type="button" id="payment-month-continue" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueMemberPayment()" disabled>LANJUT</button></div></div></div></div>
     <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PEMBAYARAN QRIS</h6><div class="qris-preview-box"><div id="qris-code-wrap" class="mb-3"></div><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-3" id="qris-amount-value">Rp 0</div><div class="qris-detail">Scan kode QRIS yang tersedia, lalu lanjutkan agar pembayaran masuk ke daftar verifikasi admin.</div></div><button type="button" id="qris-continue-btn" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueQrisToAuth()">SAYA SUDAH BAYAR</button></div></div></div></div>
 
@@ -1262,6 +1306,7 @@ body.tab-transaksi .nav-tabs {
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-dark" data-bs-dismiss="modal">BATAL</button>
+                    <button type="button" class="btn btn-outline-secondary fw-bold" id="upload-later-btn" onclick="submitPaymentWithoutProof()">UPLOAD NANTI</button>
                     <button type="button" class="btn btn-warning fw-bold" id="upload-submit-btn" onclick="submitPaymentWithProof()" disabled>KIRIM PEMBAYARAN</button>
                 </div>
             </div>
@@ -1304,7 +1349,7 @@ body.tab-transaksi .nav-tabs {
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-dark" data-bs-dismiss="modal">TUTUP</button>
-                    <button type="button" class="btn btn-outline-danger" onclick="cancelPendingPayment()">BATALKAN</button>
+                    <button type="button" class="btn btn-outline-danger" onclick="cancelPendingVerification()">BATALKAN</button>
                     <button type="button" class="btn btn-success fw-bold" onclick="verifyPendingPayment()">LUNASKAN PEMBAYARAN</button>
                 </div>
             </div>
@@ -1343,6 +1388,7 @@ body.tab-transaksi .nav-tabs {
         let syncInProgress = false;
         let syncQueued = false;
         let suppressRemoteRefreshUntil = 0;
+        let hasUnsyncedLocalChanges = false;
         let fcmState = { enabled: false, config: null, vapidKey: "", messaging: null, swReg: null };
         let authInProgress = false;
         let pendingAction = null, pendingParams = null, currentContext = { type: '', id: null, idx: null };
@@ -1586,9 +1632,10 @@ body.tab-transaksi .nav-tabs {
         }
 
         function postToAppsScript(payload) {
-            if (navigator.sendBeacon) {
+            const serializedPayload = JSON.stringify(payload);
+            if (navigator.sendBeacon && serializedPayload.length <= 24000) {
                 try {
-                    const body = new Blob([JSON.stringify(payload)], {
+                    const body = new Blob([serializedPayload], {
                         type: 'text/plain;charset=UTF-8'
                     });
                     const queued = navigator.sendBeacon(CLOUD_URL, body);
@@ -1614,7 +1661,7 @@ body.tab-transaksi .nav-tabs {
                 const input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = 'payload';
-                input.value = JSON.stringify(payload);
+                input.value = serializedPayload;
                 form.appendChild(input);
                 document.body.appendChild(form);
 
@@ -1811,6 +1858,11 @@ body.tab-transaksi .nav-tabs {
                     if (action === 'catat') askAuth('catat');
                     if (action === 'request_pending_snapshot') {
                         postPendingPaymentsToParent();
+                    }
+                    if (action === 'refresh_pending_snapshot') {
+                        loadFromCloudSmart(CURRENT_YEAR, { silent: true, forceRender: true })
+                            .catch(() => null)
+                            .finally(() => postPendingPaymentsToParent());
                     }
                     if ((action === 'verify_pending' || action === 'cancel_pending') && data.payload) {
                         const authAction = action === 'verify_pending' ? 'admin_verify_pending' : 'admin_cancel_pending';
@@ -2541,7 +2593,7 @@ body.tab-transaksi .nav-tabs {
             bootstrap.Modal.getInstance('#modalVerifikasiPembayaran').hide();
         }
 
-        function cancelPendingPayment() {
+        function cancelPendingVerification() {
             if (!currentVerificationParams) return;
             triggerAdminPendingAction('admin_cancel_pending', encodeURIComponent(JSON.stringify(currentVerificationParams)));
             bootstrap.Modal.getInstance('#modalVerifikasiPembayaran').hide();
@@ -2550,6 +2602,40 @@ body.tab-transaksi .nav-tabs {
         function openPaymentOptions(params) {
             pendingPaymentContext = params ? { ...params, selectedMonths: [] } : null;
             bootstrap.Modal.getOrCreateInstance('#modalPilihPembayaran').show();
+        }
+
+        function openPendingPaymentActions(params) {
+            pendingPaymentContext = params
+                ? {
+                    ...params,
+                    method: 'QRIS',
+                    selectedMonths: [Number(params.m)].filter(month => month >= 1 && month <= 12)
+                }
+                : null;
+            if (!pendingPaymentContext || !pendingPaymentContext.selectedMonths.length) {
+                showNotif('Data pembayaran pending tidak valid.', 'error');
+                return;
+            }
+            const copyEl = document.getElementById('pending-action-copy');
+            if (copyEl) {
+                const monthLabel = PAYMENT_MONTH_NAMES[(pendingPaymentContext.selectedMonths[0] || 1) - 1] || '-';
+                copyEl.innerText = `${pendingPaymentContext.nama || 'Anggota'} untuk bulan ${monthLabel} masih menunggu verifikasi admin.`;
+            }
+            bootstrap.Modal.getOrCreateInstance('#modalPendingPaymentAction').show();
+        }
+
+        function handlePaymentButtonClick(params) {
+            if (!params) return;
+            const personList = params.kat === 'Driver' ? DB_DRIVER : DB_HELPER;
+            const person = personList.find(x => x.id == params.id);
+            const currentMonthStatus = person && person.status && person.status[params.y]
+                ? person.status[params.y][params.m]
+                : null;
+            if (currentMonthStatus === 'pending') {
+                openPendingPaymentActions(params);
+                return;
+            }
+            openPaymentOptions(params);
         }
 
         function updatePaymentMonthSummary() {
@@ -2689,7 +2775,43 @@ body.tab-transaksi .nav-tabs {
             askAuth('bayar_member', params);
         }
 
-        function submitQrisPaymentDirect(proofBase64 = null) {
+        function openPendingProofUpload() {
+            if (!pendingPaymentContext || !Array.isArray(pendingPaymentContext.selectedMonths) || !pendingPaymentContext.selectedMonths.length) {
+                showNotif('Data pembayaran pending tidak ditemukan.', 'error');
+                return;
+            }
+            const pendingModal = bootstrap.Modal.getInstance(document.getElementById('modalPendingPaymentAction'));
+            if (pendingModal) pendingModal.hide();
+            showUploadBuktiModal();
+        }
+
+        function cancelPendingPayment() {
+            if (!pendingPaymentContext || !Array.isArray(pendingPaymentContext.selectedMonths) || !pendingPaymentContext.selectedMonths.length) {
+                showNotif('Data pembayaran pending tidak ditemukan.', 'error');
+                return;
+            }
+            const params = {
+                ...pendingPaymentContext,
+                months: pendingPaymentContext.selectedMonths
+            };
+            const updatedPerson = setMemberPaymentStatusLocal(params, null);
+            if (!updatedPerson) {
+                showNotif('Status pending tidak ditemukan atau sudah berubah.', 'error');
+                return;
+            }
+            const monthText = params.months.map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
+            addLog(
+                'Iuran',
+                `${String(params.kat || '').toUpperCase()} - ${String(updatedPerson.nama || '').toUpperCase()} - ${monthText} - [PENDING DIBATALKAN OLEH USER]`
+            );
+            const pendingModal = bootstrap.Modal.getInstance(document.getElementById('modalPendingPaymentAction'));
+            if (pendingModal) pendingModal.hide();
+            syncAll();
+            pendingPaymentContext = null;
+            showNotif('Pembayaran pending berhasil dibatalkan.', 'success');
+        }
+
+        async function submitQrisPaymentDirect(proofBase64 = null) {
             console.log('submitQrisPaymentDirect called, pendingPaymentContext:', pendingPaymentContext);
             if (!pendingPaymentContext) {
                 console.error('pendingPaymentContext is null');
@@ -2712,16 +2834,21 @@ body.tab-transaksi .nav-tabs {
                 showNotif('Pilih bulan pembayaran terlebih dahulu.', 'error');
                 return;
             }
+            const previousStatuses = {};
+            const previousProofs = {};
             months.forEach(month => {
+                previousStatuses[month] = person.status[params.y][month];
                 person.status[params.y][month] = 'pending';
             });
 
-            if (proofBase64) {
-                person.pendingProofs = person.pendingProofs || {};
-                person.pendingProofs[params.y] = person.pendingProofs[params.y] || {};
-                months.forEach(month => {
-                    person.pendingProofs[params.y][month] = proofBase64;
-                });
+            person.pendingProofs = person.pendingProofs || {};
+            person.pendingProofs[params.y] = person.pendingProofs[params.y] || {};
+            const proofMonth = months[0];
+            if (proofMonth) {
+                previousProofs[proofMonth] = person.pendingProofs[params.y][proofMonth];
+            }
+            if (proofBase64 && proofMonth) {
+                person.pendingProofs[params.y][proofMonth] = proofBase64;
             }
             const monthText = months.map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
             addLog(
@@ -2730,9 +2857,54 @@ body.tab-transaksi .nav-tabs {
             );
             const qrisModal = bootstrap.Modal.getInstance('#modalQrisPayment') || bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
             qrisModal.hide();
-            syncAll();
-            showNotif('Pembayaran QRIS berhasil masuk verifikasi. Admin akan segera memproses.', 'success');
-            pendingPaymentContext = null;
+            render();
+            try {
+                const proofPayload = proofBase64 || '';
+                const canUseJsonpSubmit = proofPayload.length <= 1500;
+                if (canUseJsonpSubmit) {
+                    const submitUrl =
+                        `${CLOUD_URL}?action=submitPendingPayment` +
+                        `&year=${encodeURIComponent(params.y)}` +
+                        `&id=${encodeURIComponent(params.id)}` +
+                        `&nama=${encodeURIComponent(params.nama || '')}` +
+                        `&kat=${encodeURIComponent(params.kat || '')}` +
+                        `&months=${encodeURIComponent(months.join(','))}` +
+                        `&proofData=${encodeURIComponent(proofPayload)}`;
+                    await fetchJson(submitUrl, 15000);
+                } else {
+                    await postToAppsScript({
+                        action: 'submitPendingPayment',
+                        year: params.y,
+                        id: params.id,
+                        nama: params.nama,
+                        kat: params.kat,
+                        months,
+                        proofData: proofPayload
+                    });
+                }
+                YEAR_CACHE[CURRENT_YEAR] = {
+                    driver: cloneData(DB_DRIVER),
+                    helper: cloneData(DB_HELPER),
+                    transaksi: cloneData(DB_TRANSAKSI),
+                    logs: cloneData(DB_LOGS)
+                };
+                YEAR_SIGNATURES[CURRENT_YEAR] = buildYearSignature(YEAR_CACHE[CURRENT_YEAR]);
+                saveYearCacheToStorage(CURRENT_YEAR, YEAR_CACHE[CURRENT_YEAR]);
+                await waitForPendingPaymentSync(params, months);
+                showNotif('Pembayaran QRIS berhasil masuk verifikasi. Admin akan segera memproses.', 'success');
+                pendingPaymentContext = null;
+            } catch (err) {
+                months.forEach(month => {
+                    if (typeof previousStatuses[month] === 'undefined') delete person.status[params.y][month];
+                    else person.status[params.y][month] = previousStatuses[month];
+                });
+                if (proofMonth) {
+                    if (typeof previousProofs[proofMonth] === 'undefined') delete person.pendingProofs[params.y][proofMonth];
+                    else person.pendingProofs[params.y][proofMonth] = previousProofs[proofMonth];
+                }
+                render();
+                showNotif((err && err.message) ? err.message : 'Pembayaran QRIS gagal dikirim.', 'error');
+            }
         }
 
         function continueQrisToAuth() {
@@ -2805,14 +2977,14 @@ body.tab-transaksi .nav-tabs {
                         context.fillRect(0, 0, width, height);
                         context.drawImage(img, 0, 0, width, height);
 
-                        let quality = 0.82;
+                        let quality = 0.78;
                         let output = canvas.toDataURL('image/jpeg', quality);
-                        while (output.length > 45000 && quality > 0.3) {
+                        while (output.length > 14000 && quality > 0.26) {
                             quality -= 0.08;
                             output = canvas.toDataURL('image/jpeg', quality);
                         }
 
-                        if (output.length > 45000) {
+                        if (output.length > 14000) {
                             reject(new Error('Bukti pembayaran terlalu besar. Coba foto yang lebih ringan atau crop dulu.'));
                             return;
                         }
@@ -2964,6 +3136,20 @@ body.tab-transaksi .nav-tabs {
             }
         }
 
+        function submitPaymentWithoutProof() {
+            const uploadModal = bootstrap.Modal.getInstance(document.getElementById('modalUploadBukti'));
+            if (uploadModal) {
+                uploadModal.hide();
+            }
+
+            const qrisModal = bootstrap.Modal.getInstance(document.getElementById('modalQrisPayment'));
+            if (qrisModal) {
+                qrisModal.hide();
+            }
+
+            submitQrisPaymentDirect();
+        }
+
         function submitPaymentWithImageProof(imageFile) {
             // Close upload modal
             const uploadModal = bootstrap.Modal.getInstance(document.getElementById('modalUploadBukti'));
@@ -3026,6 +3212,7 @@ body.tab-transaksi .nav-tabs {
         window.showUploadBuktiModal = showUploadBuktiModal;
         window.removeUploadImage = removeUploadImage;
         window.submitPaymentWithProof = submitPaymentWithProof;
+        window.submitPaymentWithoutProof = submitPaymentWithoutProof;
         window.selectUploadMethod = selectUploadMethod;
 
         // Upload bukti pembayaran event listeners
@@ -3202,6 +3389,45 @@ body.tab-transaksi .nav-tabs {
             return normalized;
         }
 
+        function remotePendingExists(data, params, months) {
+            const kat = String(params && params.kat || '').toUpperCase();
+            const source = kat === 'HELPER'
+                ? (data && Array.isArray(data.helper) ? data.helper : [])
+                : (data && Array.isArray(data.driver) ? data.driver : []);
+            const person = source.find(item => String(item && item.id) === String(params && params.id));
+            if (!person || !person.status || !person.status[params.y]) return false;
+            return months.every(month => person.status[params.y][month] === 'pending');
+        }
+
+        async function waitForPendingPaymentSync(params, months, options = {}) {
+            const timeoutMs = Number(options.timeoutMs || 30000);
+            const intervalMs = Number(options.intervalMs || 1800);
+            const startedAt = Date.now();
+            let lastData = null;
+
+            while ((Date.now() - startedAt) < timeoutMs) {
+                try {
+                    lastData = await fetchJson(`${CLOUD_URL}?action=read&year=${params.y}`, Math.max(10000, intervalMs + 5000));
+                    if (remotePendingExists(lastData, params, months)) {
+                        applyYearData(params.y, lastData);
+                        return true;
+                    }
+                } catch (err) {
+                    const message = String((err && err.message) || '').toLowerCase();
+                    const isTransient =
+                        message.includes('backend tidak merespons') ||
+                        message.includes('gagal menghubungi backend');
+                    if (!isTransient) throw err;
+                }
+                await new Promise(resolve => setTimeout(resolve, intervalMs));
+            }
+
+            if (lastData && Number(params.y) === Number(CURRENT_YEAR)) {
+                applyYearData(params.y, lastData);
+            }
+            throw new Error('Pembayaran belum tercatat di server. Silakan coba lagi beberapa detik lagi.');
+        }
+
         function hasOpenBlockingModal() {
             return !!document.querySelector('.modal.show');
         }
@@ -3220,6 +3446,11 @@ body.tab-transaksi .nav-tabs {
             const silent = !!options.silent;
             const forceRender = !!options.forceRender;
             const status = document.getElementById('sync-status');
+            if (hasUnsyncedLocalChanges && Number(year) === Number(CURRENT_YEAR)) {
+                if (!silent && status) status.innerText = "MENUNGGU SINKRON LOKAL";
+                if (forceRender && Number(year) === Number(CURRENT_YEAR)) render();
+                return { changed: false, ignored: false, deferred: true };
+            }
             if (!silent && status) status.innerText = "MEMUAT DATA...";
 
             try {
@@ -3326,6 +3557,7 @@ async function syncAll() {
     }
     syncQueued = false;
     syncInProgress = true;
+    hasUnsyncedLocalChanges = true;
 
     // render dulu data lokal
     render();
@@ -3378,6 +3610,7 @@ async function syncAll() {
         if (verification.data) {
             applyYearData(CURRENT_YEAR, verification.data);
         }
+        hasUnsyncedLocalChanges = false;
         const shouldRerun = syncQueued;
         syncInProgress = false;
         syncQueued = false;
@@ -3464,8 +3697,11 @@ async function syncAll() {
                 );
             }
 
+            const currentMonthStatus = p.status[y]?.[m];
+            const payButtonLabel = currentMonthStatus === 'pending' ? 'PENDING' : 'BAYAR';
+
             rows.push(
-                `<tr><td class="no-col">${idx + 1}</td><td class="name-col">${p.nama}</td>${cellParts.join('')}<td class="text-center-force">${count}/12</td>${adminMode ? `<td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="member" data-id="${p.id}">&#8942;</div></td>` : ''}<td class="col-bayar"><button type="button" class="btn-bayar-mini" onclick="openPaymentOptions({ id: '${p.id}', nama: '${safeName}', kat: '${kat}', y: ${y}, m: ${m} })">BAYAR</button></td></tr>`
+                `<tr><td class="no-col">${idx + 1}</td><td class="name-col">${p.nama}</td>${cellParts.join('')}<td class="text-center-force">${count}/12</td>${adminMode ? `<td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="member" data-id="${p.id}">&#8942;</div></td>` : ''}<td class="col-bayar"><button type="button" class="btn-bayar-mini" onclick="handlePaymentButtonClick({ id: '${p.id}', nama: '${safeName}', kat: '${kat}', y: ${y}, m: ${m} })">${payButtonLabel}</button></td></tr>`
             );
         });
 
@@ -4071,3 +4307,10 @@ async function gantiTahun(tahun){
     </script>
 </body>
 </html>
+
+
+
+
+
+
+

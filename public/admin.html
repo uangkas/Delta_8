@@ -734,7 +734,7 @@
                 if (topbarCopy) topbarCopy.innerHTML = 'Semua pembayaran QRIS yang <strong>menunggu verifikasi</strong> dipusatkan di sini.';
                 if (topbarPill) topbarPill.innerText = 'VERIFICATION MODE';
                 setActiveButton(paymentVerificationButton);
-                requestPendingSnapshot();
+                requestPendingSnapshot({ forceRefresh: true });
             } else {
                 if (topbarTitle) topbarTitle.innerText = 'PANEL ADMIN UTAMA';
                 if (topbarCopy) topbarCopy.innerHTML = 'Panel ini memuat <strong>ceklis anggota</strong>, tabel lengkap, transaksi, dan aksi admin harian.';
@@ -808,8 +808,9 @@
             paymentDetailModal.classList.add('active');
         }
 
-        function requestPendingSnapshot() {
-            postAdminAction('request_pending_snapshot');
+        function requestPendingSnapshot(options = {}) {
+            const forceRefresh = !!(options && options.forceRefresh);
+            postAdminAction(forceRefresh ? 'refresh_pending_snapshot' : 'request_pending_snapshot');
         }
 
         if (dashboardButton) {
@@ -831,7 +832,7 @@
             paymentVerificationButton.addEventListener('click', () => switchView('verification'));
         }
         if (refreshPaymentsButton) {
-            refreshPaymentsButton.addEventListener('click', requestPendingSnapshot);
+            refreshPaymentsButton.addEventListener('click', () => requestPendingSnapshot({ forceRefresh: true }));
         }
         if (paymentListCard) {
             paymentListCard.addEventListener('click', (event) => {
@@ -894,7 +895,7 @@
 
         if (frame) {
             frame.addEventListener('load', () => {
-                window.setTimeout(requestPendingSnapshot, 600);
+                window.setTimeout(() => requestPendingSnapshot({ forceRefresh: true }), 600);
             });
             frame.src = ADMIN_PANEL_URL;
         }
