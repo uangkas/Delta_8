@@ -2477,22 +2477,8 @@ body.tab-transaksi .nav-tabs {
             };
         }
 
-        function buildPendingPaymentExpectedData(params, proofBase64 = null) {
+        function normalizePendingPaymentRequest(params, proofBase64 = null) {
             const year = normalizeYearValue(params && params.y);
-            const snapshot = getYearDataSnapshot(year);
-            const targetList = String(params && params.kat || '').toUpperCase() === 'HELPER'
-                ? snapshot.helper
-                : snapshot.driver;
-            const person = targetList.find(item => String(item.id) === String(params && params.id));
-            if (!person) {
-                throw new Error('Data anggota tidak ditemukan.');
-            }
-
-            if (!person.status) person.status = {};
-            if (!person.status[year]) person.status[year] = {};
-            if (!person.pendingProofs) person.pendingProofs = {};
-            if (!person.pendingProofs[year]) person.pendingProofs[year] = {};
-
             const months = Array.isArray(params && params.selectedMonths)
                 ? Array.from(new Set(params.selectedMonths.map(Number).filter(month => month >= 1 && month <= 12))).sort((a, b) => a - b)
                 : [];
@@ -2500,43 +2486,82 @@ body.tab-transaksi .nav-tabs {
                 throw new Error('Pilih bulan pembayaran terlebih dahulu.');
             }
 
-            months.forEach(month => {
-                person.status[year][month] = 'pending';
-                if (proofBase64) {
-                    person.pendingProofs[year][month] = proofBase64;
-                }
-            });
-
-            const monthText = months.map(month => `${String(month).padStart(2, '0')}/${year}`).join(', ');
-            snapshot.logs = Array.isArray(snapshot.logs) ? snapshot.logs : [];
-            snapshot.logs.unshift({
-                time: '',
-                editor: 'WEB QRIS',
-                aksi: 'IURAN',
-                ket: `${String(params.kat || '').toUpperCase()} - ${String(person.nama || params.nama || '').toUpperCase()} - ${monthText} - [PENDING VERIFIKASI QRIS]`
-            });
-
             return {
                 year,
+                id: params && params.id,
+                nama: params && params.nama,
+                kat: params && params.kat,
                 months,
-                snapshot
+                proofData: proofBase64 || ''
+            };
+        }
+
+        async function waitForPendingPaymentRemoteState(request, options = {}) {
+            const timeoutMs = Number(options.timeoutMs || 15000);
+            const intervalMs = Number(options.intervalMs || 400);
+            const startedAt = Date.now();
+            let lastData = null;
+            let lastError = null;
+            const targetYear = normalizeYearValue(request && request.year);
+            const targetKat = String(request && request.kat || '').toUpperCase();
+            const targetId = String(request && request.id || '');
+            const targetMonths = Array.isArray(request && request.months) ? request.months.map(Number) : [];
+            const expectedProof = String(request && request.proofData || '').trim();
+
+            while ((Date.now() - startedAt) < timeoutMs) {
+                try {
+                    const data = await fetchJson(`${CLOUD_URL}?action=read&year=${targetYear}`);
+                    lastData = {
+                        driver: data.driver || [],
+                        helper: data.helper || [],
+                        transaksi: data.transaksi || [],
+                        logs: data.logs || []
+                    };
+                    lastError = null;
+
+                    const targetList = targetKat === 'HELPER' ? lastData.helper : lastData.driver;
+                    const person = (targetList || []).find(item => String(item.id) === targetId);
+                    const yearStatus = person && person.status ? person.status[targetYear] : null;
+                    const proofMap = person && person.pendingProofs ? person.pendingProofs[targetYear] : null;
+                    const allMonthsPending = targetMonths.length > 0 && targetMonths.every(month => yearStatus && yearStatus[month] === 'pending');
+                    const proofReady = !expectedProof || targetMonths.every(month => proofMap && proofMap[month]);
+
+                    if (allMonthsPending && proofReady) {
+                        return {
+                            ok: true,
+                            data: lastData,
+                            elapsedMs: Date.now() - startedAt
+                        };
+                    }
+                } catch (err) {
+                    lastError = err;
+                }
+
+                await new Promise(resolve => setTimeout(resolve, intervalMs));
+            }
+
+            return {
+                ok: false,
+                data: lastData,
+                elapsedMs: Date.now() - startedAt,
+                error: lastError && lastError.message ? lastError.message : ''
             };
         }
 
         async function submitPendingPaymentToBackend(params, proofBase64 = null) {
-            const preview = buildPendingPaymentExpectedData(params, proofBase64);
+            const request = normalizePendingPaymentRequest(params, proofBase64);
             const payload = {
                 action: 'submitPendingPayment',
-                year: preview.year,
-                id: params.id,
-                nama: params.nama,
-                kat: params.kat,
-                months: preview.months,
-                proofData: proofBase64 || ''
+                year: request.year,
+                id: request.id,
+                nama: request.nama,
+                kat: request.kat,
+                months: request.months,
+                proofData: request.proofData
             };
 
             await postToAppsScript(payload);
-            const verification = await waitForRemoteYearSignature(preview.year, buildYearSignature(preview.snapshot), {
+            const verification = await waitForPendingPaymentRemoteState(request, {
                 timeoutMs: 15000,
                 intervalMs: 400
             });
@@ -2545,16 +2570,16 @@ body.tab-transaksi .nav-tabs {
             }
 
             if (verification.data) {
-                YEAR_CACHE[preview.year] = cloneYearDataShape(verification.data);
-                YEAR_SIGNATURES[preview.year] = buildYearSignature(verification.data);
-                saveYearCacheToStorage(preview.year, verification.data);
+                YEAR_CACHE[request.year] = cloneYearDataShape(verification.data);
+                YEAR_SIGNATURES[request.year] = buildYearSignature(verification.data);
+                saveYearCacheToStorage(request.year, verification.data);
 
-                if (preview.year === Number(CURRENT_YEAR)) {
-                    applyYearData(preview.year, verification.data);
+                if (request.year === Number(CURRENT_YEAR)) {
+                    applyYearData(request.year, verification.data);
                 }
             }
 
-            return verification.data || preview.snapshot;
+            return verification.data || null;
         }
 
         function setMemberPaymentStatusLocal(params, statusValue) {
