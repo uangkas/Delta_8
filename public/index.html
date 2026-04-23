@@ -1801,29 +1801,46 @@ body.tab-transaksi .nav-tabs {
             if (exportIcon) exportIcon.innerText = '▼';
         }
 
-        window.addEventListener('message', (event) => {
+        window.addEventListener('message', async (event) => {
             try {
                 const data = event && event.data ? event.data : null;
-                if (!data) return;
-                if (data.type === 'delta8-admin-action') {
-                    const action = String(data.action || '').trim().toLowerCase();
-                    if (action === 'tambah') askAuth('tambah');
-                    if (action === 'catat') askAuth('catat');
-                    if (action === 'request_pending_snapshot' || action === 'refresh_pending_snapshot') {
-                        if (action === 'refresh_pending_snapshot') {
-                            loadFromCloudSmart(CURRENT_YEAR, { silent: true }).then(() => {
-                                postPendingPaymentsToParent();
-                            });
-                        } else {
-                            postPendingPaymentsToParent();
-                        }
-                    }
-                    if ((action === 'verify_pending' || action === 'cancel_pending') && data.payload) {
-                        const authAction = action === 'verify_pending' ? 'admin_verify_pending' : 'admin_cancel_pending';
-                        askAuth(authAction, data.payload);
-                    }
+                if (!data || data.type !== 'delta8-admin-action') return;
+
+                const action = String(data.action || '').trim().toLowerCase();
+                if (action === 'tambah') {
+                    askAuth('tambah');
+                    return;
                 }
-            } catch (err) {}
+                if (action === 'catat') {
+                    askAuth('catat');
+                    return;
+                }
+                if (action === 'request_pending_snapshot' || action === 'refresh_pending_snapshot') {
+                    const requestedYear = normalizeYearValue(data.payload && data.payload.year);
+                    const shouldRefresh = action === 'refresh_pending_snapshot' || !!(data.payload && data.payload.forceRefresh);
+
+                    if (requestedYear === CURRENT_YEAR) {
+                        if (shouldRefresh) {
+                            await loadFromCloudSmart(requestedYear, { silent: true });
+                        }
+                        postPendingPaymentsToParent(requestedYear);
+                    } else {
+                        const snapshotData = shouldRefresh
+                            ? await fetchYearDataSnapshot(requestedYear)
+                            : getYearDataSnapshot(requestedYear);
+                        postPendingPaymentsToParent(requestedYear, snapshotData);
+                    }
+                    return;
+                }
+                if ((action === 'verify_pending' || action === 'cancel_pending') && data.payload) {
+                    const authAction = action === 'verify_pending' ? 'admin_verify_pending' : 'admin_cancel_pending';
+                    const payload = normalizeAdminPendingPayload(data.payload);
+                    await ensureAdminActionYear(payload.y);
+                    askAuth(authAction, payload);
+                }
+            } catch (err) {
+                console.error('admin message error:', err);
+            }
         });
 
         async function saveFcmToken(token) {
@@ -2362,35 +2379,134 @@ body.tab-transaksi .nav-tabs {
             }
         }
 
+        function normalizeYearValue(year, fallback = CURRENT_YEAR) {
+            const parsed = Number(year);
+            if (Number.isFinite(parsed) && parsed >= 2000 && parsed <= 2100) {
+                return parsed;
+            }
+            const fallbackParsed = Number(fallback);
+            if (Number.isFinite(fallbackParsed) && fallbackParsed >= 2000 && fallbackParsed <= 2100) {
+                return fallbackParsed;
+            }
+            return new Date().getFullYear();
+        }
+
+        function cloneYearDataShape(data = {}) {
+            return {
+                driver: cloneData(data.driver || []),
+                helper: cloneData(data.helper || []),
+                transaksi: cloneData(data.transaksi || []),
+                logs: cloneData(data.logs || [])
+            };
+        }
+
+        function getLiveYearDataSnapshot() {
+            return cloneYearDataShape({
+                driver: DB_DRIVER,
+                helper: DB_HELPER,
+                transaksi: DB_TRANSAKSI,
+                logs: DB_LOGS
+            });
+        }
+
+        function getYearDataSnapshot(year) {
+            const normalizedYear = normalizeYearValue(year);
+            if (normalizedYear === Number(CURRENT_YEAR)) {
+                return getLiveYearDataSnapshot();
+            }
+            if (YEAR_CACHE[normalizedYear]) {
+                return cloneYearDataShape(YEAR_CACHE[normalizedYear]);
+            }
+            const hydrated = loadYearCacheFromStorage(normalizedYear);
+            if (hydrated && hydrated.data) {
+                const snapshot = cloneYearDataShape(hydrated.data);
+                YEAR_CACHE[normalizedYear] = snapshot;
+                YEAR_SIGNATURES[normalizedYear] = buildYearSignature(snapshot);
+                return cloneYearDataShape(snapshot);
+            }
+            return cloneYearDataShape();
+        }
+
+        async function fetchYearDataSnapshot(year) {
+            const normalizedYear = normalizeYearValue(year);
+            const data = await fetchJson(`${CLOUD_URL}?action=read&year=${normalizedYear}`);
+            const snapshot = cloneYearDataShape({
+                driver: data.driver || [],
+                helper: data.helper || [],
+                transaksi: data.transaksi || [],
+                logs: data.logs || []
+            });
+            YEAR_CACHE[normalizedYear] = cloneYearDataShape(snapshot);
+            YEAR_SIGNATURES[normalizedYear] = buildYearSignature(snapshot);
+            saveYearCacheToStorage(normalizedYear, snapshot);
+            return cloneYearDataShape(snapshot);
+        }
+
+        function applyYearContext(year, data) {
+            const normalizedYear = normalizeYearValue(year);
+            const snapshot = cloneYearDataShape(data);
+            CURRENT_YEAR = normalizedYear;
+            syncYearDropdowns(normalizedYear);
+            DB_DRIVER = cloneData(snapshot.driver);
+            DB_HELPER = cloneData(snapshot.helper);
+            DB_TRANSAKSI = cloneData(snapshot.transaksi);
+            DB_LOGS = cloneData(snapshot.logs);
+            YEAR_CACHE[normalizedYear] = cloneYearDataShape(snapshot);
+            YEAR_SIGNATURES[normalizedYear] = buildYearSignature(snapshot);
+            saveYearCacheToStorage(normalizedYear, snapshot);
+            render();
+            return snapshot;
+        }
+
+        async function ensureAdminActionYear(year) {
+            const normalizedYear = normalizeYearValue(year);
+            if (normalizedYear === Number(CURRENT_YEAR)) return normalizedYear;
+            const snapshot = await fetchYearDataSnapshot(normalizedYear);
+            applyYearContext(normalizedYear, snapshot);
+            return normalizedYear;
+        }
+
+        function normalizeAdminPendingPayload(payload) {
+            const data = payload && typeof payload === 'object' ? payload : {};
+            return {
+                ...data,
+                y: normalizeYearValue(data.y),
+                months: Array.isArray(data.months)
+                    ? Array.from(new Set(data.months.map(Number).filter(month => month >= 1 && month <= 12))).sort((a, b) => a - b)
+                    : []
+            };
+        }
+
         function setMemberPaymentStatusLocal(params, statusValue) {
             const kat = String((params && params.kat) || '').toUpperCase();
             const source = kat === 'HELPER' ? DB_HELPER : DB_DRIVER;
             const person = source.find(item => String(item.id) === String(params && params.id));
             if (!person) return null;
+            const targetYear = String(normalizeYearValue(params && params.y));
             if (!person.status) person.status = {};
-            if (!person.status[params.y]) person.status[params.y] = {};
+            if (!person.status[targetYear]) person.status[targetYear] = {};
             person.pendingProofs = person.pendingProofs || {};
-            person.pendingProofs[params.y] = person.pendingProofs[params.y] || {};
+            person.pendingProofs[targetYear] = person.pendingProofs[targetYear] || {};
             const months = Array.isArray(params && params.months) ? params.months : [];
             let changed = false;
             months.forEach(month => {
                 const monthKey = Number(month);
-                const currentStatus = person.status[params.y][monthKey];
+                const currentStatus = person.status[targetYear][monthKey];
                 if (statusValue === null) {
                     if (currentStatus === 'pending') {
-                        delete person.status[params.y][monthKey];
-                        delete person.pendingProofs[params.y][monthKey];
+                        delete person.status[targetYear][monthKey];
+                        delete person.pendingProofs[targetYear][monthKey];
                         changed = true;
                     }
                 } else if (statusValue === true) {
                     if (currentStatus === 'pending') {
-                        person.status[params.y][monthKey] = true;
-                        delete person.pendingProofs[params.y][monthKey];
+                        person.status[targetYear][monthKey] = true;
+                        delete person.pendingProofs[targetYear][monthKey];
                         changed = true;
                     }
                 } else {
                     if (currentStatus !== statusValue) {
-                        person.status[params.y][monthKey] = statusValue;
+                        person.status[targetYear][monthKey] = statusValue;
                         changed = true;
                     }
                 }
@@ -2398,11 +2514,15 @@ body.tab-transaksi .nav-tabs {
             return changed ? person : null;
         }
 
-        function getPendingPaymentRows() {
+        function getPendingPaymentRows(year = CURRENT_YEAR, sourceData = null) {
+            const targetYear = String(normalizeYearValue(year));
+            const dataset = sourceData && typeof sourceData === 'object' ? sourceData : null;
+            const driverList = Array.isArray(dataset && dataset.driver) ? dataset.driver : DB_DRIVER;
+            const helperList = Array.isArray(dataset && dataset.helper) ? dataset.helper : DB_HELPER;
             const rows = [];
             const collect = (list, kat) => {
                 list.forEach(person => {
-                    const yearStatus = person && person.status ? person.status[CURRENT_YEAR] : null;
+                    const yearStatus = person && person.status ? person.status[targetYear] : null;
                     if (!yearStatus) return;
                     const months = Object.keys(yearStatus)
                         .map(Number)
@@ -2410,10 +2530,10 @@ body.tab-transaksi .nav-tabs {
                         .sort((a, b) => a - b);
                     if (!months.length) return;
                     let proofData = null;
-                    if (person.pendingProofs && person.pendingProofs[CURRENT_YEAR]) {
+                    if (person.pendingProofs && person.pendingProofs[targetYear]) {
                         for (const month of months) {
-                            if (person.pendingProofs[CURRENT_YEAR][month]) {
-                                proofData = person.pendingProofs[CURRENT_YEAR][month];
+                            if (person.pendingProofs[targetYear][month]) {
+                                proofData = person.pendingProofs[targetYear][month];
                                 break;
                             }
                         }
@@ -2422,15 +2542,15 @@ body.tab-transaksi .nav-tabs {
                         id: person.id,
                         nama: person.nama,
                         kat,
-                        y: CURRENT_YEAR,
+                        y: Number(targetYear),
                         months,
                         nominal: months.length * MONTHLY_IURAN_AMOUNT,
                         proofData
                     });
                 });
             };
-            collect(DB_DRIVER, 'Driver');
-            collect(DB_HELPER, 'Helper');
+            collect(driverList, 'Driver');
+            collect(helperList, 'Helper');
             return rows.sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || '')));
         }
 
@@ -2468,10 +2588,11 @@ body.tab-transaksi .nav-tabs {
             }).join('');
         }
 
-        function postPendingPaymentsToParent() {
+        function postPendingPaymentsToParent(year = CURRENT_YEAR, sourceData = null) {
             if (window.parent === window) return;
             try {
-                const pendingRows = getPendingPaymentRows().map(item => ({
+                const targetYear = normalizeYearValue(year);
+                const pendingRows = getPendingPaymentRows(targetYear, sourceData).map(item => ({
                     ...item,
                     monthLabels: (item.months || []).map(month => PAYMENT_MONTH_NAMES[month - 1]).filter(Boolean)
                 }));
@@ -2479,7 +2600,7 @@ body.tab-transaksi .nav-tabs {
                 window.parent.postMessage({
                     type: 'delta8-admin-pending-state',
                     payload: {
-                        year: CURRENT_YEAR,
+                        year: targetYear,
                         count: pendingRows.length,
                         totalNominal,
                         items: pendingRows,

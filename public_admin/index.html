@@ -704,6 +704,14 @@
             });
         }
 
+        function normalizeYearValue(year, fallback = new Date().getFullYear()) {
+            const parsed = Number(year);
+            if (Number.isFinite(parsed) && parsed >= 2000 && parsed <= 2100) {
+                return parsed;
+            }
+            return Number(fallback) || new Date().getFullYear();
+        }
+
         function postAdminAction(action, payload) {
             if (!frame || !frame.contentWindow) return;
             frame.contentWindow.postMessage({
@@ -747,17 +755,18 @@
             if (!paymentSummaryCard || !paymentListCard) return;
             const state = pendingPaymentState || {};
             const items = Array.isArray(state.items) ? state.items : [];
+            const activeYear = normalizeYearValue(state.year);
             if (!items.length) {
                 const updatedText = formatUpdatedAt(state.updatedAt);
                 paymentSummaryCard.innerHTML = updatedText
-                    ? `Belum ada pembayaran QRIS yang menunggu verifikasi. Snapshot terakhir: <strong>${updatedText}</strong>.`
-                    : 'Belum ada pembayaran QRIS yang menunggu verifikasi.';
+                    ? `Belum ada pembayaran QRIS tahun <strong>${activeYear}</strong> yang menunggu verifikasi. Snapshot terakhir: <strong>${updatedText}</strong>.`
+                    : `Belum ada pembayaran QRIS tahun <strong>${activeYear}</strong> yang menunggu verifikasi.`;
                 paymentListCard.innerHTML = '<div class="admin-payment-empty">Tidak ada pembayaran pending saat ini.</div>';
                 return;
             }
 
             const updatedText = formatUpdatedAt(state.updatedAt);
-            paymentSummaryCard.innerHTML = `${items.length} anggota menunggu verifikasi QRIS dengan total <strong>${formatCurrency(state.totalNominal)}</strong>${updatedText ? `. Diperbarui ${updatedText}.` : '.'}`;
+            paymentSummaryCard.innerHTML = `${items.length} anggota menunggu verifikasi QRIS tahun <strong>${activeYear}</strong> dengan total <strong>${formatCurrency(state.totalNominal)}</strong>${updatedText ? `. Diperbarui ${updatedText}.` : '.'}`;
             paymentListCard.innerHTML = items.map((item, index) => {
                 const monthText = Array.isArray(item.monthLabels) && item.monthLabels.length
                     ? item.monthLabels.join(', ')
@@ -808,8 +817,12 @@
             paymentDetailModal.classList.add('active');
         }
 
-        function requestPendingSnapshot() {
-            postAdminAction('request_pending_snapshot');
+        function requestPendingSnapshot(forceRefresh = false) {
+            const activeYear = normalizeYearValue(pendingPaymentState && pendingPaymentState.year);
+            postAdminAction(forceRefresh ? 'refresh_pending_snapshot' : 'request_pending_snapshot', {
+                year: activeYear,
+                forceRefresh
+            });
         }
 
         if (dashboardButton) {
@@ -831,7 +844,7 @@
             paymentVerificationButton.addEventListener('click', () => switchView('verification'));
         }
         if (refreshPaymentsButton) {
-            refreshPaymentsButton.addEventListener('click', requestPendingSnapshot);
+            refreshPaymentsButton.addEventListener('click', () => requestPendingSnapshot(true));
         }
         if (paymentListCard) {
             paymentListCard.addEventListener('click', (event) => {
@@ -878,7 +891,13 @@
         window.addEventListener('message', (event) => {
             const data = event && event.data ? event.data : null;
             if (!data || data.type !== 'delta8-admin-pending-state') return;
-            pendingPaymentState = data.payload || { count: 0, totalNominal: 0, items: [] };
+            pendingPaymentState = {
+                count: 0,
+                totalNominal: 0,
+                items: [],
+                year: normalizeYearValue(new Date().getFullYear()),
+                ...(data.payload || {})
+            };
             renderPendingPaymentsPanel();
             if (activePaymentDetail) {
                 const nextDetail = (pendingPaymentState.items || []).find((item) =>
