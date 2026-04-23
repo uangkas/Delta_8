@@ -1175,7 +1175,7 @@ body.tab-transaksi .nav-tabs {
         <div class="menu-item p-2 px-3 text-danger" onclick="doDelete()">🗑️ Hapus</div>
     </div>
     <div class="modal" id="modalVerifyAuth" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">VERIFIKASI OTORITAS</h6><input type="text" id="inputEditorName" name="editor_verifikasi" class="form-control mb-2 text-center" placeholder="Nama Editor Terdaftar" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handleEditorNameInput(this)" onkeydown="if(event.key==='Enter'){focusPinAfterEditorCheck();}"><input type="password" id="inputPIN" name="pin_verifikasi" class="form-control mb-2 text-center" maxlength="4" placeholder="PIN 4 DIGIT" inputmode="numeric" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handlePinInput(this)" onkeydown="if(event.key==='Enter'){submitAuth();}"><div class="small auth-helper-text lh-sm">Hanya editor yang tercatat di sheet <b>allowed_editors</b> yang bisa edit, tambah, atau hapus data.</div></div></div></div></div>
-    <div class="modal fade" id="modalPilihPembayaran" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PILIH PEMBAYARAN</h6><div class="payment-option-wrap"><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('CASH')">CASH</button><button type="button" class="payment-option-btn" onclick="chooseMemberPayment('QRIS')">QRIS</button></div></div></div></div></div>
+    <div class="modal fade" id="modalPilihPembayaran" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PILIH PEMBAYARAN</h6><div class="payment-option-wrap"><button type="button" class="payment-option-btn" id="payment-option-cash" onclick="chooseMemberPayment('CASH')">CASH</button><button type="button" class="payment-option-btn" id="payment-option-qris" onclick="chooseMemberPayment('QRIS')">QRIS</button></div><div class="small text-muted mt-3" id="payment-option-note">Pembayaran cash hanya bisa diproses dari halaman admin.</div></div></div></div></div>
     <div class="modal fade" id="modalPilihBulanBayar" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-2">PILIH BULAN</h6><div class="small text-muted mb-3">Bisa pilih lebih dari satu bulan. Bulan yang sudah lunas dinonaktifkan.</div><div id="payment-month-grid" class="month-option-grid"></div><div class="payment-month-summary"><div class="label" id="payment-month-selection-label">Belum ada bulan dipilih</div><div class="value" id="payment-month-total">Rp 0</div></div><button type="button" id="payment-month-continue" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueMemberPayment()" disabled>LANJUT</button></div></div></div></div>
     <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PEMBAYARAN QRIS</h6><div class="qris-preview-box"><div id="qris-code-wrap" class="mb-3"></div><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-3" id="qris-amount-value">Rp 0</div><div class="qris-detail">Scan kode QRIS yang tersedia, lalu lanjutkan agar pembayaran masuk ke daftar verifikasi admin.</div></div><button type="button" id="qris-continue-btn" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueQrisToAuth()">SAYA SUDAH BAYAR</button></div></div></div></div>
 
@@ -1262,6 +1262,7 @@ body.tab-transaksi .nav-tabs {
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-dark" data-bs-dismiss="modal">BATAL</button>
+                    <button type="button" class="btn btn-outline-warning fw-bold" id="upload-later-btn" onclick="submitPaymentWithoutProof()">UPLOAD NANTI</button>
                     <button type="button" class="btn btn-warning fw-bold" id="upload-submit-btn" onclick="submitPaymentWithProof()" disabled>KIRIM PEMBAYARAN</button>
                 </div>
             </div>
@@ -2781,7 +2782,23 @@ body.tab-transaksi .nav-tabs {
 
         function openPaymentOptions(params) {
             pendingPaymentContext = params ? { ...params, selectedMonths: [] } : null;
+            syncPaymentOptionAvailability();
             bootstrap.Modal.getOrCreateInstance('#modalPilihPembayaran').show();
+        }
+
+        function syncPaymentOptionAvailability() {
+            const cashButton = document.getElementById('payment-option-cash');
+            const qrisButton = document.getElementById('payment-option-qris');
+            const noteEl = document.getElementById('payment-option-note');
+            const adminMode = isAdminMode();
+
+            if (cashButton) cashButton.classList.toggle('d-none', !adminMode);
+            if (qrisButton) qrisButton.classList.toggle('w-100', !adminMode);
+            if (noteEl) {
+                noteEl.textContent = adminMode
+                    ? 'Admin bisa memproses pembayaran cash maupun QRIS dari panel ini.'
+                    : 'Pembayaran cash hanya bisa diproses dari halaman admin.';
+            }
         }
 
         function updatePaymentMonthSummary() {
@@ -2860,9 +2877,14 @@ body.tab-transaksi .nav-tabs {
 
         function chooseMemberPayment(method) {
             if (!pendingPaymentContext) return;
+            const normalizedMethod = String(method || '').toUpperCase();
+            if (normalizedMethod === 'CASH' && !isAdminMode()) {
+                showNotif('Pembayaran cash hanya tersedia di halaman admin.', 'info');
+                return;
+            }
             const paymentModal = bootstrap.Modal.getInstance('#modalPilihPembayaran') || bootstrap.Modal.getOrCreateInstance('#modalPilihPembayaran');
             paymentModal.hide();
-            pendingPaymentContext = { ...pendingPaymentContext, method, selectedMonths: [] };
+            pendingPaymentContext = { ...pendingPaymentContext, method: normalizedMethod, selectedMonths: [] };
             const monthGrid = document.getElementById('payment-month-grid');
             if (!monthGrid) return;
 
@@ -2913,6 +2935,10 @@ body.tab-transaksi .nav-tabs {
                     .sort((a, b) => a - b)
             };
             pendingPaymentContext = null;
+            if (String(params.method || '').toUpperCase() === 'CASH' && !isAdminMode()) {
+                showNotif('Pembayaran cash hanya tersedia di halaman admin.', 'info');
+                return;
+            }
             if (String(params.method || '').toUpperCase() === 'QRIS') {
                 pendingPaymentContext = params;
                 openQrisPaymentModal(params);
@@ -3039,6 +3065,7 @@ body.tab-transaksi .nav-tabs {
                 adminWhatsappEl: document.getElementById('admin-whatsapp-number'),
                 whatsappLinkEl: document.getElementById('whatsapp-link'),
                 submitBtn: document.getElementById('upload-submit-btn'),
+                uploadLaterBtn: document.getElementById('upload-later-btn'),
                 methodWebBtn: document.getElementById('method-web'),
                 methodWhatsappBtn: document.getElementById('method-whatsapp'),
                 uploadWebSection: document.getElementById('upload-web-section'),
@@ -3141,13 +3168,15 @@ body.tab-transaksi .nav-tabs {
                 methodWhatsappBtn,
                 uploadWebSection,
                 uploadWhatsappSection,
-                submitBtn
+                submitBtn,
+                uploadLaterBtn
             } = getUploadModalElements();
 
             if (methodWebBtn) methodWebBtn.classList.toggle('active', method === 'web');
             if (methodWhatsappBtn) methodWhatsappBtn.classList.toggle('active', method === 'whatsapp');
             if (uploadWebSection) uploadWebSection.classList.toggle('d-none', method !== 'web');
             if (uploadWhatsappSection) uploadWhatsappSection.classList.toggle('d-none', method !== 'whatsapp');
+            if (uploadLaterBtn) uploadLaterBtn.classList.toggle('d-none', method === 'whatsapp');
             if (!submitBtn) return;
             if (method === 'web') {
                 submitBtn.disabled = !uploadedImageFile;
@@ -3244,6 +3273,16 @@ body.tab-transaksi .nav-tabs {
             }
         }
 
+        function submitPaymentWithoutProof() {
+            const uploadModal = bootstrap.Modal.getInstance(document.getElementById('modalUploadBukti'));
+            if (uploadModal) {
+                uploadModal.hide();
+            }
+
+            submitQrisPaymentDirect();
+            showNotif('Pembayaran QRIS dikirim tanpa bukti. Bukti bisa diupload nanti jika diperlukan.', 'info');
+        }
+
         function submitPaymentWithImageProof(imageFile) {
             // Close upload modal
             const uploadModal = bootstrap.Modal.getInstance(document.getElementById('modalUploadBukti'));
@@ -3306,6 +3345,7 @@ body.tab-transaksi .nav-tabs {
         window.showUploadBuktiModal = showUploadBuktiModal;
         window.removeUploadImage = removeUploadImage;
         window.submitPaymentWithProof = submitPaymentWithProof;
+        window.submitPaymentWithoutProof = submitPaymentWithoutProof;
         window.selectUploadMethod = selectUploadMethod;
 
         // Upload bukti pembayaran event listeners
@@ -4194,6 +4234,7 @@ async function syncAll() {
         window.onload = () => {
     setTheme(localStorage.getItem('delta8_theme') || 'luxury');
     applyAdminMode();
+    syncPaymentOptionAvailability();
 
     initTahun();
 
