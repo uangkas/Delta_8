@@ -1586,10 +1586,9 @@ body.tab-transaksi .nav-tabs {
         }
 
         function postToAppsScript(payload) {
-            const serializedPayload = JSON.stringify(payload);
-            if (navigator.sendBeacon && serializedPayload.length <= 24000) {
+            if (navigator.sendBeacon) {
                 try {
-                    const body = new Blob([serializedPayload], {
+                    const body = new Blob([JSON.stringify(payload)], {
                         type: 'text/plain;charset=UTF-8'
                     });
                     const queued = navigator.sendBeacon(CLOUD_URL, body);
@@ -1615,7 +1614,7 @@ body.tab-transaksi .nav-tabs {
                 const input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = 'payload';
-                input.value = serializedPayload;
+                input.value = JSON.stringify(payload);
                 form.appendChild(input);
                 document.body.appendChild(form);
 
@@ -1810,8 +1809,14 @@ body.tab-transaksi .nav-tabs {
                     const action = String(data.action || '').trim().toLowerCase();
                     if (action === 'tambah') askAuth('tambah');
                     if (action === 'catat') askAuth('catat');
-                    if (action === 'request_pending_snapshot') {
-                        postPendingPaymentsToParent();
+                    if (action === 'request_pending_snapshot' || action === 'refresh_pending_snapshot') {
+                        if (action === 'refresh_pending_snapshot') {
+                            loadFromCloudSmart(CURRENT_YEAR, { silent: true }).then(() => {
+                                postPendingPaymentsToParent();
+                            });
+                        } else {
+                            postPendingPaymentsToParent();
+                        }
                     }
                     if ((action === 'verify_pending' || action === 'cancel_pending') && data.payload) {
                         const authAction = action === 'verify_pending' ? 'admin_verify_pending' : 'admin_cancel_pending';
@@ -2720,10 +2725,9 @@ body.tab-transaksi .nav-tabs {
             if (proofBase64) {
                 person.pendingProofs = person.pendingProofs || {};
                 person.pendingProofs[params.y] = person.pendingProofs[params.y] || {};
-                const proofMonth = months[0];
-                if (proofMonth) {
-                    person.pendingProofs[params.y][proofMonth] = proofBase64;
-                }
+                months.forEach(month => {
+                    person.pendingProofs[params.y][month] = proofBase64;
+                });
             }
             const monthText = months.map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
             addLog(
@@ -2807,14 +2811,14 @@ body.tab-transaksi .nav-tabs {
                         context.fillRect(0, 0, width, height);
                         context.drawImage(img, 0, 0, width, height);
 
-                        let quality = 0.78;
+                        let quality = 0.82;
                         let output = canvas.toDataURL('image/jpeg', quality);
-                        while (output.length > 14000 && quality > 0.26) {
+                        while (output.length > 45000 && quality > 0.3) {
                             quality -= 0.08;
                             output = canvas.toDataURL('image/jpeg', quality);
                         }
 
-                        if (output.length > 14000) {
+                        if (output.length > 45000) {
                             reject(new Error('Bukti pembayaran terlalu besar. Coba foto yang lebih ringan atau crop dulu.'));
                             return;
                         }

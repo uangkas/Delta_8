@@ -1809,8 +1809,14 @@ body.tab-transaksi .nav-tabs {
                     const action = String(data.action || '').trim().toLowerCase();
                     if (action === 'tambah') askAuth('tambah');
                     if (action === 'catat') askAuth('catat');
-                    if (action === 'request_pending_snapshot') {
-                        postPendingPaymentsToParent();
+                    if (action === 'request_pending_snapshot' || action === 'refresh_pending_snapshot') {
+                        if (action === 'refresh_pending_snapshot') {
+                            loadFromCloudSmart(CURRENT_YEAR, { silent: true }).then(() => {
+                                postPendingPaymentsToParent();
+                            });
+                        } else {
+                            postPendingPaymentsToParent();
+                        }
                     }
                     if ((action === 'verify_pending' || action === 'cancel_pending') && data.payload) {
                         const authAction = action === 'verify_pending' ? 'admin_verify_pending' : 'admin_cancel_pending';

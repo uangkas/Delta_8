@@ -23,7 +23,6 @@ $syncMap = @(
         Source = "admin.html"
         Destinations = @(
             "gas_fix\admin.html"
-            "public\admin.html"
             "public_admin\index.html"
         )
     },
