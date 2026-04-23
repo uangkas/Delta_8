@@ -122,6 +122,9 @@ function doPost(e) {
     if (payload.action === "saveFcmToken") {
       return handleSaveFcmToken_(payload, e);
     }
+    if (payload.action === "submitPendingPayment") {
+      return handleSubmitPendingPayment_(payload, e);
+    }
     if (payload.action === "adminSetScriptProperties") {
       return handleAdminSetScriptProperties_(payload, e);
     }
@@ -151,6 +154,24 @@ function doPost(e) {
       error: err && err.message ? err.message : String(err)
     });
   }
+}
+
+function handleSubmitPendingPayment_(payload, e) {
+  var year = getTargetYear_(payload, e);
+  ensureYearData_(year);
+  var data = readYearData_(year);
+  var result = applyPendingPaymentSubmission_(data, payload, year);
+  if (!result.ok) {
+    return jsonResponse_(result);
+  }
+
+  writeYearData_(year, data);
+  return jsonResponse_({
+    ok: true,
+    year: year,
+    memberId: result.memberId,
+    months: result.months
+  });
 }
 
 function maybeBroadcastFcmAfterWrite_(beforeData, afterData, payload, year) {
@@ -2547,6 +2568,98 @@ function applyMemberStatusUpdate_(data, info, value) {
     }
   });
   return true;
+}
+
+function applyPendingPaymentSubmission_(data, payload, year) {
+  if (!data || !payload) {
+    return { ok: false, error: "Payload pembayaran tidak valid." };
+  }
+
+  var kat = String(payload.kat || "").trim().toUpperCase();
+  var targetYear = String(parseInt(year, 10) || new Date().getFullYear());
+  var list = kat === "HELPER" ? data.helper : data.driver;
+  if (!Array.isArray(list)) {
+    return { ok: false, error: "Data anggota tidak tersedia." };
+  }
+
+  var memberId = String(payload.id || "").trim();
+  if (!memberId) {
+    return { ok: false, error: "ID anggota tidak ditemukan." };
+  }
+
+  var member = null;
+  for (var i = 0; i < list.length; i++) {
+    if (String(list[i] && list[i].id || "") === memberId) {
+      member = list[i];
+      break;
+    }
+  }
+  if (!member) {
+    return { ok: false, error: "Anggota untuk pembayaran QRIS tidak ditemukan." };
+  }
+
+  var rawMonths = Array.isArray(payload.months) ? payload.months : [];
+  var seen = {};
+  var months = [];
+  for (var j = 0; j < rawMonths.length; j++) {
+    var month = parseInt(rawMonths[j], 10);
+    if (month >= 1 && month <= 12 && !seen[month]) {
+      seen[month] = true;
+      months.push(month);
+    }
+  }
+  months.sort(function(a, b) { return a - b; });
+  if (!months.length) {
+    return { ok: false, error: "Bulan pembayaran QRIS belum dipilih." };
+  }
+
+  if (!member.status) member.status = {};
+  if (!member.status[targetYear]) member.status[targetYear] = {};
+  if (!member.pendingProofs) member.pendingProofs = {};
+  if (!member.pendingProofs[targetYear]) member.pendingProofs[targetYear] = {};
+
+  var proofData = String(payload.proofData || "").trim();
+  var changed = false;
+  for (var k = 0; k < months.length; k++) {
+    var mm = months[k];
+    if (member.status[targetYear][mm] !== "pending") {
+      member.status[targetYear][mm] = "pending";
+      changed = true;
+    }
+    if (proofData) {
+      if (member.pendingProofs[targetYear][mm] !== proofData) {
+        member.pendingProofs[targetYear][mm] = proofData;
+        changed = true;
+      }
+    }
+  }
+
+  if (!changed) {
+    return {
+      ok: true,
+      year: targetYear,
+      memberId: memberId,
+      months: months
+    };
+  }
+
+  var monthLabels = [];
+  for (var x = 0; x < months.length; x++) {
+    monthLabels.push(pad2_(months[x]) + "/" + targetYear);
+  }
+  appendLog_(
+    data,
+    "WEB QRIS",
+    "IURAN",
+    kat + " - " + String(member.nama || "").toUpperCase() + " - " + monthLabels.join(", ") + " - [PENDING VERIFIKASI QRIS]"
+  );
+
+  return {
+    ok: true,
+    year: targetYear,
+    memberId: memberId,
+    months: months
+  };
 }
 
 function handleAdminScriptInfo_(e) {

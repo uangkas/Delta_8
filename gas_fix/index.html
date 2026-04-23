@@ -2477,6 +2477,86 @@ body.tab-transaksi .nav-tabs {
             };
         }
 
+        function buildPendingPaymentExpectedData(params, proofBase64 = null) {
+            const year = normalizeYearValue(params && params.y);
+            const snapshot = getYearDataSnapshot(year);
+            const targetList = String(params && params.kat || '').toUpperCase() === 'HELPER'
+                ? snapshot.helper
+                : snapshot.driver;
+            const person = targetList.find(item => String(item.id) === String(params && params.id));
+            if (!person) {
+                throw new Error('Data anggota tidak ditemukan.');
+            }
+
+            if (!person.status) person.status = {};
+            if (!person.status[year]) person.status[year] = {};
+            if (!person.pendingProofs) person.pendingProofs = {};
+            if (!person.pendingProofs[year]) person.pendingProofs[year] = {};
+
+            const months = Array.isArray(params && params.selectedMonths)
+                ? Array.from(new Set(params.selectedMonths.map(Number).filter(month => month >= 1 && month <= 12))).sort((a, b) => a - b)
+                : [];
+            if (!months.length) {
+                throw new Error('Pilih bulan pembayaran terlebih dahulu.');
+            }
+
+            months.forEach(month => {
+                person.status[year][month] = 'pending';
+                if (proofBase64) {
+                    person.pendingProofs[year][month] = proofBase64;
+                }
+            });
+
+            const monthText = months.map(month => `${String(month).padStart(2, '0')}/${year}`).join(', ');
+            snapshot.logs = Array.isArray(snapshot.logs) ? snapshot.logs : [];
+            snapshot.logs.unshift({
+                time: '',
+                editor: 'WEB QRIS',
+                aksi: 'IURAN',
+                ket: `${String(params.kat || '').toUpperCase()} - ${String(person.nama || params.nama || '').toUpperCase()} - ${monthText} - [PENDING VERIFIKASI QRIS]`
+            });
+
+            return {
+                year,
+                months,
+                snapshot
+            };
+        }
+
+        async function submitPendingPaymentToBackend(params, proofBase64 = null) {
+            const preview = buildPendingPaymentExpectedData(params, proofBase64);
+            const payload = {
+                action: 'submitPendingPayment',
+                year: preview.year,
+                id: params.id,
+                nama: params.nama,
+                kat: params.kat,
+                months: preview.months,
+                proofData: proofBase64 || ''
+            };
+
+            await postToAppsScript(payload);
+            const verification = await waitForRemoteYearSignature(preview.year, buildYearSignature(preview.snapshot), {
+                timeoutMs: 15000,
+                intervalMs: 400
+            });
+            if (!verification.ok) {
+                throw new Error(verification.error || 'Backend belum mengonfirmasi pembayaran QRIS.');
+            }
+
+            if (verification.data) {
+                YEAR_CACHE[preview.year] = cloneYearDataShape(verification.data);
+                YEAR_SIGNATURES[preview.year] = buildYearSignature(verification.data);
+                saveYearCacheToStorage(preview.year, verification.data);
+
+                if (preview.year === Number(CURRENT_YEAR)) {
+                    applyYearData(preview.year, verification.data);
+                }
+            }
+
+            return verification.data || preview.snapshot;
+        }
+
         function setMemberPaymentStatusLocal(params, statusValue) {
             const kat = String((params && params.kat) || '').toUpperCase();
             const source = kat === 'HELPER' ? DB_HELPER : DB_DRIVER;
@@ -2869,6 +2949,54 @@ body.tab-transaksi .nav-tabs {
             } catch (err) {
                 console.error('Error in continueQrisToAuth:', err);
                 showNotif('Terjadi kesalahan. Silakan coba lagi.', 'error');
+            }
+        }
+
+        async function submitQrisPaymentDirect(proofBase64 = null) {
+            console.log('submitQrisPaymentDirect called, pendingPaymentContext:', pendingPaymentContext);
+            if (!pendingPaymentContext) {
+                console.error('pendingPaymentContext is null');
+                showNotif('Data pembayaran tidak ditemukan. Silakan mulai lagi.', 'error');
+                return;
+            }
+            const params = { ...pendingPaymentContext };
+            const targetList = params.kat === 'Driver' ? DB_DRIVER : DB_HELPER;
+            const person = targetList.find(x => x.id == params.id);
+            if (!person) {
+                showNotif('Data anggota tidak ditemukan.', 'error');
+                return;
+            }
+
+            const months = Array.isArray(params.selectedMonths)
+                ? Array.from(new Set(params.selectedMonths.map(Number).filter(month => month >= 1 && month <= 12))).sort((a, b) => a - b)
+                : [];
+            if (!months.length) {
+                showNotif('Pilih bulan pembayaran terlebih dahulu.', 'error');
+                return;
+            }
+
+            const qrisModal = bootstrap.Modal.getInstance('#modalQrisPayment') || bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
+            const continueBtn = document.getElementById('qris-continue-btn');
+            try {
+                if (continueBtn) {
+                    continueBtn.disabled = true;
+                    continueBtn.innerText = 'MENGIRIM...';
+                }
+                await submitPendingPaymentToBackend({
+                    ...params,
+                    selectedMonths: months
+                }, proofBase64);
+                qrisModal.hide();
+                showNotif('Pembayaran QRIS berhasil masuk verifikasi. Admin akan segera memproses.', 'success');
+                pendingPaymentContext = null;
+            } catch (err) {
+                console.error('submitQrisPaymentDirect error:', err);
+                showNotif((err && err.message) ? err.message : 'Pembayaran QRIS gagal dikirim ke backend.', 'error');
+            } finally {
+                if (continueBtn) {
+                    continueBtn.disabled = false;
+                    continueBtn.innerText = 'SAYA SUDAH BAYAR';
+                }
             }
         }
 
