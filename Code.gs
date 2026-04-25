@@ -2989,7 +2989,14 @@ function createMidtransQrisCharge_(payload, year) {
 
   var response = callMidtransApi_(config, "post", config.snapBase + "/snap/v1/transactions", body);
   if (!response || !String(response.redirect_url || "").trim()) {
-    throw new Error("Midtrans gagal membuat halaman pembayaran.");
+    var responseSummary = {
+      statusCode: String(response && response.status_code || "").trim(),
+      statusMessage: String(response && response.status_message || "").trim(),
+      hasToken: !!String(response && response.token || "").trim(),
+      hasRedirectUrl: !!String(response && response.redirect_url || "").trim(),
+      keys: response && typeof response === "object" ? Object.keys(response) : []
+    };
+    throw new Error("Midtrans gagal membuat halaman pembayaran. " + JSON.stringify(responseSummary));
   }
   return {
     orderId: orderId,
