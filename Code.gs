@@ -46,6 +46,8 @@ var DEFAULT_WEB_APP_URL = "https://kas-delta-8.web.app";
 var DEFAULT_SERVICE_ACCOUNT_EMAIL = "firebase-adminsdk-fbsvc@kas-delta-8.iam.gserviceaccount.com";
 var MIDTRANS_SANDBOX_API_BASE = "https://api.sandbox.midtrans.com";
 var MIDTRANS_PRODUCTION_API_BASE = "https://api.midtrans.com";
+var MIDTRANS_SNAP_SANDBOX_BASE = "https://app.sandbox.midtrans.com";
+var MIDTRANS_SNAP_PRODUCTION_BASE = "https://app.midtrans.com";
 
 var DRIVER_HELPER_HEADERS = [
   "NO",
@@ -2955,14 +2957,13 @@ function createMidtransQrisCharge_(payload, year) {
   var amount = Number(payload && payload.amount || 0);
   var months = normalizeMonthList_(payload && payload.months);
   if (amount <= 0) {
-    throw new Error("Nominal pembayaran QRIS tidak valid.");
+    throw new Error("Nominal pembayaran Midtrans tidak valid.");
   }
   if (!months.length) {
-    throw new Error("Bulan pembayaran QRIS belum dipilih.");
+    throw new Error("Bulan pembayaran Midtrans belum dipilih.");
   }
   var orderId = buildMidtransOrderId_(payload, year, months);
   var body = {
-    payment_type: "qris",
     transaction_details: {
       order_id: orderId,
       gross_amount: amount
@@ -2986,22 +2987,25 @@ function createMidtransQrisCharge_(payload, year) {
     })
   };
 
-  var response = callMidtransApi_(config, "post", "/v2/charge", body);
-  var midtransStatusCode = parseInt(response && response.status_code, 10);
-  var midtransStatusMessage = String(response && response.status_message || "").trim();
-  if ((midtransStatusCode && midtransStatusCode >= 400) || !isMidtransPendingStatus_(response && response.transaction_status || "")) {
-    throw new Error(midtransStatusMessage || "Midtrans gagal membuat transaksi QRIS.");
+  var response = callMidtransApi_(config, "post", config.snapBase + "/snap/v1/transactions", body);
+  if (!response || !String(response.redirect_url || "").trim()) {
+    throw new Error("Midtrans gagal membuat halaman pembayaran.");
   }
   return {
     orderId: orderId,
-    transactionId: getMidtransTransactionIdFromResponse_(response),
-    transactionStatus: normalizeMidtransStatus_(response.transaction_status || "pending"),
-    paymentType: String(response.payment_type || "qris").trim(),
+    transactionId: "",
+    transactionStatus: "pending",
+    paymentType: "snap",
     grossAmount: String(response.gross_amount || normalizeCurrencyAmountString_(amount)),
-    qrUrl: getMidtransQrUrlFromResponse_(response, config.apiBase),
-    qrString: String(response.qr_string || "").trim(),
+    qrUrl: "",
+    qrString: "",
     expiresAt: String(response.expiry_time || "").trim(),
-    rawSummary: buildMidtransResponseDebugSummary_(response),
+    snapToken: String(response.token || "").trim(),
+    snapRedirectUrl: String(response.redirect_url || "").trim(),
+    rawSummary: {
+      hasSnapToken: !!String(response.token || "").trim(),
+      hasRedirectUrl: !!String(response.redirect_url || "").trim()
+    },
     raw: response
   };
 }
@@ -3368,7 +3372,8 @@ function getMidtransConfig_() {
     serverKey: serverKey,
     clientKey: clientKey,
     isProduction: isProduction,
-    apiBase: isProduction ? MIDTRANS_PRODUCTION_API_BASE : MIDTRANS_SANDBOX_API_BASE
+    apiBase: isProduction ? MIDTRANS_PRODUCTION_API_BASE : MIDTRANS_SANDBOX_API_BASE,
+    snapBase: isProduction ? MIDTRANS_SNAP_PRODUCTION_BASE : MIDTRANS_SNAP_SANDBOX_BASE
   };
 }
 

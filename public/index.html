@@ -1177,7 +1177,7 @@ body.tab-transaksi .nav-tabs {
     <div class="modal" id="modalVerifyAuth" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">VERIFIKASI OTORITAS</h6><input type="text" id="inputEditorName" name="editor_verifikasi" class="form-control mb-2 text-center" placeholder="Nama Editor Terdaftar" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handleEditorNameInput(this)" onkeydown="if(event.key==='Enter'){focusPinAfterEditorCheck();}"><input type="password" id="inputPIN" name="pin_verifikasi" class="form-control mb-2 text-center" maxlength="4" placeholder="PIN 4 DIGIT" inputmode="numeric" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handlePinInput(this)" onkeydown="if(event.key==='Enter'){submitAuth();}"><div class="small auth-helper-text lh-sm">Hanya editor yang tercatat di sheet <b>allowed_editors</b> yang bisa edit, tambah, atau hapus data.</div></div></div></div></div>
     <div class="modal fade" id="modalPilihPembayaran" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PILIH PEMBAYARAN</h6><div class="payment-option-wrap"><button type="button" class="payment-option-btn" id="payment-option-cash" onclick="chooseMemberPayment('CASH')">CASH</button><button type="button" class="payment-option-btn" id="payment-option-qris" onclick="chooseMemberPayment('QRIS')">QRIS</button></div><div class="small text-muted mt-3" id="payment-option-note">Pembayaran cash hanya bisa diproses dari halaman admin.</div></div></div></div></div>
     <div class="modal fade" id="modalPilihBulanBayar" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-2">PILIH BULAN</h6><div class="small text-muted mb-3">Bisa pilih lebih dari satu bulan. Bulan yang sudah lunas dinonaktifkan.</div><div id="payment-month-grid" class="month-option-grid"></div><div class="payment-month-summary"><div class="label" id="payment-month-selection-label">Belum ada bulan dipilih</div><div class="value" id="payment-month-total">Rp 0</div></div><button type="button" id="payment-month-continue" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueMemberPayment()" disabled>LANJUT</button></div></div></div></div>
-    <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PEMBAYARAN QRIS</h6><div class="qris-preview-box"><div id="qris-code-wrap" class="mb-3"></div><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-3" id="qris-amount-value">Rp 0</div><div class="qris-detail">QRIS dinamis Midtrans akan dibuat otomatis. Nominal akan langsung mengikuti transaksi yang di-scan.</div><div class="qris-detail mt-3" id="qris-status-copy">Menyiapkan transaksi QRIS...</div></div><button type="button" id="qris-continue-btn" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueQrisToAuth()">CEK STATUS PEMBAYARAN</button></div></div></div></div>
+    <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PEMBAYARAN MIDTRANS</h6><div class="qris-preview-box"><div id="qris-code-wrap" class="mb-3"></div><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-3" id="qris-amount-value">Rp 0</div><div class="qris-detail">Midtrans akan membuka halaman pembayaran dengan semua metode yang aktif di akun Anda.</div><div class="qris-detail mt-3" id="qris-status-copy">Menyiapkan transaksi Midtrans...</div></div><button type="button" id="qris-continue-btn" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueQrisToAuth()">CEK STATUS PEMBAYARAN</button></div></div></div></div>
 
     <!-- Modal Upload Bukti Pembayaran -->
     <div class="modal fade" id="modalUploadBukti" tabindex="-1">
@@ -2847,9 +2847,14 @@ body.tab-transaksi .nav-tabs {
             return `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(payload)}`;
         }
 
-        function renderQrisCode(customUrl, qrString) {
+        function renderQrisCode(customUrl, qrString, redirectUrl = '') {
             const wrap = document.getElementById('qris-code-wrap');
             if (!wrap) return;
+            const paymentUrl = String(redirectUrl || '').trim();
+            if (paymentUrl) {
+                wrap.innerHTML = `<a href="${paymentUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-warning w-100 fw-bold">BUKA HALAMAN PEMBAYARAN</a><div class="qris-detail mt-3">Jika halaman pembayaran tidak terbuka otomatis, gunakan tombol ini.</div>`;
+                return;
+            }
             let imageUrl = String(customUrl || '').trim();
             if (!imageUrl && qrString) {
                 imageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(String(qrString || '').trim())}`;
@@ -2863,7 +2868,7 @@ body.tab-transaksi .nav-tabs {
                     }, { once: true });
                 }
             } else {
-                wrap.innerHTML = `<div class="qris-empty-state">QRIS dinamis belum tersedia. Backend belum mengembalikan data QR untuk transaksi ini.</div>`;
+                wrap.innerHTML = `<div class="qris-empty-state">Halaman pembayaran Midtrans belum tersedia. Coba beberapa detik lagi atau ulangi transaksi.</div>`;
             }
         }
 
@@ -2928,12 +2933,12 @@ body.tab-transaksi .nav-tabs {
                 setQrisStatusCopy('Pembayaran berhasil terverifikasi otomatis.');
                 const modal = bootstrap.Modal.getInstance(document.getElementById('modalQrisPayment'));
                 if (modal) modal.hide();
-                showNotif('Pembayaran QRIS berhasil diverifikasi otomatis.', 'success');
+                showNotif('Pembayaran Midtrans berhasil diverifikasi otomatis.', 'success');
                 currentMidtransPayment = null;
             } else if (remoteStatus === 'expire' || remoteStatus === 'cancel' || remoteStatus === 'deny' || remoteStatus === 'failure') {
                 stopMidtransStatusPolling();
-                setQrisStatusCopy(`Transaksi QRIS berstatus ${remoteStatus.toUpperCase()}.`);
-                if (!silent) showNotif(`Transaksi QRIS berstatus ${remoteStatus.toUpperCase()}.`, 'error');
+                setQrisStatusCopy(`Transaksi Midtrans berstatus ${remoteStatus.toUpperCase()}.`);
+                if (!silent) showNotif(`Transaksi Midtrans berstatus ${remoteStatus.toUpperCase()}.`, 'error');
                 currentMidtransPayment = null;
             } else if (remoteStatus === 'pending') {
                 setQrisStatusCopy('Menunggu pembayaran di Midtrans. Status akan diperbarui otomatis.');
@@ -2973,21 +2978,24 @@ body.tab-transaksi .nav-tabs {
                 continueBtn.disabled = true;
                 continueBtn.innerText = 'CEK STATUS PEMBAYARAN';
             }
-            setQrisStatusCopy('Membuat transaksi QRIS Midtrans...');
-            renderQrisCode('', '');
+            setQrisStatusCopy('Membuat transaksi Midtrans...');
+            renderQrisCode('', '', '');
             const modal = bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
             modal.show();
 
             try {
+                let created = null;
                 let payment = getMemberGatewayPayment(params);
-                if (!payment || (!payment.qrUrl && !payment.qrString)) {
-                    const created = await createMidtransQrisTransaction(params);
+                if (!payment || (!payment.qrUrl && !payment.qrString && !payment.snapRedirectUrl)) {
+                    created = await createMidtransQrisTransaction(params);
                     payment = {
                         orderId: created.orderId,
                         transactionId: created.transactionId,
                         transactionStatus: created.transactionStatus,
                         qrUrl: created.qrUrl,
                         qrString: created.qrString || '',
+                        snapToken: created.snapToken || '',
+                        snapRedirectUrl: created.snapRedirectUrl || '',
                         expiresAt: created.expiresAt,
                         year: normalizeYearValue(created.year || params.y),
                         months: params.selectedMonths || []
@@ -2995,23 +3003,28 @@ body.tab-transaksi .nav-tabs {
                     await loadFromCloudSmart(payment.year, { silent: true, forceRender: true });
                 }
 
-                if (!payment.qrUrl && !payment.qrString) {
+                if (!payment.qrUrl && !payment.qrString && !payment.snapRedirectUrl) {
                     const debugInfo = created && created.debug
-                        ? ` Status: ${created.debug.transactionStatus || '-'}, kode: ${created.debug.statusCode || '-'}, aksi QR: ${created.debug.actionCount || 0}.`
+                        ? ` Redirect URL: ${created.debug.hasRedirectUrl ? 'ya' : 'tidak'}, token: ${created.debug.hasSnapToken ? 'ya' : 'tidak'}.`
                         : '';
-                    throw new Error(`Midtrans belum mengembalikan QRIS dinamis.${debugInfo}`.trim());
+                    throw new Error(`Midtrans belum mengembalikan halaman pembayaran.${debugInfo}`.trim());
                 }
 
                 currentMidtransPayment = payment;
-                renderQrisCode(payment.qrUrl || '', payment.qrString || '');
-                setQrisStatusCopy('Scan QRIS Midtrans lalu tunggu status diperbarui otomatis.');
+                renderQrisCode(payment.qrUrl || '', payment.qrString || '', payment.snapRedirectUrl || '');
+                if (payment.snapRedirectUrl) {
+                    window.open(payment.snapRedirectUrl, '_blank', 'noopener,noreferrer');
+                    setQrisStatusCopy('Halaman pembayaran Midtrans sudah dibuka. Selesaikan pembayaran lalu cek status di sini.');
+                } else {
+                    setQrisStatusCopy('Pembayaran Midtrans sudah dibuat. Selesaikan pembayaran lalu cek status di sini.');
+                }
                 if (continueBtn) continueBtn.disabled = false;
                 startMidtransStatusPolling();
             } catch (err) {
-                setQrisStatusCopy('Gagal membuat transaksi QRIS Midtrans.');
+                setQrisStatusCopy('Gagal membuat transaksi Midtrans.');
                 if (continueBtn) continueBtn.disabled = true;
-                renderQrisCode('', '');
-                showNotif((err && err.message) ? err.message : 'QRIS Midtrans gagal dibuat.', 'error');
+                renderQrisCode('', '', '');
+                showNotif((err && err.message) ? err.message : 'Transaksi Midtrans gagal dibuat.', 'error');
             }
         }
 
