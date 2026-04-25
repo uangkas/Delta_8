@@ -2978,9 +2978,6 @@ function createMidtransQrisCharge_(payload, year) {
     customer_details: {
       first_name: String(payload && payload.nama || "ANGGOTA").trim().toUpperCase()
     },
-    qris: {
-      acquirer: "gopay"
-    },
     custom_field1: JSON.stringify({
       year: String(year),
       kat: String(payload && payload.kat || "").trim().toUpperCase(),
