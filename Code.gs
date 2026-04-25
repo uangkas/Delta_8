@@ -449,7 +449,8 @@ function restoreScriptProperties_() {
     for (var i = 1; i < data.length; i++) { // Skip header
       var key = data[i][0];
       var value = data[i][1];
-      if (key && value !== undefined) {
+      var existing = key ? props.getProperty(key) : "";
+      if (key && value !== undefined && !String(existing || "").trim()) {
         props.setProperty(key, value);
       }
     }
@@ -3607,6 +3608,10 @@ function adminSetScriptProperties_(entries) {
     if (!key) continue;
     props.setProperty(key, String(item.value == null ? "" : item.value));
     count++;
+  }
+
+  if (count) {
+    backupScriptProperties_();
   }
 
   return {
