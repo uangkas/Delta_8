@@ -435,7 +435,8 @@ function backupScriptProperties_() {
 
 function restoreScriptProperties_() {
   try {
-    var spreadsheetId = PropertiesService.getScriptProperties().getProperty(SPREADSHEET_ID_KEY);
+    var props = PropertiesService.getScriptProperties();
+    var spreadsheetId = props.getProperty(SPREADSHEET_ID_KEY) || DEFAULT_SPREADSHEET_ID;
     if (!spreadsheetId) return false;
 
     var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
@@ -445,7 +446,6 @@ function restoreScriptProperties_() {
     var data = sheet.getDataRange().getValues();
     if (data.length < 2) return false; // No data besides header
 
-    var props = PropertiesService.getScriptProperties();
     for (var i = 1; i < data.length; i++) { // Skip header
       var key = data[i][0];
       var value = data[i][1];
@@ -465,12 +465,12 @@ function restoreScriptProperties_() {
 function ensureBootstrapConfig_() {
   var props = PropertiesService.getScriptProperties();
 
-  // Try to restore properties from backup first
-  restoreScriptProperties_();
-
   if (!props.getProperty(SPREADSHEET_ID_KEY) && DEFAULT_SPREADSHEET_ID) {
     props.setProperty(SPREADSHEET_ID_KEY, DEFAULT_SPREADSHEET_ID);
   }
+
+  // Try to restore properties from backup first
+  restoreScriptProperties_();
 
   if (!props.getProperty(APP_PIN_KEY) && DEFAULT_APP_PIN) {
     props.setProperty(APP_PIN_KEY, DEFAULT_APP_PIN);
