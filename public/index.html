@@ -2877,6 +2877,23 @@ body.tab-transaksi .nav-tabs {
             if (statusEl) statusEl.textContent = message || '';
         }
 
+        function blurActiveElement() {
+            const activeEl = document.activeElement;
+            if (activeEl && typeof activeEl.blur === 'function') {
+                activeEl.blur();
+            }
+        }
+
+        function hideModalSafely(target) {
+            const modalEl = typeof target === 'string' ? document.getElementById(target) : target;
+            if (!modalEl) return;
+            if (modalEl.contains(document.activeElement)) {
+                blurActiveElement();
+            }
+            const modal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.hide();
+        }
+
         function stopMidtransStatusPolling() {
             if (midtransStatusPollTimer) {
                 clearInterval(midtransStatusPollTimer);
@@ -2931,8 +2948,7 @@ body.tab-transaksi .nav-tabs {
             if (remoteStatus === 'settlement' || remoteStatus === 'capture') {
                 stopMidtransStatusPolling();
                 setQrisStatusCopy('Pembayaran berhasil terverifikasi otomatis.');
-                const modal = bootstrap.Modal.getInstance(document.getElementById('modalQrisPayment'));
-                if (modal) modal.hide();
+                hideModalSafely('modalQrisPayment');
                 showNotif('Pembayaran Midtrans berhasil diverifikasi otomatis.', 'success');
                 currentMidtransPayment = null;
             } else if (remoteStatus === 'expire' || remoteStatus === 'cancel' || remoteStatus === 'deny' || remoteStatus === 'failure') {
@@ -3035,8 +3051,7 @@ body.tab-transaksi .nav-tabs {
                 showNotif('Pembayaran cash hanya tersedia di halaman admin.', 'info');
                 return;
             }
-            const paymentModal = bootstrap.Modal.getInstance('#modalPilihPembayaran') || bootstrap.Modal.getOrCreateInstance('#modalPilihPembayaran');
-            paymentModal.hide();
+            hideModalSafely('modalPilihPembayaran');
             pendingPaymentContext = { ...pendingPaymentContext, method: normalizedMethod, selectedMonths: [] };
             const monthGrid = document.getElementById('payment-month-grid');
             if (!monthGrid) return;
@@ -3078,8 +3093,7 @@ body.tab-transaksi .nav-tabs {
 
         function continueMemberPayment() {
             if (!pendingPaymentContext || !Array.isArray(pendingPaymentContext.selectedMonths) || pendingPaymentContext.selectedMonths.length === 0) return;
-            const monthModal = bootstrap.Modal.getInstance('#modalPilihBulanBayar') || bootstrap.Modal.getOrCreateInstance('#modalPilihBulanBayar');
-            monthModal.hide();
+            hideModalSafely('modalPilihBulanBayar');
             const params = {
                 ...pendingPaymentContext,
                 selectedMonths: pendingPaymentContext.selectedMonths
@@ -3139,8 +3153,7 @@ body.tab-transaksi .nav-tabs {
                 "Iuran",
                 `${String(params.kat || '').toUpperCase()} - ${String(params.nama || '').toUpperCase()} - ${monthText} - [⏳ - PENDING VERIFIKASI QRIS]`
             );
-            const qrisModal = bootstrap.Modal.getInstance('#modalQrisPayment') || bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
-            qrisModal.hide();
+            hideModalSafely('modalQrisPayment');
             syncAll();
             showNotif('Pembayaran QRIS berhasil masuk verifikasi. Admin akan segera memproses.', 'success');
             pendingPaymentContext = null;
@@ -3178,7 +3191,6 @@ body.tab-transaksi .nav-tabs {
                 return;
             }
 
-            const qrisModal = bootstrap.Modal.getInstance('#modalQrisPayment') || bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
             const continueBtn = document.getElementById('qris-continue-btn');
             try {
                 if (continueBtn) {
@@ -3189,7 +3201,7 @@ body.tab-transaksi .nav-tabs {
                     ...params,
                     selectedMonths: months
                 }, proofBase64);
-                qrisModal.hide();
+                hideModalSafely('modalQrisPayment');
                 showNotif('Pembayaran QRIS berhasil masuk verifikasi. Admin akan segera memproses.', 'success');
                 pendingPaymentContext = null;
             } catch (err) {
@@ -3394,9 +3406,7 @@ body.tab-transaksi .nav-tabs {
             removeUploadImage();
             selectUploadMethod('web');
 
-            const qrisModalEl = document.getElementById('modalQrisPayment');
-            const qrisModal = qrisModalEl ? bootstrap.Modal.getInstance(qrisModalEl) : null;
-            if (qrisModal) qrisModal.hide();
+            hideModalSafely('modalQrisPayment');
 
             const uploadModal = bootstrap.Modal.getOrCreateInstance(modalEl);
             window.setTimeout(() => uploadModal.show(), 180);
@@ -3426,10 +3436,7 @@ body.tab-transaksi .nav-tabs {
         }
 
         function submitPaymentWithoutProof() {
-            const uploadModal = bootstrap.Modal.getInstance(document.getElementById('modalUploadBukti'));
-            if (uploadModal) {
-                uploadModal.hide();
-            }
+            hideModalSafely('modalUploadBukti');
 
             submitQrisPaymentDirect();
             showNotif('Pembayaran QRIS dikirim tanpa bukti. Bukti bisa diupload nanti jika diperlukan.', 'info');
@@ -3437,16 +3444,8 @@ body.tab-transaksi .nav-tabs {
 
         function submitPaymentWithImageProof(imageFile) {
             // Close upload modal
-            const uploadModal = bootstrap.Modal.getInstance(document.getElementById('modalUploadBukti'));
-            if (uploadModal) {
-                uploadModal.hide();
-            }
-
-            // Close QRIS modal
-            const qrisModal = bootstrap.Modal.getInstance(document.getElementById('modalQrisPayment'));
-            if (qrisModal) {
-                qrisModal.hide();
-            }
+            hideModalSafely('modalUploadBukti');
+            hideModalSafely('modalQrisPayment');
 
             // Submit payment with proof
             submitQrisPaymentDirect(currentUploadProofBase64);
@@ -3464,16 +3463,8 @@ body.tab-transaksi .nav-tabs {
             }
 
             // Close upload modal
-            const uploadModal = bootstrap.Modal.getInstance(document.getElementById('modalUploadBukti'));
-            if (uploadModal) {
-                uploadModal.hide();
-            }
-
-            // Close QRIS modal
-            const qrisModal = bootstrap.Modal.getInstance(document.getElementById('modalQrisPayment'));
-            if (qrisModal) {
-                qrisModal.hide();
-            }
+            hideModalSafely('modalUploadBukti');
+            hideModalSafely('modalQrisPayment');
 
             // Submit payment
             submitQrisPaymentDirect();
