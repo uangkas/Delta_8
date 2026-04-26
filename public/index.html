@@ -3060,6 +3060,7 @@ body.tab-transaksi .nav-tabs {
             }
             const snap = await ensureMidtransSnapJs();
             snap.pay(payment.snapToken, {
+                uiMode: 'qr',
                 onSuccess: () => {
                     syncMidtransPaymentStatus({ silent: true }).catch((err) => {
                         console.error('midtrans success sync error:', err);
