@@ -3199,20 +3199,11 @@ function createMidtransQrisCharge_(payload, year) {
 }
 
 function createMidtransQrisWithFallback_(payload, year) {
-  try {
-    var directCharge = createMidtransQrisCharge_(payload, year);
-    directCharge.rawSummary = directCharge.rawSummary || {};
-    directCharge.rawSummary.fallbackToSnap = false;
-    directCharge.rawSummary.primaryFlow = "qris_direct";
-    return directCharge;
-  } catch (directErr) {
-    var fallbackCharge = createMidtransSnapTransaction_(payload, year);
-    fallbackCharge.rawSummary = fallbackCharge.rawSummary || {};
-    fallbackCharge.rawSummary.fallbackToSnap = true;
-    fallbackCharge.rawSummary.primaryFlow = "snap_fallback";
-    fallbackCharge.rawSummary.qrisDirectError = directErr && directErr.message ? directErr.message : String(directErr);
-    return fallbackCharge;
-  }
+  var directCharge = createMidtransQrisCharge_(payload, year);
+  directCharge.rawSummary = directCharge.rawSummary || {};
+  directCharge.rawSummary.fallbackToSnap = false;
+  directCharge.rawSummary.primaryFlow = "qris_direct";
+  return directCharge;
 }
 
 function checkMidtransHealth_(config) {

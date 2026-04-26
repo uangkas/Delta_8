@@ -2955,14 +2955,9 @@ body.tab-transaksi .nav-tabs {
             return `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(payload)}`;
         }
 
-        function renderQrisCode(customUrl, qrString, redirectUrl = '') {
+        function renderQrisCode(customUrl, qrString) {
             const wrap = document.getElementById('qris-code-wrap');
             if (!wrap) return;
-            const paymentUrl = String(redirectUrl || '').trim();
-            if (paymentUrl) {
-                wrap.innerHTML = `<div class="ratio ratio-1x1 border rounded overflow-hidden bg-white"><iframe src="${paymentUrl}" title="Halaman pembayaran Midtrans" class="w-100 h-100 border-0" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allow="payment *"></iframe></div><div class="qris-detail mt-3">Halaman pembayaran dibuka di panel ini tanpa pindah tab.</div>`;
-                return;
-            }
             let imageUrl = String(customUrl || '').trim();
             if (!imageUrl && qrString) {
                 imageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(String(qrString || '').trim())}`;
@@ -3103,14 +3098,14 @@ body.tab-transaksi .nav-tabs {
                 continueBtn.innerText = 'CEK STATUS PEMBAYARAN';
             }
             setQrisStatusCopy('Membuat QRIS pembayaran...');
-            renderQrisCode('', '', '');
+            renderQrisCode('', '');
             const modal = bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
             modal.show();
 
             try {
                 let created = null;
                 let payment = getMemberGatewayPayment(params);
-                if (!payment || (!payment.qrUrl && !payment.qrString && !payment.snapRedirectUrl)) {
+                if (!payment || (!payment.qrUrl && !payment.qrString)) {
                     created = await createMidtransQrisTransaction(params);
                     payment = {
                         orderId: created.orderId,
@@ -3119,7 +3114,6 @@ body.tab-transaksi .nav-tabs {
                         qrUrl: created.qrUrl,
                         qrString: created.qrString || '',
                         snapToken: created.snapToken || '',
-                        snapRedirectUrl: created.snapRedirectUrl || '',
                         fallbackToSnap: !!(created.debug && created.debug.fallbackToSnap),
                         expiresAt: created.expiresAt,
                         year: normalizeYearValue(created.year || params.y),
@@ -3130,21 +3124,16 @@ body.tab-transaksi .nav-tabs {
                     });
                 }
 
-                if (!payment.qrUrl && !payment.qrString && !payment.snapRedirectUrl) {
-                    const debugInfo = created && created.debug
-                        ? ` Redirect URL: ${created.debug.hasRedirectUrl ? 'ya' : 'tidak'}, token: ${created.debug.hasSnapToken ? 'ya' : 'tidak'}.`
-                        : '';
-                    throw new Error(`Midtrans belum mengembalikan halaman pembayaran.${debugInfo}`.trim());
+                if (!payment.qrUrl && !payment.qrString) {
+                    throw new Error('Midtrans belum mengembalikan kode QRIS untuk transaksi ini.');
                 }
 
                 currentMidtransPayment = payment;
-                renderQrisCode(payment.qrUrl || '', payment.qrString || '', payment.snapRedirectUrl || '');
-                if (payment.fallbackToSnap) {
-                    setQrisStatusCopy('QRIS direct belum tersedia. Sistem otomatis membuka halaman pembayaran Midtrans sebagai fallback.');
-                } else if (payment.qrUrl || payment.qrString) {
+                renderQrisCode(payment.qrUrl || '', payment.qrString || '');
+                if (payment.qrUrl || payment.qrString) {
                     setQrisStatusCopy('QRIS siap dipindai. Setelah membayar, cek status di bawah ini.');
                 } else {
-                    setQrisStatusCopy('Halaman pembayaran QRIS siap digunakan. Setelah membayar, cek status di bawah ini.');
+                    setQrisStatusCopy('Kode QRIS belum tersedia.');
                 }
                 if (continueBtn) continueBtn.disabled = false;
                 startMidtransStatusPolling();
