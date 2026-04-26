@@ -3614,7 +3614,8 @@ function callMidtransApi_(config, method, path, payload) {
     data = {};
   }
   if (code < 200 || code >= 300) {
-    throw new Error((data && data.status_message) || ("Midtrans error " + code));
+    var statusMessage = String(data && data.status_message || "").trim();
+    throw new Error(statusMessage ? ("Midtrans error " + code + ": " + statusMessage) : ("Midtrans error " + code));
   }
   return data;
 }

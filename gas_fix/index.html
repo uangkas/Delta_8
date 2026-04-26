@@ -3137,8 +3137,9 @@ body.tab-transaksi .nav-tabs {
                 if (continueBtn) continueBtn.disabled = false;
                 startMidtransStatusPolling();
             } catch (err) {
-                showNotif((err && err.message) ? err.message : 'Transaksi Midtrans gagal dibuat.', 'error');
-                setQrisStatusCopy('Gagal membuat QRIS pembayaran.');
+                const message = (err && err.message) ? err.message : 'Transaksi Midtrans gagal dibuat.';
+                showNotif(message, 'error');
+                setQrisStatusCopy(message);
             }
         }
 
