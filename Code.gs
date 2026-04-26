@@ -19,7 +19,7 @@ var MIDTRANS_CLIENT_KEY = "midtrans_client_key";
 var MIDTRANS_IS_PRODUCTION_KEY = "midtrans_is_production";
 var DEFAULT_MIDTRANS_SERVER_KEY = "";
 var DEFAULT_MIDTRANS_CLIENT_KEY = "";
-var DEFAULT_MIDTRANS_IS_PRODUCTION = true;
+var DEFAULT_MIDTRANS_IS_PRODUCTION = false;
 var ACTIVE_JSONP_CALLBACK = "";
 var WRITE_SESSION_TTL_SEC = 21600; // 6 hours
 var BACKUP_LAST_KEY_PREFIX = "backup_last_";
@@ -108,6 +108,7 @@ function doGet(e) {
     if (action === "createMidtransQris") return handleCreateMidtransQris_(e && e.parameter ? e.parameter : {}, e);
     if (action === "midtransStatus") return handleMidtransStatus_(e);
     if (action === "midtransHealth") return handleMidtransHealth_(e);
+    if (action === "midtransClientKey") return handleMidtransClientKey_(e);
     if (action === "adminPendingSnapshot") return handleAdminPendingSnapshot_(e);
     if (action === "adminPendingAction") return handleAdminPendingAction_(e);
     if (action === "backupProperties") return handleBackupProperties_(e);
@@ -222,6 +223,22 @@ function handleMidtransHealth_(e) {
   var config = assertMidtransConfigured_();
   var health = checkMidtransHealth_(config);
   return jsonResponse_(health);
+}
+
+function handleMidtransClientKey_(e) {
+  try {
+    var config = assertMidtransConfigured_();
+    return jsonResponse_({
+      ok: true,
+      clientKey: config.clientKey,
+      isProduction: config.isProduction
+    });
+  } catch (err) {
+    return jsonResponse_({
+      ok: false,
+      error: (err && err.message) ? err.message : String(err)
+    });
+  }
 }
 
 function maybeBroadcastFcmAfterWrite_(beforeData, afterData, payload, year) {
@@ -2952,15 +2969,15 @@ function buildMidtransLogText_(kat, memberName, year, months, status) {
   return String(kat || "").toUpperCase() + " - " + String(memberName || "").toUpperCase() + " - " + monthLabels.join(", ") + " - " + suffix;
 }
 
-function createMidtransQrisCharge_(payload, year) {
+function createMidtransSnapTransaction_(payload, year) {
   var config = assertMidtransConfigured_();
   var amount = Number(payload && payload.amount || 0);
   var months = normalizeMonthList_(payload && payload.months);
   if (amount <= 0) {
-    throw new Error("Nominal pembayaran Midtrans tidak valid.");
+    throw new Error("Nominal pembayaran QRIS tidak valid.");
   }
   if (!months.length) {
-    throw new Error("Bulan pembayaran Midtrans belum dipilih.");
+    throw new Error("Bulan pembayaran QRIS belum dipilih.");
   }
   var orderId = buildMidtransOrderId_(payload, year, months);
   var body = {
@@ -2988,31 +3005,83 @@ function createMidtransQrisCharge_(payload, year) {
   };
 
   var response = callMidtransApi_(config, "post", config.snapBase + "/snap/v1/transactions", body);
-  if (!response || !String(response.redirect_url || "").trim()) {
-    var responseSummary = {
-      statusCode: String(response && response.status_code || "").trim(),
-      statusMessage: String(response && response.status_message || "").trim(),
-      hasToken: !!String(response && response.token || "").trim(),
-      hasRedirectUrl: !!String(response && response.redirect_url || "").trim(),
-      keys: response && typeof response === "object" ? Object.keys(response) : []
-    };
-    throw new Error("Midtrans gagal membuat halaman pembayaran. " + JSON.stringify(responseSummary));
+  var midtransStatusCode = parseInt(response && response.status_code, 10);
+  var midtransStatusMessage = String(response && response.status_message || "").trim();
+  if ((midtransStatusCode && midtransStatusCode >= 400)) {
+    throw new Error(midtransStatusMessage || "Midtrans gagal membuat snap transaction.");
+  }
+  
+  return {
+    orderId: orderId,
+    transactionId: getMidtransTransactionIdFromResponse_(response),
+    transactionStatus: normalizeMidtransStatus_(response.transaction_status || "pending"),
+    paymentType: String(response.payment_type || "qris").trim(),
+    grossAmount: String(response.gross_amount || normalizeCurrencyAmountString_(amount)),
+    qrUrl: getMidtransQrUrlFromResponse_(response, config.apiBase),
+    qrString: String(response.qr_string || "").trim(),
+    snapToken: String(response.token || "").trim(),
+    snapRedirectUrl: String(response.redirect_url || "").trim(),
+    expiresAt: String(response.expiry_time || "").trim(),
+    rawSummary: buildMidtransResponseDebugSummary_(response),
+    raw: response
+  };
+}
+
+function createMidtransQrisCharge_(payload, year) {
+  var config = assertMidtransConfigured_();
+  var amount = Number(payload && payload.amount || 0);
+  var months = normalizeMonthList_(payload && payload.months);
+  if (amount <= 0) {
+    throw new Error("Nominal pembayaran QRIS tidak valid.");
+  }
+  if (!months.length) {
+    throw new Error("Bulan pembayaran QRIS belum dipilih.");
+  }
+  var orderId = buildMidtransOrderId_(payload, year, months);
+  var body = {
+    payment_type: "qris",
+    transaction_details: {
+      order_id: orderId,
+      gross_amount: amount
+    },
+    item_details: [{
+      id: "iuran-kas",
+      price: amount,
+      quantity: 1,
+      name: "Iuran Kas Delta 8 " + months.map(function(month) {
+        return pad2_(month) + "/" + String(year);
+      }).join(", ")
+    }],
+    customer_details: {
+      first_name: String(payload && payload.nama || "ANGGOTA").trim().toUpperCase()
+    },
+    qris: {
+      acquirer: "gopay"
+    },
+    custom_field1: JSON.stringify({
+      year: String(year),
+      kat: String(payload && payload.kat || "").trim().toUpperCase(),
+      id: String(payload && payload.id || "").trim(),
+      months: months
+    })
+  };
+
+  var response = callMidtransApi_(config, "post", "/v2/charge", body);
+  var midtransStatusCode = parseInt(response && response.status_code, 10);
+  var midtransStatusMessage = String(response && response.status_message || "").trim();
+  if ((midtransStatusCode && midtransStatusCode >= 400) || !isMidtransPendingStatus_(response && response.transaction_status || "")) {
+    throw new Error(midtransStatusMessage || "Midtrans gagal membuat transaksi QRIS.");
   }
   return {
     orderId: orderId,
-    transactionId: "",
-    transactionStatus: "pending",
-    paymentType: "snap",
+    transactionId: getMidtransTransactionIdFromResponse_(response),
+    transactionStatus: normalizeMidtransStatus_(response.transaction_status || "pending"),
+    paymentType: String(response.payment_type || "qris").trim(),
     grossAmount: String(response.gross_amount || normalizeCurrencyAmountString_(amount)),
-    qrUrl: "",
-    qrString: "",
+    qrUrl: getMidtransQrUrlFromResponse_(response, config.apiBase),
+    qrString: String(response.qr_string || "").trim(),
     expiresAt: String(response.expiry_time || "").trim(),
-    snapToken: String(response.token || "").trim(),
-    snapRedirectUrl: String(response.redirect_url || "").trim(),
-    rawSummary: {
-      hasSnapToken: !!String(response.token || "").trim(),
-      hasRedirectUrl: !!String(response.redirect_url || "").trim()
-    },
+    rawSummary: buildMidtransResponseDebugSummary_(response),
     raw: response
   };
 }
@@ -3055,7 +3124,7 @@ function handleCreateMidtransQris_(payload, e) {
     throw new Error("Nominal pembayaran QRIS tidak valid.");
   }
 
-  var charge = createMidtransQrisCharge_(payload, year);
+  var charge = createMidtransSnapTransaction_(payload, year);
   applyMidtransTransactionStateToMember_(member, year, months, charge, {
     data: data,
     addLog: true,
@@ -3073,6 +3142,8 @@ function handleCreateMidtransQris_(payload, e) {
     grossAmount: charge.grossAmount,
     qrUrl: charge.qrUrl,
     qrString: charge.qrString,
+    snapToken: charge.snapToken,
+    snapRedirectUrl: charge.snapRedirectUrl,
     expiresAt: charge.expiresAt,
     debug: charge.rawSummary
   });
@@ -3409,11 +3480,7 @@ function callMidtransApi_(config, method, path, payload) {
     options.payload = JSON.stringify(payload);
   }
 
-  var requestUrl = String(path || "").trim();
-  if (!/^https?:\/\//i.test(requestUrl)) {
-    requestUrl = String(config.apiBase || MIDTRANS_SANDBOX_API_BASE) + requestUrl;
-  }
-  var resp = UrlFetchApp.fetch(requestUrl, options);
+  var resp = UrlFetchApp.fetch(String(config.apiBase || MIDTRANS_SANDBOX_API_BASE) + path, options);
   var code = resp.getResponseCode();
   var text = resp.getContentText() || "{}";
   var data = {};

@@ -32,6 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GAS_WEBAPP_URL: https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg/exec
+      GAS_DEPLOYMENT_ID: AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg
 
     steps:
       - name: Checkout repository
@@ -104,7 +105,7 @@ jobs:
 
       - name: Redeploy web app URL existing
         working-directory: gas_fix
-        run: clasp deploy --deploymentId AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg --versionNumber ${{ steps.version.outputs.number }} --description "GitHub Actions ${GITHUB_SHA}"
+        run: clasp deploy --deploymentId ${{ env.GAS_DEPLOYMENT_ID }} --versionNumber ${{ steps.version.outputs.number }} --description "GitHub Actions ${GITHUB_SHA}"
 
       - name: Run backend self-test
         shell: pwsh

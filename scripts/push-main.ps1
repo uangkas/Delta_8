@@ -9,6 +9,11 @@ $ErrorActionPreference = "Stop"
 
 & (Join-Path $PSScriptRoot "sync-deploy-sources.ps1")
 
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Gagal sinkronisasi source. Push dibatalkan."
+    exit $LASTEXITCODE
+}
+
 git add .
 
 $status = git status --short
@@ -18,4 +23,5 @@ if (-not $status) {
 }
 
 git commit -m $Message
+git pull $Remote $Branch --rebase
 git push $Remote "HEAD:$Branch"
