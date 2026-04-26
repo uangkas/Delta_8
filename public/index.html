@@ -483,6 +483,46 @@
             padding: 16px;
             background: rgba(255,255,255,0.03);
         }
+        .qris-modal-title {
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            color: var(--accent-color);
+        }
+        .qris-modal-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .qris-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .qris-snap-card {
+            border: 1px dashed rgba(212, 175, 55, 0.55);
+            border-radius: 14px;
+            padding: 12px;
+            background: rgba(212, 175, 55, 0.07);
+        }
+        .qris-snap-card.is-hidden {
+            display: none;
+        }
+        .qris-snap-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
+        }
+        .qris-snap-copy {
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.45;
+            margin-bottom: 10px;
+        }
         .qris-code-image {
             width: 100%;
             max-width: 260px;
@@ -506,6 +546,14 @@
             padding: 16px;
             color: var(--text-muted);
             margin: 0 auto;
+        }
+        .qris-empty-state.qris-snap-state {
+            border-style: solid;
+            background:
+                linear-gradient(135deg, rgba(212,175,55,0.10), rgba(255,255,255,0.02)),
+                #101010;
+            color: var(--accent-color);
+            font-weight: 700;
         }
         .qris-amount {
             font-size: 1.4rem;
@@ -1177,7 +1225,7 @@ body.tab-transaksi .nav-tabs {
     <div class="modal" id="modalVerifyAuth" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">VERIFIKASI OTORITAS</h6><input type="text" id="inputEditorName" name="editor_verifikasi" class="form-control mb-2 text-center" placeholder="Nama Editor Terdaftar" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handleEditorNameInput(this)" onkeydown="if(event.key==='Enter'){focusPinAfterEditorCheck();}"><input type="password" id="inputPIN" name="pin_verifikasi" class="form-control mb-2 text-center" maxlength="4" placeholder="PIN 4 DIGIT" inputmode="numeric" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handlePinInput(this)" onkeydown="if(event.key==='Enter'){submitAuth();}"><div class="small auth-helper-text lh-sm">Hanya editor yang tercatat di sheet <b>allowed_editors</b> yang bisa edit, tambah, atau hapus data.</div></div></div></div></div>
     <div class="modal fade" id="modalPilihPembayaran" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3" id="payment-option-title">PILIH PEMBAYARAN</h6><div class="payment-option-wrap"><button type="button" class="payment-option-btn" id="payment-option-cash" onclick="chooseMemberPayment('CASH')">CASH</button><button type="button" class="payment-option-btn" id="payment-option-qris" onclick="chooseMemberPayment('QRIS')">QRIS</button><button type="button" class="payment-option-btn d-none" id="payment-option-continue" onclick="continuePendingMemberPayment()">LANJUTKAN PEMBAYARAN</button><button type="button" class="payment-option-btn d-none" id="payment-option-cancel" onclick="cancelMemberPendingPayment()">BATALKAN PEMBAYARAN</button></div><div class="small text-muted mt-3" id="payment-option-note">Pembayaran cash hanya bisa diproses dari halaman admin.</div></div></div></div></div>
     <div class="modal fade" id="modalPilihBulanBayar" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-2">PILIH BULAN</h6><div class="small text-muted mb-3">Bisa pilih lebih dari satu bulan. Bulan yang sudah lunas dinonaktifkan.</div><div id="payment-month-grid" class="month-option-grid"></div><div class="payment-month-summary"><div class="label" id="payment-month-selection-label">Belum ada bulan dipilih</div><div class="value" id="payment-month-total">Rp 0</div></div><button type="button" id="payment-month-continue" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueMemberPayment()" disabled>LANJUT</button></div></div></div></div>
-    <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PEMBAYARAN QRIS GOPAY</h6><div class="qris-preview-box"><div id="qris-code-wrap" class="mb-3"></div><button type="button" id="qris-open-snap-btn" class="btn btn-outline-warning w-100 fw-bold mb-3 d-none" onclick="openCurrentSnapPayment()">BUKA POPUP PEMBAYARAN GOPAY</button><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-3" id="qris-amount-value">Rp 0</div><div class="qris-detail">Scan QRIS berikut dengan aplikasi pembayaran Anda.</div><div class="qris-detail mt-3" id="qris-status-copy">Menyiapkan QRIS pembayaran...</div></div><button type="button" id="qris-continue-btn" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueQrisToAuth()">CEK STATUS PEMBAYARAN</button></div></div></div></div>
+    <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-1 qris-modal-title">PEMBAYARAN QRIS GOPAY</h6><div class="qris-modal-subtitle">Popup pembayaran tetap dibuka dari Midtrans, ringkasannya tampil di sini.</div><div class="qris-preview-box"><div class="qris-shell"><div id="qris-code-wrap" class="mb-1"></div><div id="qris-snap-card" class="qris-snap-card is-hidden"><div class="qris-snap-title">Popup Pembayaran</div><div class="qris-snap-copy" id="qris-snap-copy">Gunakan tombol di bawah untuk membuka popup pembayaran GoPay atau metode lain yang tersedia dari Midtrans.</div><button type="button" id="qris-open-snap-btn" class="btn btn-outline-warning w-100 fw-bold" onclick="openCurrentSnapPayment()">BUKA POPUP PEMBAYARAN GOPAY</button></div><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-0" id="qris-amount-value">Rp 0</div><div class="qris-detail">Scan QRIS berikut dengan aplikasi pembayaran Anda.</div><div class="qris-detail mt-2" id="qris-status-copy">Menyiapkan QRIS pembayaran...</div></div></div><button type="button" id="qris-continue-btn" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueQrisToAuth()">CEK STATUS PEMBAYARAN</button></div></div></div></div>
     <!-- Modal Upload Bukti Pembayaran -->
     <div class="modal fade" id="modalUploadBukti" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -2978,14 +3026,17 @@ body.tab-transaksi .nav-tabs {
         function renderQrisPlaceholder(message) {
             const wrap = document.getElementById('qris-code-wrap');
             if (!wrap) return;
-            wrap.innerHTML = `<div class="qris-empty-state">${message || 'Menyiapkan pembayaran Midtrans...'}</div>`;
+            const safeClass = /popup pembayaran|midtrans/i.test(String(message || '')) ? ' qris-snap-state' : '';
+            wrap.innerHTML = `<div class="qris-empty-state${safeClass}">${message || 'Menyiapkan pembayaran Midtrans...'}</div>`;
         }
 
-        function toggleSnapPaymentButton(visible, label = 'BUKA POPUP PEMBAYARAN GOPAY') {
+        function toggleSnapPaymentButton(visible, label = 'BUKA POPUP PEMBAYARAN GOPAY', copy = '') {
             const btn = document.getElementById('qris-open-snap-btn');
-            if (!btn) return;
-            btn.textContent = label;
-            btn.classList.toggle('d-none', !visible);
+            const card = document.getElementById('qris-snap-card');
+            const copyEl = document.getElementById('qris-snap-copy');
+            if (btn) btn.textContent = label;
+            if (copyEl && copy) copyEl.textContent = copy;
+            if (card) card.classList.toggle('is-hidden', !visible);
         }
 
         function setQrisStatusCopy(message) {
@@ -3234,11 +3285,11 @@ body.tab-transaksi .nav-tabs {
                     if (String(payment.snapPrimaryFlow || '') === 'snap_gopay_qris') {
                         renderQrisPlaceholder('Popup pembayaran GoPay akan membuka QRIS. Jika QR belum muncul, tekan tombol di bawah.');
                         setQrisStatusCopy('Tekan tombol GoPay untuk membuka popup pembayaran dan menampilkan QRIS.');
-                        toggleSnapPaymentButton(true, 'BUKA POPUP PEMBAYARAN GOPAY');
+                        toggleSnapPaymentButton(true, 'BUKA POPUP PEMBAYARAN GOPAY', 'Tombol ini membuka popup Midtrans dalam mode GoPay/QRIS. Setelah popup terbuka, QRIS akan ditampilkan oleh Midtrans.');
                     } else {
                         renderQrisPlaceholder('QRIS langsung tidak tersedia di akun ini. Gunakan popup pembayaran GoPay/Snap di bawah.');
                         setQrisStatusCopy('QRIS langsung tidak tersedia. Tekan tombol untuk membuka metode pembayaran yang aktif di merchant.');
-                        toggleSnapPaymentButton(true, 'BUKA POPUP PEMBAYARAN');
+                        toggleSnapPaymentButton(true, 'BUKA POPUP PEMBAYARAN', 'Merchant ini tidak mengembalikan QRIS langsung. Gunakan popup Midtrans untuk melihat metode pembayaran yang tersedia.');
                     }
                 } else if (payment.qrUrl || payment.qrString) {
                     toggleSnapPaymentButton(false);
