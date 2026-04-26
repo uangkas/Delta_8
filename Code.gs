@@ -109,6 +109,7 @@ function doGet(e) {
     if (action === "midtransStatus") return handleMidtransStatus_(e);
     if (action === "midtransHealth") return handleMidtransHealth_(e);
     if (action === "midtransClientKey") return handleMidtransClientKey_(e);
+    if (action === "midtransDebug") return handleMidtransDebug_(e);
     if (action === "adminPendingSnapshot") return handleAdminPendingSnapshot_(e);
     if (action === "adminPendingAction") return handleAdminPendingAction_(e);
     if (action === "backupProperties") return handleBackupProperties_(e);
@@ -262,6 +263,26 @@ function handleMidtransClientKey_(e) {
       error: (err && err.message) ? err.message : String(err)
     });
   }
+}
+
+function handleMidtransDebug_(e) {
+  var serverInfo = inspectPropSource_(MIDTRANS_SERVER_KEY);
+  var clientInfo = inspectPropSource_(MIDTRANS_CLIENT_KEY);
+  var modeInfo = inspectPropSource_(MIDTRANS_IS_PRODUCTION_KEY);
+  var config = getMidtransConfig_();
+  return jsonResponse_({
+    ok: true,
+    environment: config && config.isProduction ? "production" : "sandbox",
+    apiBase: String(config && config.apiBase || ""),
+    serverKey: maskSecretForDebug_(serverInfo.value),
+    clientKey: maskSecretForDebug_(clientInfo.value),
+    isProductionRaw: String(modeInfo.value || ""),
+    sources: {
+      serverKey: serverInfo.source,
+      clientKey: clientInfo.source,
+      isProduction: modeInfo.source
+    }
+  });
 }
 
 function maybeBroadcastFcmAfterWrite_(beforeData, afterData, payload, year) {
@@ -2684,6 +2705,31 @@ function getPropWithFirestoreFallback_(key) {
   if (value) return String(value);
   var secureProps = getSecurePropsFromFirestore_();
   return secureProps && secureProps[key] ? String(secureProps[key]) : "";
+}
+
+function inspectPropSource_(key) {
+  var scriptProps = PropertiesService.getScriptProperties();
+  var userProps = PropertiesService.getUserProperties();
+  var scriptValue = scriptProps.getProperty(key);
+  if (scriptValue) {
+    return { source: "script_properties", value: String(scriptValue) };
+  }
+  var userValue = userProps.getProperty(key);
+  if (userValue) {
+    return { source: "user_properties", value: String(userValue) };
+  }
+  var secureProps = getSecurePropsFromFirestore_();
+  if (secureProps && secureProps[key]) {
+    return { source: "firestore_secure_config", value: String(secureProps[key]) };
+  }
+  return { source: "missing", value: "" };
+}
+
+function maskSecretForDebug_(value) {
+  var raw = String(value || "").trim();
+  if (!raw) return "";
+  if (raw.length <= 8) return raw;
+  return raw.slice(0, 6) + "..." + raw.slice(-4);
 }
 
 function appendLog_(data, editor, aksi, ket) {
