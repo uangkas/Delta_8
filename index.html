@@ -3120,6 +3120,7 @@ body.tab-transaksi .nav-tabs {
                         qrString: created.qrString || '',
                         snapToken: created.snapToken || '',
                         snapRedirectUrl: created.snapRedirectUrl || '',
+                        fallbackToSnap: !!(created.debug && created.debug.fallbackToSnap),
                         expiresAt: created.expiresAt,
                         year: normalizeYearValue(created.year || params.y),
                         months: params.selectedMonths || []
@@ -3138,7 +3139,9 @@ body.tab-transaksi .nav-tabs {
 
                 currentMidtransPayment = payment;
                 renderQrisCode(payment.qrUrl || '', payment.qrString || '', payment.snapRedirectUrl || '');
-                if (payment.qrUrl || payment.qrString) {
+                if (payment.fallbackToSnap) {
+                    setQrisStatusCopy('QRIS direct belum tersedia. Sistem otomatis membuka halaman pembayaran Midtrans sebagai fallback.');
+                } else if (payment.qrUrl || payment.qrString) {
                     setQrisStatusCopy('QRIS siap dipindai. Setelah membayar, cek status di bawah ini.');
                 } else {
                     setQrisStatusCopy('Halaman pembayaran QRIS siap digunakan. Setelah membayar, cek status di bawah ini.');
