@@ -3198,8 +3198,8 @@ body.tab-transaksi .nav-tabs {
                     });
                 }
 
-                if (!payment.qrUrl && !payment.qrString) {
-                    throw new Error('Midtrans belum mengembalikan kode QRIS untuk transaksi ini.');
+                if (!payment.snapToken && !payment.qrUrl && !payment.qrString) {
+                    throw new Error('Midtrans belum mengembalikan token Snap atau kode QRIS untuk transaksi ini.');
                 }
 
                 currentMidtransPayment = payment;
