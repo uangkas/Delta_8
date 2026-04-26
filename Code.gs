@@ -3127,10 +3127,11 @@ function buildMidtransLogText_(kat, memberName, year, months, status) {
   return String(kat || "").toUpperCase() + " - " + String(memberName || "").toUpperCase() + " - " + monthLabels.join(", ") + " - " + suffix;
 }
 
-function createMidtransSnapTransaction_(payload, year) {
+function createMidtransSnapTransaction_(payload, year, options) {
   var config = assertMidtransConfigured_();
   var amount = Number(payload && payload.amount || 0);
   var months = normalizeMonthList_(payload && payload.months);
+  options = options || {};
   if (amount <= 0) {
     throw new Error("Nominal pembayaran QRIS tidak valid.");
   }
@@ -3143,7 +3144,6 @@ function createMidtransSnapTransaction_(payload, year) {
       order_id: orderId,
       gross_amount: amount
     },
-    enabled_payments: ["gopay"],
     item_details: [{
       id: "iuran-kas",
       price: amount,
@@ -3162,6 +3162,9 @@ function createMidtransSnapTransaction_(payload, year) {
       months: months
     })
   };
+  if (options.enabledPayments && options.enabledPayments.length) {
+    body.enabled_payments = options.enabledPayments.slice();
+  }
 
   var response = callMidtransApi_(config, "post", config.snapBase + "/snap/v1/transactions", body);
   var midtransStatusCode = parseInt(response && response.status_code, 10);
@@ -3246,11 +3249,22 @@ function createMidtransQrisCharge_(payload, year) {
 }
 
 function createMidtransQrisWithFallback_(payload, year) {
-  var snapCharge = createMidtransSnapTransaction_(payload, year);
-  snapCharge.rawSummary = snapCharge.rawSummary || {};
-  snapCharge.rawSummary.fallbackToSnap = false;
-  snapCharge.rawSummary.primaryFlow = "snap_gopay_qris";
-  return snapCharge;
+  try {
+    var snapCharge = createMidtransSnapTransaction_(payload, year, {
+      enabledPayments: ["gopay"]
+    });
+    snapCharge.rawSummary = snapCharge.rawSummary || {};
+    snapCharge.rawSummary.fallbackToSnap = false;
+    snapCharge.rawSummary.primaryFlow = "snap_gopay_qris";
+    return snapCharge;
+  } catch (err) {
+    var fallbackSnap = createMidtransSnapTransaction_(payload, year, {});
+    fallbackSnap.rawSummary = fallbackSnap.rawSummary || {};
+    fallbackSnap.rawSummary.fallbackToSnap = true;
+    fallbackSnap.rawSummary.primaryFlow = "snap_generic";
+    fallbackSnap.rawSummary.qrisDirectError = err && err.message ? err.message : String(err);
+    return fallbackSnap;
+  }
 }
 
 function checkMidtransHealth_(config) {
