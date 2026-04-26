@@ -3143,6 +3143,7 @@ function createMidtransSnapTransaction_(payload, year) {
       order_id: orderId,
       gross_amount: amount
     },
+    enabled_payments: ["gopay"],
     item_details: [{
       id: "iuran-kas",
       price: amount,
@@ -3245,11 +3246,11 @@ function createMidtransQrisCharge_(payload, year) {
 }
 
 function createMidtransQrisWithFallback_(payload, year) {
-  var directCharge = createMidtransQrisCharge_(payload, year);
-  directCharge.rawSummary = directCharge.rawSummary || {};
-  directCharge.rawSummary.fallbackToSnap = false;
-  directCharge.rawSummary.primaryFlow = "qris_direct";
-  return directCharge;
+  var snapCharge = createMidtransSnapTransaction_(payload, year);
+  snapCharge.rawSummary = snapCharge.rawSummary || {};
+  snapCharge.rawSummary.fallbackToSnap = false;
+  snapCharge.rawSummary.primaryFlow = "snap_gopay_qris";
+  return snapCharge;
 }
 
 function checkMidtransHealth_(config) {

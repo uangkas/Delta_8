@@ -2975,6 +2975,12 @@ body.tab-transaksi .nav-tabs {
             }
         }
 
+        function renderQrisPlaceholder(message) {
+            const wrap = document.getElementById('qris-code-wrap');
+            if (!wrap) return;
+            wrap.innerHTML = `<div class="qris-empty-state">${message || 'Menyiapkan pembayaran Midtrans...'}</div>`;
+        }
+
         function setQrisStatusCopy(message) {
             const statusEl = document.getElementById('qris-status-copy');
             if (statusEl) statusEl.textContent = message || '';
@@ -3002,6 +3008,75 @@ body.tab-transaksi .nav-tabs {
                 clearInterval(midtransStatusPollTimer);
                 midtransStatusPollTimer = null;
             }
+        }
+
+        let midtransSnapJsPromise = null;
+
+        async function ensureMidtransSnapJs() {
+            if (window.snap && typeof window.snap.pay === 'function') {
+                return window.snap;
+            }
+            if (midtransSnapJsPromise) {
+                return midtransSnapJsPromise;
+            }
+            midtransSnapJsPromise = (async () => {
+                const config = await fetchJson(`${CLOUD_URL}?action=midtransClientKey`, 20000);
+                const clientKey = String(config && config.clientKey || '').trim();
+                if (!clientKey) {
+                    throw new Error('Client key Midtrans belum tersedia.');
+                }
+                const snapBase = config && config.isProduction
+                    ? 'https://app.midtrans.com'
+                    : 'https://app.sandbox.midtrans.com';
+                await new Promise((resolve, reject) => {
+                    const existing = document.getElementById('midtrans-snap-js');
+                    if (existing) {
+                        existing.addEventListener('load', () => resolve(), { once: true });
+                        existing.addEventListener('error', () => reject(new Error('Snap.js Midtrans gagal dimuat.')), { once: true });
+                        return;
+                    }
+                    const script = document.createElement('script');
+                    script.id = 'midtrans-snap-js';
+                    script.src = `${snapBase}/snap/snap.js`;
+                    script.setAttribute('data-client-key', clientKey);
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error('Snap.js Midtrans gagal dimuat.'));
+                    document.head.appendChild(script);
+                });
+                if (!window.snap || typeof window.snap.pay !== 'function') {
+                    throw new Error('Snap.js Midtrans tidak siap digunakan.');
+                }
+                return window.snap;
+            })().catch((err) => {
+                midtransSnapJsPromise = null;
+                throw err;
+            });
+            return midtransSnapJsPromise;
+        }
+
+        async function openMidtransSnapQris(payment) {
+            if (!payment || !payment.snapToken) {
+                throw new Error('Token Snap Midtrans belum tersedia.');
+            }
+            const snap = await ensureMidtransSnapJs();
+            snap.pay(payment.snapToken, {
+                onSuccess: () => {
+                    syncMidtransPaymentStatus({ silent: true }).catch((err) => {
+                        console.error('midtrans success sync error:', err);
+                    });
+                },
+                onPending: () => {
+                    setQrisStatusCopy('Snap Midtrans sudah dibuka. Di desktop, QRIS akan langsung ditampilkan.');
+                },
+                onError: (result) => {
+                    const message = String(result && (result.status_message || result.message) || 'Snap Midtrans gagal dibuka.');
+                    setQrisStatusCopy(message);
+                    showNotif(message, 'error');
+                },
+                onClose: () => {
+                    setQrisStatusCopy('Snap Midtrans ditutup. Anda bisa buka lagi selama transaksi belum kedaluwarsa.');
+                }
+            });
         }
 
         function getMemberGatewayPayment(params) {
@@ -3098,14 +3173,14 @@ body.tab-transaksi .nav-tabs {
                 continueBtn.innerText = 'CEK STATUS PEMBAYARAN';
             }
             setQrisStatusCopy('Membuat QRIS pembayaran...');
-            renderQrisCode('', '');
+            renderQrisPlaceholder('Menyiapkan pembayaran Midtrans...');
             const modal = bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
             modal.show();
 
             try {
                 let created = null;
                 let payment = getMemberGatewayPayment(params);
-                if (!payment || (!payment.qrUrl && !payment.qrString)) {
+                if (!payment || (!payment.qrUrl && !payment.qrString && !payment.snapToken)) {
                     created = await createMidtransQrisTransaction(params);
                     payment = {
                         orderId: created.orderId,
@@ -3128,8 +3203,12 @@ body.tab-transaksi .nav-tabs {
                 }
 
                 currentMidtransPayment = payment;
-                renderQrisCode(payment.qrUrl || '', payment.qrString || '');
-                if (payment.qrUrl || payment.qrString) {
+                if (payment.snapToken) {
+                    renderQrisPlaceholder('Snap Midtrans akan langsung membuka QRIS untuk transaksi ini...');
+                    setQrisStatusCopy('Membuka Snap Midtrans. Di desktop, QRIS akan langsung ditampilkan.');
+                    await openMidtransSnapQris(payment);
+                } else if (payment.qrUrl || payment.qrString) {
+                    renderQrisCode(payment.qrUrl || '', payment.qrString || '');
                     setQrisStatusCopy('QRIS siap dipindai. Setelah membayar, cek status di bawah ini.');
                 } else {
                     setQrisStatusCopy('Kode QRIS belum tersedia.');
