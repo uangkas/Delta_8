@@ -3284,13 +3284,14 @@ body.tab-transaksi .nav-tabs {
                 if (payment.snapToken) {
                     if (String(payment.snapPrimaryFlow || '') === 'snap_gopay_qris') {
                         renderQrisPlaceholder('Popup pembayaran GoPay akan membuka QRIS. Jika QR belum muncul, tekan tombol di bawah.');
-                        setQrisStatusCopy('Tekan tombol GoPay untuk membuka popup pembayaran dan menampilkan QRIS.');
+                        setQrisStatusCopy('Membuka popup pembayaran GoPay untuk menampilkan QRIS...');
                         toggleSnapPaymentButton(true, 'BUKA POPUP PEMBAYARAN GOPAY', 'Tombol ini membuka popup Midtrans dalam mode GoPay/QRIS. Setelah popup terbuka, QRIS akan ditampilkan oleh Midtrans.');
                     } else {
                         renderQrisPlaceholder('QRIS langsung tidak tersedia di akun ini. Gunakan popup pembayaran GoPay/Snap di bawah.');
-                        setQrisStatusCopy('QRIS langsung tidak tersedia. Tekan tombol untuk membuka metode pembayaran yang aktif di merchant.');
+                        setQrisStatusCopy('Membuka popup pembayaran Midtrans...');
                         toggleSnapPaymentButton(true, 'BUKA POPUP PEMBAYARAN', 'Merchant ini tidak mengembalikan QRIS langsung. Gunakan popup Midtrans untuk melihat metode pembayaran yang tersedia.');
                     }
+                    await openMidtransSnapQris(payment);
                 } else if (payment.qrUrl || payment.qrString) {
                     toggleSnapPaymentButton(false);
                     renderQrisCode(payment.qrUrl || '', payment.qrString || '');
