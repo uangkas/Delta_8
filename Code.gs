@@ -3236,7 +3236,7 @@ function handleCreateMidtransQris_(payload, e) {
     throw new Error("Nominal pembayaran QRIS tidak valid.");
   }
 
-  var charge = createMidtransSnapTransaction_(payload, year);
+  var charge = createMidtransQrisCharge_(payload, year);
   applyMidtransTransactionStateToMember_(member, year, months, charge, {
     data: data,
     addLog: true,
