@@ -1175,7 +1175,7 @@ body.tab-transaksi .nav-tabs {
         <div class="menu-item p-2 px-3 text-danger" onclick="doDelete()">🗑️ Hapus</div>
     </div>
     <div class="modal" id="modalVerifyAuth" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">VERIFIKASI OTORITAS</h6><input type="text" id="inputEditorName" name="editor_verifikasi" class="form-control mb-2 text-center" placeholder="Nama Editor Terdaftar" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handleEditorNameInput(this)" onkeydown="if(event.key==='Enter'){focusPinAfterEditorCheck();}"><input type="password" id="inputPIN" name="pin_verifikasi" class="form-control mb-2 text-center" maxlength="4" placeholder="PIN 4 DIGIT" inputmode="numeric" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handlePinInput(this)" onkeydown="if(event.key==='Enter'){submitAuth();}"><div class="small auth-helper-text lh-sm">Hanya editor yang tercatat di sheet <b>allowed_editors</b> yang bisa edit, tambah, atau hapus data.</div></div></div></div></div>
-    <div class="modal fade" id="modalPilihPembayaran" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">PILIH PEMBAYARAN</h6><div class="payment-option-wrap"><button type="button" class="payment-option-btn" id="payment-option-cash" onclick="chooseMemberPayment('CASH')">CASH</button><button type="button" class="payment-option-btn" id="payment-option-qris" onclick="chooseMemberPayment('QRIS')">QRIS</button></div><div class="small text-muted mt-3" id="payment-option-note">Pembayaran cash hanya bisa diproses dari halaman admin.</div></div></div></div></div>
+    <div class="modal fade" id="modalPilihPembayaran" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3" id="payment-option-title">PILIH PEMBAYARAN</h6><div class="payment-option-wrap"><button type="button" class="payment-option-btn" id="payment-option-cash" onclick="chooseMemberPayment('CASH')">CASH</button><button type="button" class="payment-option-btn" id="payment-option-qris" onclick="chooseMemberPayment('QRIS')">QRIS</button><button type="button" class="payment-option-btn d-none" id="payment-option-continue" onclick="continuePendingMemberPayment()">LANJUTKAN PEMBAYARAN</button><button type="button" class="payment-option-btn d-none" id="payment-option-cancel" onclick="cancelMemberPendingPayment()">BATALKAN PEMBAYARAN</button></div><div class="small text-muted mt-3" id="payment-option-note">Pembayaran cash hanya bisa diproses dari halaman admin.</div></div></div></div></div>
     <div class="modal fade" id="modalPilihBulanBayar" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-2">PILIH BULAN</h6><div class="small text-muted mb-3">Bisa pilih lebih dari satu bulan. Bulan yang sudah lunas dinonaktifkan.</div><div id="payment-month-grid" class="month-option-grid"></div><div class="payment-month-summary"><div class="label" id="payment-month-selection-label">Belum ada bulan dipilih</div><div class="value" id="payment-month-total">Rp 0</div></div><button type="button" id="payment-month-continue" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueMemberPayment()" disabled>LANJUT</button></div></div></div></div>
     <!-- Modal Upload Bukti Pembayaran -->
     <div class="modal fade" id="modalUploadBukti" tabindex="-1">
@@ -1348,6 +1348,7 @@ body.tab-transaksi .nav-tabs {
         let pendingPaymentContext = null;
         let currentMidtransPayment = null;
         let midtransStatusPollTimer = null;
+        let paymentOptionMode = 'default';
         let midtransClientKey = null;
         let midtransIsProduction = false;
         let midtransSnapScriptPromise = null;
@@ -2796,23 +2797,131 @@ body.tab-transaksi .nav-tabs {
 
         function openPaymentOptions(params) {
             pendingPaymentContext = params ? { ...params, selectedMonths: [] } : null;
+            paymentOptionMode = getMemberPendingContext(params) ? 'pending' : 'default';
             syncPaymentOptionAvailability();
             bootstrap.Modal.getOrCreateInstance('#modalPilihPembayaran').show();
+        }
+
+        function getMemberPendingContext(params) {
+            if (!params) return null;
+            const year = normalizeYearValue(params.y);
+            const targetList = String(params.kat || '').toUpperCase() === 'HELPER' ? DB_HELPER : DB_DRIVER;
+            const person = targetList.find(item => String(item.id) === String(params.id));
+            const yearStatus = person && person.status ? person.status[year] : null;
+            if (!yearStatus) return null;
+            const months = Object.keys(yearStatus)
+                .map(Number)
+                .filter(month => yearStatus[month] === 'pending' || yearStatus[month] === 'gateway_pending')
+                .sort((a, b) => a - b);
+            if (!months.length) return null;
+            let statusSource = '';
+            months.forEach((month) => {
+                const currentStatus = String(yearStatus[month] || '').toLowerCase();
+                if (!statusSource) statusSource = currentStatus;
+                else if (statusSource !== currentStatus) statusSource = 'mixed_pending';
+            });
+            return {
+                ...params,
+                y: year,
+                selectedMonths: months,
+                statusSource: statusSource || 'pending'
+            };
         }
 
         function syncPaymentOptionAvailability() {
             const cashButton = document.getElementById('payment-option-cash');
             const qrisButton = document.getElementById('payment-option-qris');
+            const continueButton = document.getElementById('payment-option-continue');
+            const cancelButton = document.getElementById('payment-option-cancel');
             const noteEl = document.getElementById('payment-option-note');
+            const titleEl = document.getElementById('payment-option-title');
             const adminMode = isAdminMode();
+            const pendingContext = getMemberPendingContext(pendingPaymentContext);
+            const pendingMode = paymentOptionMode === 'pending' && !!pendingContext;
 
-            if (cashButton) cashButton.classList.toggle('d-none', !adminMode);
-            if (qrisButton) qrisButton.classList.toggle('w-100', !adminMode);
-            if (noteEl) {
-                noteEl.textContent = adminMode
-                    ? 'Admin bisa memproses pembayaran cash maupun QRIS dari panel ini.'
-                    : 'Pembayaran cash hanya bisa diproses dari halaman admin.';
+            if (cashButton) {
+                cashButton.classList.toggle('d-none', pendingMode || !adminMode);
             }
+            if (qrisButton) {
+                qrisButton.classList.toggle('d-none', pendingMode);
+                qrisButton.classList.toggle('w-100', !adminMode && !pendingMode);
+            }
+            if (continueButton) {
+                continueButton.classList.toggle('d-none', !pendingMode);
+            }
+            if (cancelButton) {
+                cancelButton.classList.toggle('d-none', !pendingMode);
+            }
+            if (titleEl) {
+                titleEl.textContent = pendingMode ? 'PEMBAYARAN PENDING' : 'PILIH PEMBAYARAN';
+            }
+            if (noteEl) {
+                if (pendingMode) {
+                    const monthText = pendingContext.selectedMonths.map(month => PAYMENT_MONTH_NAMES[month - 1]).join(', ');
+                    noteEl.textContent = `Status pembayaran masih pending untuk bulan ${monthText}. Anda bisa melanjutkan atau membatalkannya.`;
+                } else {
+                    noteEl.textContent = adminMode
+                        ? 'Admin bisa memproses pembayaran cash maupun QRIS dari panel ini.'
+                        : 'Pembayaran cash hanya bisa diproses dari halaman admin.';
+                }
+            }
+        }
+
+        async function cancelMemberPendingPayment() {
+            const pendingContext = getMemberPendingContext(pendingPaymentContext);
+            if (!pendingContext) {
+                showNotif('Tidak ada pembayaran pending yang bisa dibatalkan.', 'info');
+                return;
+            }
+            try {
+                const response = await postToAppsScript({
+                    action: 'cancelMemberPending',
+                    year: pendingContext.y,
+                    id: pendingContext.id,
+                    nama: pendingContext.nama,
+                    kat: pendingContext.kat,
+                    months: pendingContext.selectedMonths
+                });
+                if (response && response.data) {
+                    YEAR_CACHE[pendingContext.y] = cloneYearDataShape(response.data);
+                    YEAR_SIGNATURES[pendingContext.y] = buildYearSignature(response.data);
+                    saveYearCacheToStorage(pendingContext.y, response.data);
+                    if (pendingContext.y === Number(CURRENT_YEAR)) {
+                        applyYearData(pendingContext.y, response.data);
+                    }
+                } else {
+                    await loadFromCloudSmart(pendingContext.y, { silent: true, forceRender: true });
+                }
+                hideModalSafely('modalPilihPembayaran');
+                pendingPaymentContext = null;
+                paymentOptionMode = 'default';
+                showNotif('Pembayaran pending berhasil dibatalkan.', 'success');
+            } catch (err) {
+                showNotif((err && err.message) ? err.message : 'Pembatalan pembayaran pending gagal.', 'error');
+            }
+        }
+
+        function continuePendingMemberPayment() {
+            const pendingContext = getMemberPendingContext(pendingPaymentContext);
+            if (!pendingContext) {
+                showNotif('Tidak ada pembayaran pending yang bisa dilanjutkan.', 'info');
+                return;
+            }
+            hideModalSafely('modalPilihPembayaran');
+            if (pendingContext.statusSource === 'pending') {
+                showNotif('Pembayaran ini sedang menunggu verifikasi admin. Jika ingin ulang bayar, batalkan dulu status pending-nya.', 'info');
+                return;
+            }
+            if (pendingContext.statusSource === 'mixed_pending') {
+                showNotif('Ada campuran status pending. Batalkan dulu jika ingin merapikan status pembayaran.', 'info');
+                return;
+            }
+            pendingPaymentContext = {
+                ...pendingContext,
+                method: 'QRIS',
+                selectedMonths: pendingContext.selectedMonths.slice()
+            };
+            openQrisPaymentModal(pendingPaymentContext);
         }
 
         function updatePaymentMonthSummary() {
@@ -3041,7 +3150,9 @@ body.tab-transaksi .nav-tabs {
                         year: normalizeYearValue(created.year || params.y),
                         months: params.selectedMonths || []
                     };
-                    await loadFromCloudSmart(payment.year, { silent: true, forceRender: true });
+                    loadFromCloudSmart(payment.year, { silent: true, forceRender: true }).catch((refreshErr) => {
+                        console.warn('Background refresh after Midtrans create failed:', refreshErr);
+                    });
                 }
 
                 if (!payment.qrUrl && !payment.qrString && !payment.snapRedirectUrl) {
@@ -3523,6 +3634,8 @@ body.tab-transaksi .nav-tabs {
         window.continueQrisToAuth = continueQrisToAuth;
         window.submitQrisPaymentDirect = submitQrisPaymentDirect;
         window.chooseMemberPayment = chooseMemberPayment;
+        window.continuePendingMemberPayment = continuePendingMemberPayment;
+        window.cancelMemberPendingPayment = cancelMemberPendingPayment;
         window.triggerAdminPendingAction = triggerAdminPendingAction;
         window.showUploadBuktiModal = showUploadBuktiModal;
         window.removeUploadImage = removeUploadImage;

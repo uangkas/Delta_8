@@ -3,6 +3,7 @@ node_modules/
 .vscode/
 tmp_gas/
 scripts/*.local.ps1
+scripts/.auto-sync/
 firebase-service-account.json
 *.service-account.json
 *.secret.json

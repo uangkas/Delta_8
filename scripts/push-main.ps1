@@ -9,9 +9,9 @@ $ErrorActionPreference = "Stop"
 
 & (Join-Path $PSScriptRoot "sync-deploy-sources.ps1")
 
-if ($LASTEXITCODE -ne 0) {
+if (-not $?) {
     Write-Error "Gagal sinkronisasi source. Push dibatalkan."
-    exit $LASTEXITCODE
+    exit 1
 }
 
 git add .

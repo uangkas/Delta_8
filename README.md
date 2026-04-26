@@ -21,6 +21,7 @@ Contoh file dan script bantu:
 - script set secret GitHub ada di `scripts/set-github-secrets.ps1`
 - script panggil endpoint admin GAS ada di `scripts/invoke-gas-admin-endpoint.ps1`
 - script commit lalu push ke `main` ada di `scripts/push-main.ps1`
+- script watcher auto commit + auto deploy lokal ada di `scripts/start-auto-commit-deploy.ps1`
 
 Trigger deploy:
 
@@ -51,6 +52,18 @@ Cara pakai cepat:
 
 ```powershell
 .\scripts\push-main.ps1
+```
+
+Mode auto commit + auto deploy lokal:
+
+```powershell
+.\scripts\start-auto-commit-deploy.ps1
+```
+
+Untuk menghentikan:
+
+```powershell
+.\scripts\stop-auto-commit-deploy.ps1
 ```
 
 Catatan eksekusi:

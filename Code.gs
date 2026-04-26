@@ -147,6 +147,9 @@ function doPost(e) {
     if (payload.action === "submitPendingPayment") {
       return handleSubmitPendingPayment_(payload, e);
     }
+    if (payload.action === "cancelMemberPending") {
+      return handleCancelMemberPending_(payload, e);
+    }
     if (payload.action === "adminSetScriptProperties") {
       return handleAdminSetScriptProperties_(payload, e);
     }
@@ -201,6 +204,26 @@ function handleAdminPendingSnapshot_(e) {
   ensureYearData_(year);
   var data = readYearData_(year);
   return jsonResponse_(buildPendingPaymentSnapshot_(data, year));
+}
+
+function handleCancelMemberPending_(payload, e) {
+  var year = getTargetYear_(payload, e);
+  ensureYearData_(year);
+  var data = readYearData_(year);
+  var result = applyCancelMemberPending_(data, payload, year);
+  if (!result.ok) {
+    return jsonResponse_(result);
+  }
+  if (result.changed) {
+    writeYearData_(year, data);
+  }
+  return jsonResponse_({
+    ok: true,
+    year: year,
+    memberId: result.memberId,
+    months: result.months,
+    data: readYearData_(year)
+  });
 }
 
 function handleAdminPendingAction_(e) {
@@ -2959,6 +2982,95 @@ function applyMidtransTransactionStateToMember_(member, year, months, info, opti
   }
 
   return changed;
+}
+
+function applyCancelMemberPending_(data, payload, year) {
+  var yy = String(parseInt(year, 10) || new Date().getFullYear());
+  var member = findMemberByKatAndId_(data, payload && payload.kat, payload && payload.id);
+  if (!member) {
+    return {
+      ok: false,
+      error: "Anggota pending tidak ditemukan."
+    };
+  }
+
+  var months = normalizeMonthList_(payload && payload.months);
+  if (!months.length) {
+    return {
+      ok: false,
+      error: "Bulan pending belum dipilih."
+    };
+  }
+
+  var statusMap = member.status && member.status[yy] ? member.status[yy] : null;
+  if (!statusMap) {
+    return {
+      ok: false,
+      error: "Status pembayaran anggota tidak ditemukan."
+    };
+  }
+
+  member.pendingProofs = member.pendingProofs || {};
+  var proofMap = member.pendingProofs[yy] || {};
+  var gatewayMap = member.gatewayPayments && member.gatewayPayments[yy] ? member.gatewayPayments[yy] : {};
+  var changed = false;
+  var cancelledMonths = [];
+
+  for (var i = 0; i < months.length; i++) {
+    var month = months[i];
+    var currentStatus = String(statusMap[month] || "").trim().toLowerCase();
+    if (currentStatus !== "pending" && currentStatus !== "gateway_pending") {
+      continue;
+    }
+    delete statusMap[month];
+    if (proofMap[month]) {
+      delete proofMap[month];
+    }
+    if (gatewayMap[month]) {
+      delete gatewayMap[month];
+    }
+    cancelledMonths.push(month);
+    changed = true;
+  }
+
+  if (!cancelledMonths.length) {
+    return {
+      ok: false,
+      error: "Tidak ada pembayaran pending yang bisa dibatalkan."
+    };
+  }
+
+  if (member.pendingProofs && member.pendingProofs[yy] && !Object.keys(member.pendingProofs[yy]).length) {
+    delete member.pendingProofs[yy];
+  }
+  if (member.pendingProofs && !Object.keys(member.pendingProofs).length) {
+    delete member.pendingProofs;
+  }
+  if (member.gatewayPayments && member.gatewayPayments[yy] && !Object.keys(member.gatewayPayments[yy]).length) {
+    delete member.gatewayPayments[yy];
+  }
+  if (member.gatewayPayments && !Object.keys(member.gatewayPayments).length) {
+    delete member.gatewayPayments;
+  }
+  if (member.status && member.status[yy] && !Object.keys(member.status[yy]).length) {
+    delete member.status[yy];
+  }
+
+  appendLog_(
+    data,
+    "MEMBER",
+    "IURAN",
+    String(payload && payload.kat || "").toUpperCase() + " - " + String(member.nama || "").toUpperCase() + " - " + cancelledMonths.map(function(month) {
+      return pad2_(month) + "/" + yy;
+    }).join(", ") + " - [DIBATALKAN OLEH MEMBER]"
+  );
+
+  return {
+    ok: true,
+    changed: changed,
+    memberId: String(member.id || ""),
+    months: cancelledMonths
+  };
 }
 
 function buildMidtransLogText_(kat, memberName, year, months, status) {
