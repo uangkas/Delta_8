@@ -3480,7 +3480,11 @@ function callMidtransApi_(config, method, path, payload) {
     options.payload = JSON.stringify(payload);
   }
 
-  var resp = UrlFetchApp.fetch(String(config.apiBase || MIDTRANS_SANDBOX_API_BASE) + path, options);
+  var requestUrl = String(path || "").trim();
+  if (!/^https?:\/\//i.test(requestUrl)) {
+    requestUrl = String(config.apiBase || MIDTRANS_SANDBOX_API_BASE) + requestUrl;
+  }
+  var resp = UrlFetchApp.fetch(requestUrl, options);
   var code = resp.getResponseCode();
   var text = resp.getContentText() || "{}";
   var data = {};
