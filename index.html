@@ -1225,6 +1225,7 @@ body.tab-transaksi .nav-tabs {
     <div class="modal" id="modalVerifyAuth" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3">VERIFIKASI OTORITAS</h6><input type="text" id="inputEditorName" name="editor_verifikasi" class="form-control mb-2 text-center" placeholder="Nama Editor Terdaftar" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handleEditorNameInput(this)" onkeydown="if(event.key==='Enter'){focusPinAfterEditorCheck();}"><input type="password" id="inputPIN" name="pin_verifikasi" class="form-control mb-2 text-center" maxlength="4" placeholder="PIN 4 DIGIT" inputmode="numeric" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" oninput="handlePinInput(this)" onkeydown="if(event.key==='Enter'){submitAuth();}"><div class="small auth-helper-text lh-sm">Hanya editor yang tercatat di sheet <b>allowed_editors</b> yang bisa edit, tambah, atau hapus data.</div></div></div></div></div>
     <div class="modal fade" id="modalPilihPembayaran" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-3" id="payment-option-title">PILIH PEMBAYARAN</h6><div class="payment-option-wrap"><button type="button" class="payment-option-btn" id="payment-option-cash" onclick="chooseMemberPayment('CASH')">CASH</button><button type="button" class="payment-option-btn" id="payment-option-qris" onclick="chooseMemberPayment('QRIS')">QRIS</button><button type="button" class="payment-option-btn d-none" id="payment-option-continue" onclick="continuePendingMemberPayment()">LANJUTKAN PEMBAYARAN</button><button type="button" class="payment-option-btn d-none" id="payment-option-cancel" onclick="cancelMemberPendingPayment()">BATALKAN PEMBAYARAN</button></div><div class="small text-muted mt-3" id="payment-option-note">Pembayaran cash hanya bisa diproses dari halaman admin.</div></div></div></div></div>
     <div class="modal fade" id="modalPilihBulanBayar" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-2">PILIH BULAN</h6><div class="small text-muted mb-3">Bisa pilih lebih dari satu bulan. Bulan yang sudah lunas dinonaktifkan.</div><div id="payment-month-grid" class="month-option-grid"></div><div class="payment-month-summary"><div class="label" id="payment-month-selection-label">Belum ada bulan dipilih</div><div class="value" id="payment-month-total">Rp 0</div></div><button type="button" id="payment-month-continue" class="btn btn-warning w-100 fw-bold mt-3" onclick="continueMemberPayment()" disabled>LANJUT</button></div></div></div></div>
+    <div class="modal fade" id="modalQrisPayment" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-body p-4 text-center"><h6 class="fw-bold mb-2 qris-modal-title">RINCIAN PEMBAYARAN QRIS</h6><div class="qris-modal-subtitle">Periksa rincian berikut sebelum melanjutkan ke popup pembayaran Midtrans.</div><div class="qris-preview-box"><div class="qris-shell"><div class="qris-detail mb-1" id="qris-member-info">-</div><div class="qris-detail mb-2" id="qris-month-info">-</div><div class="qris-amount mb-0" id="qris-amount-value">Rp 0</div><div class="qris-detail mt-2" id="qris-status-copy">Tekan lanjutkan untuk membuka popup pembayaran.</div></div></div><div class="d-flex gap-2 mt-3"><button type="button" class="btn btn-outline-light w-50 fw-bold" onclick="cancelQrisPaymentFlow()">BATALKAN</button><button type="button" id="qris-continue-btn" class="btn btn-warning w-50 fw-bold" onclick="continueQrisToAuth()">LANJUTKAN</button></div></div></div></div></div>
     <!-- Modal Upload Bukti Pembayaran -->
     <div class="modal fade" id="modalUploadBukti" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -3278,69 +3279,20 @@ body.tab-transaksi .nav-tabs {
                 ? `Bulan: ${params.selectedMonths.map(month => PAYMENT_MONTH_NAMES[month - 1]).join(', ')}`
                 : 'Bulan belum dipilih';
             if (amountInfo) amountInfo.innerText = `Rp ${amount.toLocaleString('id-ID')}`;
+            if (continueBtn) {
+                continueBtn.disabled = false;
+                continueBtn.innerText = 'LANJUTKAN';
+            }
 
             pendingPaymentContext = params || null;
-            if (continueBtn) {
-                continueBtn.disabled = true;
-                continueBtn.innerText = 'CEK STATUS PEMBAYARAN';
-            }
-            toggleSnapPaymentButton(false);
-            setQrisStatusCopy('Membuat QRIS pembayaran...');
-            renderQrisPlaceholder('Menyiapkan pembayaran Midtrans...');
+            setQrisStatusCopy('Tekan lanjutkan untuk membuka popup pembayaran.');
             const modal = bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
             modal.show();
+        }
 
-            try {
-                let created = null;
-                let payment = getMemberGatewayPayment(params);
-                if (!payment || (!payment.qrUrl && !payment.qrString && !payment.snapToken)) {
-                    created = await createMidtransQrisTransaction(params);
-                    payment = {
-                        orderId: created.orderId,
-                        transactionId: created.transactionId,
-                        transactionStatus: created.transactionStatus,
-                        qrUrl: created.qrUrl,
-                        qrString: created.qrString || '',
-                        snapToken: created.snapToken || '',
-                        snapPrimaryFlow: created.debug && created.debug.primaryFlow ? created.debug.primaryFlow : '',
-                        expiresAt: created.expiresAt,
-                        year: normalizeYearValue(created.year || params.y),
-                        months: params.selectedMonths || []
-                    };
-                    loadFromCloudSmart(payment.year, { silent: true, forceRender: true }).catch((refreshErr) => {
-                        console.warn('Background refresh after Midtrans create failed:', refreshErr);
-                    });
-                }
-
-                if (!payment.snapToken && !payment.qrUrl && !payment.qrString) {
-                    throw new Error('Midtrans belum mengembalikan token Snap atau kode QRIS untuk transaksi ini.');
-                }
-
-                currentMidtransPayment = payment;
-                if (payment.snapToken) {
-                    if (String(payment.snapPrimaryFlow || '') === 'snap_gopay_qris') {
-                        renderQrisPlaceholder('Detail transaksi siap. Tekan lanjut pembayaran untuk membuka popup GoPay dan menampilkan QRIS.');
-                        setQrisStatusCopy('Tekan lanjut pembayaran untuk membuka popup GoPay/QRIS.');
-                    } else {
-                        renderQrisPlaceholder('Detail transaksi siap. Tekan lanjut pembayaran untuk membuka popup Midtrans.');
-                        setQrisStatusCopy('QRIS langsung tidak tersedia. Tekan lanjut pembayaran untuk membuka metode yang tersedia.');
-                    }
-                } else if (payment.qrUrl || payment.qrString) {
-                    toggleSnapPaymentButton(false);
-                    renderQrisCode(payment.qrUrl || '', payment.qrString || '');
-                    setQrisStatusCopy('QRIS siap dipindai. Setelah membayar, cek status di bawah ini.');
-                } else {
-                    toggleSnapPaymentButton(false);
-                    setQrisStatusCopy('Kode QRIS belum tersedia.');
-                }
-                if (continueBtn) continueBtn.disabled = false;
-                startMidtransStatusPolling();
-            } catch (err) {
-                toggleSnapPaymentButton(false);
-                const message = (err && err.message) ? err.message : 'Transaksi Midtrans gagal dibuat.';
-                showNotif(message, 'error');
-                setQrisStatusCopy(message);
-            }
+        function cancelQrisPaymentFlow() {
+            pendingPaymentContext = null;
+            hideModalSafely('modalQrisPayment');
         }
 
         function chooseMemberPayment(method) {
@@ -3407,12 +3359,7 @@ body.tab-transaksi .nav-tabs {
             }
             if (String(params.method || '').toUpperCase() === 'QRIS') {
                 pendingPaymentContext = params;
-                try {
-                    await launchQrisSnapPayment(params);
-                } catch (err) {
-                    console.error('launchQrisSnapPayment error:', err);
-                    showNotif((err && err.message) ? err.message : 'Popup pembayaran QRIS gagal dibuka.', 'error');
-                }
+                await openQrisPaymentModal(params);
                 return;
             }
             askAuth('bayar_member', params);
@@ -3465,10 +3412,26 @@ body.tab-transaksi .nav-tabs {
 
         async function continueQrisToAuth() {
             try {
-                await openCurrentSnapPayment();
+                if (!pendingPaymentContext) {
+                    showNotif('Data pembayaran tidak ditemukan. Silakan mulai lagi.', 'error');
+                    return;
+                }
+                const continueBtn = document.getElementById('qris-continue-btn');
+                if (continueBtn) {
+                    continueBtn.disabled = true;
+                    continueBtn.innerText = 'MEMBUKA...';
+                }
+                hideModalSafely('modalQrisPayment');
+                await launchQrisSnapPayment(pendingPaymentContext);
             } catch (err) {
                 console.error('Error in continueQrisToAuth:', err);
                 showNotif((err && err.message) ? err.message : 'Popup pembayaran belum bisa dibuka sekarang.', 'error');
+            } finally {
+                const continueBtn = document.getElementById('qris-continue-btn');
+                if (continueBtn) {
+                    continueBtn.disabled = false;
+                    continueBtn.innerText = 'LANJUTKAN';
+                }
             }
         }
 
