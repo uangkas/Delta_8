@@ -1495,7 +1495,11 @@ function readYearData_(year) {
   var ss = getOrCreateSpreadsheet_();
   var sheet = ensureYearSheet_(ss, year);
   migrateYearSheetLayoutIfNeeded_(sheet, year);
-  return readYearSheet_(sheet, year);
+  var data = readYearSheet_(sheet, year);
+  if (cleanupExpiredGatewayPayments_(data, year)) {
+    writeYearSheet_(sheet, normalizePayload_(data), year);
+  }
+  return data;
 }
 
 function getSpreadsheetInfo_() {
@@ -2976,7 +2980,7 @@ function applyMidtransTransactionStateToMember_(member, year, months, info, opti
         changed = true;
       }
     } else if (isMidtransFailureStatus_(transactionStatus)) {
-      if (member.status[yy][mm] === "gateway_pending") {
+      if (member.status[yy][mm] === "gateway_pending" || member.status[yy][mm] === "pending") {
         delete member.status[yy][mm];
         changed = true;
       }
@@ -3744,6 +3748,66 @@ function ensureMemberGatewayPaymentsYear_(member, year) {
   if (!member.gatewayPayments) member.gatewayPayments = {};
   if (!member.gatewayPayments[year]) member.gatewayPayments[year] = {};
   return member.gatewayPayments[year];
+}
+
+function cleanupExpiredGatewayPayments_(data, year) {
+  var yy = String(year || new Date().getFullYear());
+  var nowTs = Date.now();
+  var changed = false;
+  var lists = [Array.isArray(data && data.driver) ? data.driver : [], Array.isArray(data && data.helper) ? data.helper : []];
+
+  for (var li = 0; li < lists.length; li++) {
+    var members = lists[li];
+    for (var i = 0; i < members.length; i++) {
+      var member = members[i] || {};
+      var statusMap = member.status && member.status[yy] ? member.status[yy] : null;
+      var gatewayMap = member.gatewayPayments && member.gatewayPayments[yy] ? member.gatewayPayments[yy] : null;
+      var proofMap = member.pendingProofs && member.pendingProofs[yy] ? member.pendingProofs[yy] : null;
+      if (!statusMap || !gatewayMap) continue;
+
+      Object.keys(gatewayMap).forEach(function(monthKey) {
+        var gateway = gatewayMap[monthKey] || {};
+        var currentStatus = String(statusMap[monthKey] || "").trim().toLowerCase();
+        if (currentStatus !== "gateway_pending" && currentStatus !== "pending") return;
+
+        var remoteStatus = normalizeMidtransStatus_(gateway.transactionStatus || "");
+        var expiresAtTs = parseGatewayExpiryTime_(gateway.expiresAt);
+        var isExpiredByClock = expiresAtTs > 0 && expiresAtTs <= nowTs;
+        var isExpiredByStatus = isMidtransFailureStatus_(remoteStatus);
+        if (!isExpiredByClock && !isExpiredByStatus) return;
+
+        delete statusMap[monthKey];
+        delete gatewayMap[monthKey];
+        if (proofMap && proofMap[monthKey]) delete proofMap[monthKey];
+        changed = true;
+      });
+
+      if (proofMap && !Object.keys(proofMap).length) {
+        delete member.pendingProofs[yy];
+      }
+      if (member.pendingProofs && !Object.keys(member.pendingProofs).length) {
+        delete member.pendingProofs;
+      }
+      if (gatewayMap && !Object.keys(gatewayMap).length) {
+        delete member.gatewayPayments[yy];
+      }
+      if (member.gatewayPayments && !Object.keys(member.gatewayPayments).length) {
+        delete member.gatewayPayments;
+      }
+      if (statusMap && !Object.keys(statusMap).length) {
+        delete member.status[yy];
+      }
+    }
+  }
+
+  return changed;
+}
+
+function parseGatewayExpiryTime_(value) {
+  var raw = String(value || "").trim();
+  if (!raw) return 0;
+  var ts = new Date(raw).getTime();
+  return isNaN(ts) ? 0 : ts;
 }
 
 function findMemberByKatAndId_(data, kat, id) {
