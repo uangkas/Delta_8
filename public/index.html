@@ -1090,7 +1090,6 @@ body.tab-transaksi .nav-tabs {
     <div class="container-fluid" id="app-content">
         <div id="header-section" class="text-center pt-4 pb-1">
             <h3 class="judul-utama">DATA UANG KAS DRIVER HELPER DELTA 8</h3>
-            <p id="sync-status" class="small fw-bold" style="color: var(--text-muted); letter-spacing: 3px; margin: 0; font-size: 10px;">☁️ MENGHUBUNGKAN...</p>
             <div class="theme-container d-flex justify-content-center gap-3 mt-3">
                 <div id="dot-luxury" class="theme-dot active" style="background: #d4af37;" onclick="setTheme('luxury')"></div>
                 <div id="dot-emerald" class="theme-dot" style="background: #10b981;" onclick="setTheme('emerald')"></div>
@@ -1586,6 +1585,11 @@ body.tab-transaksi .nav-tabs {
                 showNotif(next.writeToken ? 'Write token disimpan' : 'Write token dikosongkan', 'info');
             }
             return next;
+        }
+
+        function setSyncStatusText(text) {
+            const status = document.getElementById('sync-status');
+            if (status) status.innerText = text;
         }
 
         function getActiveEditor() {
