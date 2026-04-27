@@ -3334,7 +3334,7 @@ function handleCreateMidtransQris_(payload, e) {
   });
 }
 
-function applyMidtransStatusByOrderId_(data, orderId, statusResponse, preferredYear) {
+function applyMidtransStatusByOrderId_(data, orderId, statusResponse, preferredYear, config) {
   var found = findMemberByMidtransOrderId_(data, orderId, preferredYear);
   if (!found || !found.member) {
     return {
@@ -3368,7 +3368,7 @@ function applyMidtransStatusByOrderId_(data, orderId, statusResponse, preferredY
     transactionStatus: normalizeMidtransStatus_(statusResponse.transaction_status || ""),
     paymentType: String(statusResponse.payment_type || "qris").trim(),
     grossAmount: String(statusResponse.gross_amount || "").trim(),
-    qrUrl: getMidtransQrUrlFromResponse_(statusResponse, config.apiBase),
+    qrUrl: getMidtransQrUrlFromResponse_(statusResponse, config && config.apiBase),
     qrString: String(statusResponse.qr_string || "").trim(),
     expiresAt: String(statusResponse.expiry_time || "").trim(),
     snapToken: String(existingGateway.snapToken || "").trim(),
@@ -3403,7 +3403,7 @@ function handleMidtransStatus_(e) {
 
   ensureYearData_(year || new Date().getFullYear());
   var data = readYearData_(year || new Date().getFullYear());
-  var applied = applyMidtransStatusByOrderId_(data, orderId, statusResponse, year);
+  var applied = applyMidtransStatusByOrderId_(data, orderId, statusResponse, year, config);
   if (applied.ok && applied.changed) {
     writeYearData_(applied.year, data);
   }
@@ -3438,7 +3438,8 @@ function handleMidtransNotification_(payload) {
   var year = parseMidtransYearFromOrderId_(orderId) || String(new Date().getFullYear());
   ensureYearData_(year);
   var data = readYearData_(year);
-  var applied = applyMidtransStatusByOrderId_(data, orderId, payload, year);
+  var config = assertMidtransConfigured_();
+  var applied = applyMidtransStatusByOrderId_(data, orderId, payload, year, config);
   if (applied.ok && applied.changed) {
     writeYearData_(applied.year, data);
   }
