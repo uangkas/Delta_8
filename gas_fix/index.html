@@ -3359,12 +3359,7 @@ body.tab-transaksi .nav-tabs {
             }
             if (String(params.method || '').toUpperCase() === 'QRIS') {
                 pendingPaymentContext = params;
-                try {
-                    await launchQrisSnapPayment(params);
-                } catch (err) {
-                    console.error('launchQrisSnapPayment error:', err);
-                    showNotif((err && err.message) ? err.message : 'Popup pembayaran QRIS gagal dibuka.', 'error');
-                }
+                await openQrisPaymentModal(params);
                 return;
             }
             askAuth('bayar_member', params);
