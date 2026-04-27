@@ -2849,7 +2849,7 @@ function applyPendingPaymentSubmission_(data, payload, year) {
   }
   appendLog_(
     data,
-    "WEB QRIS",
+    normalizeEditorName_(member.nama || kat),
     "IURAN",
     kat + " - " + String(member.nama || "").toUpperCase() + " - " + monthLabels.join(", ") + " - [PENDING VERIFIKASI QRIS]"
   );
@@ -3313,7 +3313,7 @@ function handleCreateMidtransQris_(payload, e) {
   applyMidtransTransactionStateToMember_(member, year, months, charge, {
     data: data,
     addLog: true,
-    editor: "MIDTRANS",
+    editor: normalizeEditorName_(member.nama || (payload && payload.nama) || "MIDTRANS"),
     logText: buildMidtransLogText_(payload && payload.kat, member.nama, year, months, charge.transactionStatus)
   });
   writeYearData_(year, data);
@@ -3378,7 +3378,7 @@ function applyMidtransStatusByOrderId_(data, orderId, statusResponse, preferredY
   var changed = applyMidtransTransactionStateToMember_(member, yy, months, info, {
     data: data,
     addLog: true,
-    editor: "MIDTRANS",
+    editor: normalizeEditorName_(member.nama || found.kat || "MIDTRANS"),
     logText: buildMidtransLogText_(found.kat, member.nama, yy, months, info.transactionStatus)
   });
 
