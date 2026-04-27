@@ -1609,15 +1609,36 @@ body.tab-transaksi .nav-tabs {
         };
 
         function updateNotificationUI(state = {}) {
-            const button = document.getElementById('btn-enable-notif');
             const token = state.token !== undefined ? state.token : (localStorage.getItem(FCM_TOKEN_KEY) || '');
             const permission = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
             const isActive = permission === 'granted' && !!token;
+            if (isActive) localStorage.removeItem(NOTIF_PROMPT_DISMISSED_KEY);
+        }
 
-            if (button) {
-                button.style.display = isActive ? 'none' : 'block';
-                button.innerText = 'AKTIFKAN NOTIFIKASI';
-            }
+        function dismissNotificationPrompt(persist = true) {
+            if (persist) localStorage.setItem(NOTIF_PROMPT_DISMISSED_KEY, '1');
+            hideModalSafely('modalNotifPermission');
+        }
+
+        async function confirmNotificationPrompt() {
+            dismissNotificationPrompt(false);
+            await enableNotifications();
+        }
+
+        function shouldPromptNotificationActivation() {
+            if (typeof window === 'undefined') return false;
+            if (!window.isSecureContext || !('serviceWorker' in navigator) || !('Notification' in window)) return false;
+            if (Notification.permission !== 'default') return false;
+            if (String(localStorage.getItem(FCM_TOKEN_KEY) || '').trim()) return false;
+            return localStorage.getItem(NOTIF_PROMPT_DISMISSED_KEY) !== '1';
+        }
+
+        function maybePromptNotificationActivation() {
+            if (!shouldPromptNotificationActivation()) return;
+            window.setTimeout(() => {
+                if (typeof hasOpenBlockingModal === 'function' && hasOpenBlockingModal()) return;
+                bootstrap.Modal.getOrCreateInstance('#modalNotifPermission').show();
+            }, 700);
         }
 
         function jsonpRequest(url, timeoutMs = 12000) {
@@ -2094,6 +2115,8 @@ body.tab-transaksi .nav-tabs {
         }
 
         window.enableNotifications = enableNotifications;
+        window.confirmNotificationPrompt = confirmNotificationPrompt;
+        window.dismissNotificationPrompt = dismissNotificationPrompt;
 
         async function restoreNotificationState() {
             updateNotificationUI();
@@ -4758,6 +4781,7 @@ async function syncAll() {
     startAutoSync();
     restoreNotificationState();
     applyLaunchContext();
+    maybePromptNotificationActivation();
 
 };
        let currentSearch = '';
