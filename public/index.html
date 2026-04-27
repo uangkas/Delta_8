@@ -1090,8 +1090,7 @@ body.tab-transaksi .nav-tabs {
     <div class="container-fluid" id="app-content">
         <div id="header-section" class="text-center pt-4 pb-1">
             <h3 class="judul-utama">DATA UANG KAS DRIVER HELPER DELTA 8</h3>
-            <p id="sync-status" class="small fw-bold" style="color: var(--text-muted); letter-spacing: 3px; margin: 0; font-size: 10px;">☁️ MENGHUBUNGKAN...</p>
-            <div class="theme-container d-flex justify-content-center gap-3 mt-3">
+                        <div class="theme-container d-flex justify-content-center gap-3 mt-3">
                 <div id="dot-luxury" class="theme-dot active" style="background: #d4af37;" onclick="setTheme('luxury')"></div>
                 <div id="dot-emerald" class="theme-dot" style="background: #10b981;" onclick="setTheme('emerald')"></div>
                 <div id="dot-platinum" class="theme-dot" style="background: #64748b;" onclick="setTheme('platinum')"></div>
@@ -1586,6 +1585,11 @@ body.tab-transaksi .nav-tabs {
                 showNotif(next.writeToken ? 'Write token disimpan' : 'Write token dikosongkan', 'info');
             }
             return next;
+        }
+
+        function setSyncStatusText(text) {
+            const status = document.getElementById('sync-status');
+            if (status) status.innerText = text;
         }
 
         function getActiveEditor() {
@@ -3875,7 +3879,7 @@ body.tab-transaksi .nav-tabs {
         async function loadFromCloud(year = CURRENT_YEAR, options = {}) {
 
     const token = ++loadToken;
-    document.getElementById('sync-status').innerText = "⏳ MEMUAT DATA...";
+    setSyncStatusText("⏳ MEMUAT DATA...");
 
     try {
 
@@ -3899,12 +3903,12 @@ body.tab-transaksi .nav-tabs {
 
         render();
 
-        document.getElementById('sync-status').innerText = "☁️ TERHUBUNG";
+        setSyncStatusText("☁️ TERHUBUNG");
 
     } catch (e) {
 
         if (token !== loadToken) return;
-        document.getElementById('sync-status').innerText = "☁️ TERPUTUS";
+        setSyncStatusText("☁️ TERPUTUS");
         render();
 
     }
@@ -4144,13 +4148,13 @@ async function syncAll() {
     saveYearCacheToStorage(CURRENT_YEAR, YEAR_CACHE[CURRENT_YEAR]);
 
         const status = document.getElementById('sync-status');
-        status.innerText = "⏳ MENYIMPAN...";
+        setSyncStatusText("⏳ MENYIMPAN...");
 
     try {
         const writeToken = getWriteToken();
         if (!writeToken) {
             showNotif('Write token belum tersedia. Verifikasi ulang dulu.', 'error');
-            status.innerText = "⚠️ GAGAL SINKRON";
+            setSyncStatusText("⚠️ GAGAL SINKRON");
             const shouldRerun = syncQueued;
             syncInProgress = false;
             syncQueued = false;
@@ -4172,7 +4176,7 @@ async function syncAll() {
 
         // kirim ke Google Apps Script
         await postToAppsScript(payload);
-        status.innerText = "⏳ MEMVERIFIKASI...";
+        setSyncStatusText("⏳ MEMVERIFIKASI...");
         const verification = await waitForRemoteYearSignature(CURRENT_YEAR, YEAR_SIGNATURES[CURRENT_YEAR], {
             timeoutMs: 15000,
             intervalMs: 400
@@ -4189,7 +4193,7 @@ async function syncAll() {
         if (shouldRerun) setTimeout(() => syncAll(), 0);
         suppressRemoteRefreshUntil = Date.now() + AUTO_SYNC_SUPPRESS_MS;
 
-        status.innerText = "☁️ TERHUBUNG";
+        setSyncStatusText("☁️ TERHUBUNG");
 
     } catch (err) {
 
@@ -4199,7 +4203,7 @@ async function syncAll() {
         syncQueued = false;
         if (shouldRerun) setTimeout(() => syncAll(), 0);
 
-        status.innerText = "⚠️ GAGAL SINKRON";
+        setSyncStatusText("⚠️ GAGAL SINKRON");
 
     }
 }
@@ -4851,7 +4855,7 @@ async function gantiTahun(tahun){
 
     CURRENT_YEAR = Number(tahun);
     syncYearDropdowns(CURRENT_YEAR);
-    document.getElementById('sync-status').innerText = "⏳ MEMUAT DATA...";
+    setSyncStatusText("⏳ MEMUAT DATA...");
 
     // Tampilkan cepat dari cache jika sudah pernah dibuka
     if (YEAR_CACHE[CURRENT_YEAR]) {
@@ -4861,7 +4865,7 @@ async function gantiTahun(tahun){
         DB_LOGS = cloneData(YEAR_CACHE[CURRENT_YEAR].logs || []);
         render();
     } else if (hydrateYearCache(CURRENT_YEAR)) {
-        document.getElementById('sync-status').innerText = "MEMUAT CACHE...";
+        setSyncStatusText("MEMUAT CACHE...");
     }
 
     // Muat data langsung agar tidak terasa delay
@@ -4876,3 +4880,4 @@ async function gantiTahun(tahun){
     </script>
 </body>
 </html>
+
