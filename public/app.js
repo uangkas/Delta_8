@@ -1978,21 +1978,18 @@
                     setQrisStatusCopy('Snap Midtrans ditutup. Anda bisa buka lagi selama transaksi belum kedaluwarsa.');
                 }
             };
-            if (String(payment.snapPrimaryFlow || '') === 'snap_gopay_qris') {
-                options.uiMode = 'qr';
-            }
             snap.pay(payment.snapToken, options);
         }
 
         async function openCurrentSnapPayment() {
             if (!currentMidtransPayment || !currentMidtransPayment.snapToken) {
-                showNotif('Popup pembayaran GoPay belum siap.', 'error');
+                showNotif('Popup pembayaran belum siap.', 'error');
                 return;
             }
             try {
                 await openMidtransSnapQris(currentMidtransPayment);
             } catch (err) {
-                const message = (err && err.message) ? err.message : 'Popup pembayaran GoPay gagal dibuka.';
+                const message = (err && err.message) ? err.message : 'Popup pembayaran gagal dibuka.';
                 setQrisStatusCopy(message);
                 showNotif(message, 'error');
             }
@@ -2050,16 +2047,18 @@
                 }
                 hideModalSafely('modalQrisPayment');
                 resetPreparedMidtransPayment();
-                if (String(payment.snapPrimaryFlow || '') === 'snap_gopay_qris') {
-                    showNotif('Membuka popup GoPay/QRIS...', 'info');
-                } else {
-                    showNotif('Membuka popup pembayaran Midtrans...', 'info');
-                }
+                showNotif('Membuka popup pembayaran QRIS...', 'info');
                 await openMidtransSnapQris(payment);
                 return;
             }
 
-            throw new Error('Transaksi ini tidak memiliki token Snap.');
+            if (payment.qrUrl || payment.qrString) {
+                setQrisStatusCopy('Kode QRIS siap digunakan. Silakan scan untuk melanjutkan pembayaran.');
+                showNotif('Kode QRIS berhasil dibuat.', 'success');
+                return;
+            }
+
+            throw new Error('Transaksi ini tidak memiliki token Snap atau kode QRIS.');
         }
 
         async function syncMidtransPaymentStatus(options = {}) {
