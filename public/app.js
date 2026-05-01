@@ -31,6 +31,7 @@
         let pendingPaymentContext = null;
         let currentMidtransPayment = null;
         let midtransStatusPollTimer = null;
+        let lastQrisStatusToast = '';
         let preparedMidtransPaymentKey = '';
         let preparedMidtransPaymentPromise = null;
         let preparedSnapInstance = null;
@@ -1838,7 +1839,10 @@
             const statusEl = document.getElementById('qris-status-copy');
             if (statusEl) statusEl.textContent = message || '';
             const normalized = String(message || '').trim();
-            if (normalized) showNotif(normalized, 'info');
+            if (normalized && normalized !== lastQrisStatusToast) {
+                lastQrisStatusToast = normalized;
+                showNotif(normalized, 'info');
+            }
         }
 
         function blurActiveElement() {
