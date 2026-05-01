@@ -480,26 +480,79 @@
         }
         .qris-preview-box {
             border: 1px solid var(--accent-color);
-            border-radius: 16px;
-            padding: 16px;
-            background: rgba(255,255,255,0.03);
+            border-radius: 24px;
+            padding: 18px;
+            background:
+                linear-gradient(180deg, rgba(212,175,55,0.10), rgba(255,255,255,0.02)),
+                rgba(255,255,255,0.03);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+        }
+        .qris-sheet-modal {
+            overflow: hidden;
+        }
+        .qris-sheet-head {
+            padding: 20px 20px 12px 20px;
+            text-align: center;
+            background:
+                radial-gradient(circle at top, rgba(212,175,55,0.16), transparent 58%),
+                linear-gradient(180deg, rgba(255,255,255,0.03), transparent);
+        }
+        .qris-sheet-kicker {
+            font-size: 10px;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 10px;
         }
         .qris-modal-title {
-            font-size: 0.95rem;
-            letter-spacing: 0.08em;
+            font-size: 1.05rem;
+            letter-spacing: 0.14em;
             color: var(--accent-color);
+            text-transform: uppercase;
         }
         .qris-modal-subtitle {
             font-size: 11px;
             color: var(--text-muted);
-            margin-bottom: 14px;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
+            margin-bottom: 0;
+            letter-spacing: 0.04em;
+            line-height: 1.5;
         }
         .qris-shell {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
+        }
+        .qris-summary-card,
+        .qris-total-card,
+        .qris-status-panel {
+            border-radius: 18px;
+            border: 1px solid rgba(212,175,55,0.22);
+            background: rgba(9, 9, 9, 0.34);
+            padding: 14px 16px;
+            text-align: left;
+        }
+        .qris-summary-label,
+        .qris-status-label {
+            font-size: 10px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 800;
+        }
+        .qris-summary-value {
+            color: var(--text-main);
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            line-height: 1.45;
+        }
+        .qris-total-card {
+            background:
+                linear-gradient(135deg, rgba(212,175,55,0.16), rgba(255,255,255,0.03)),
+                rgba(9, 9, 9, 0.42);
+            border-color: rgba(212,175,55,0.38);
+            text-align: center;
         }
         .qris-snap-card {
             border: 1px dashed rgba(212, 175, 55, 0.55);
@@ -557,13 +610,68 @@
             font-weight: 700;
         }
         .qris-amount {
-            font-size: 1.4rem;
+            font-size: 1.65rem;
             font-weight: 900;
             color: var(--accent-color);
+            letter-spacing: 0.03em;
         }
         .qris-detail {
             color: var(--text-muted);
             font-size: 12px;
+        }
+        .qris-status-panel {
+            background: rgba(255,255,255,0.05);
+        }
+        .qris-status-copy {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 52px;
+            border-radius: 16px;
+            padding: 12px 14px;
+            background: rgba(212,175,55,0.10);
+            color: var(--text-main);
+            font-size: 12px;
+            line-height: 1.5;
+            font-weight: 700;
+            text-align: center;
+            border: 1px solid rgba(212,175,55,0.18);
+        }
+        .qris-sheet-actions {
+            display: grid;
+            grid-template-columns: 1fr 1.25fr;
+            gap: 10px;
+            padding: 16px 20px 20px 20px;
+        }
+        .qris-sheet-btn {
+            min-height: 48px;
+            border-radius: 16px !important;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        .qris-sheet-btn-primary {
+            box-shadow: 0 12px 28px rgba(212,175,55,0.20);
+        }
+        .qris-sheet-btn-secondary {
+            background: rgba(255,255,255,0.04) !important;
+        }
+        @media (max-width: 576px) {
+            .qris-sheet-head {
+                padding: 18px 16px 10px 16px;
+            }
+            .qris-preview-box {
+                margin: 0 16px;
+                padding: 14px;
+                border-radius: 20px;
+            }
+            .qris-sheet-actions {
+                grid-template-columns: 1fr;
+                padding: 14px 16px 18px 16px;
+            }
+            .qris-amount {
+                font-size: 1.45rem;
+            }
         }
         .config-field {
             display: flex;
