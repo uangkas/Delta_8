@@ -3253,22 +3253,11 @@ function createMidtransQrisCharge_(payload, year) {
 }
 
 function createMidtransQrisWithFallback_(payload, year) {
-  try {
-    var snapCharge = createMidtransSnapTransaction_(payload, year, {
-      enabledPayments: ["gopay"]
-    });
-    snapCharge.rawSummary = snapCharge.rawSummary || {};
-    snapCharge.rawSummary.fallbackToSnap = false;
-    snapCharge.rawSummary.primaryFlow = "snap_gopay_qris";
-    return snapCharge;
-  } catch (err) {
-    var fallbackSnap = createMidtransSnapTransaction_(payload, year, {});
-    fallbackSnap.rawSummary = fallbackSnap.rawSummary || {};
-    fallbackSnap.rawSummary.fallbackToSnap = true;
-    fallbackSnap.rawSummary.primaryFlow = "snap_generic";
-    fallbackSnap.rawSummary.qrisDirectError = err && err.message ? err.message : String(err);
-    return fallbackSnap;
-  }
+  var directCharge = createMidtransQrisCharge_(payload, year);
+  directCharge.rawSummary = directCharge.rawSummary || {};
+  directCharge.rawSummary.fallbackToSnap = false;
+  directCharge.rawSummary.primaryFlow = "direct_qris_charge";
+  return directCharge;
 }
 
 function checkMidtransHealth_(config) {
