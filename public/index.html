@@ -3158,6 +3158,29 @@ body.tab-transaksi .nav-tabs {
         }
 
         let midtransSnapJsPromise = null;
+        let midtransClientConfigPromise = null;
+
+        async function getMidtransClientConfig(forceRefresh = false) {
+            if (!forceRefresh && midtransClientConfigPromise) {
+                return midtransClientConfigPromise;
+            }
+            midtransClientConfigPromise = fetchJson(`${CLOUD_URL}?action=midtransClientKey`, 20000)
+                .then((config) => {
+                    const clientKey = String(config && config.clientKey || '').trim();
+                    if (!clientKey) {
+                        throw new Error('Client key Midtrans belum tersedia.');
+                    }
+                    return {
+                        clientKey,
+                        isProduction: !!(config && config.isProduction)
+                    };
+                })
+                .catch((err) => {
+                    midtransClientConfigPromise = null;
+                    throw err;
+                });
+            return midtransClientConfigPromise;
+        }
 
         async function ensureMidtransSnapJs() {
             if (window.snap && typeof window.snap.pay === 'function') {
@@ -3167,11 +3190,8 @@ body.tab-transaksi .nav-tabs {
                 return midtransSnapJsPromise;
             }
             midtransSnapJsPromise = (async () => {
-                const config = await fetchJson(`${CLOUD_URL}?action=midtransClientKey`, 20000);
-                const clientKey = String(config && config.clientKey || '').trim();
-                if (!clientKey) {
-                    throw new Error('Client key Midtrans belum tersedia.');
-                }
+                const config = await getMidtransClientConfig();
+                const clientKey = config.clientKey;
                 const snapBase = config && config.isProduction
                     ? 'https://app.midtrans.com'
                     : 'https://app.sandbox.midtrans.com';
@@ -3199,6 +3219,15 @@ body.tab-transaksi .nav-tabs {
                 throw err;
             });
             return midtransSnapJsPromise;
+        }
+
+        function prewarmMidtransPaymentFlow() {
+            getMidtransClientConfig().catch((err) => {
+                console.warn('Midtrans client config prewarm failed:', err);
+            });
+            ensureMidtransSnapJs().catch((err) => {
+                console.warn('Midtrans Snap.js prewarm failed:', err);
+            });
         }
 
         async function openMidtransSnapQris(payment) {
@@ -3276,6 +3305,9 @@ body.tab-transaksi .nav-tabs {
         async function launchQrisSnapPayment(params) {
             let created = null;
             let payment = getMemberGatewayPayment(params);
+            const snapReadyPromise = ensureMidtransSnapJs()
+                .then((snap) => ({ snap, error: null }))
+                .catch((error) => ({ snap: null, error }));
             if (!payment || (!payment.qrUrl && !payment.qrString && !payment.snapToken)) {
                 created = await createMidtransQrisTransaction(params);
                 payment = {
@@ -3303,6 +3335,11 @@ body.tab-transaksi .nav-tabs {
             startMidtransStatusPolling();
 
             if (payment.snapToken) {
+                const snapReady = await snapReadyPromise;
+                if (snapReady && snapReady.error) {
+                    throw snapReady.error;
+                }
+                hideModalSafely('modalQrisPayment');
                 if (String(payment.snapPrimaryFlow || '') === 'snap_gopay_qris') {
                     showNotif('Membuka popup GoPay/QRIS...', 'info');
                 } else {
@@ -3380,6 +3417,7 @@ body.tab-transaksi .nav-tabs {
 
             pendingPaymentContext = params || null;
             setQrisStatusCopy('Tekan lanjutkan untuk membuka popup pembayaran.');
+            prewarmMidtransPaymentFlow();
             const modal = bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
             modal.show();
         }
@@ -3515,7 +3553,7 @@ body.tab-transaksi .nav-tabs {
                     continueBtn.disabled = true;
                     continueBtn.innerText = 'MEMBUKA...';
                 }
-                hideModalSafely('modalQrisPayment');
+                setQrisStatusCopy('Menyiapkan popup pembayaran Midtrans...');
                 await launchQrisSnapPayment(pendingPaymentContext);
             } catch (err) {
                 console.error('Error in continueQrisToAuth:', err);
