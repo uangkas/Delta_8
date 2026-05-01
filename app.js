@@ -2070,7 +2070,7 @@
                         await openMidtransSnapQris(currentMidtransPayment);
                             if (button) button.dataset.mode = 'status';
                             updateQrisActionButton(currentMidtransPayment);
-                            setQrisStatusCopy('QRIS GoPay sudah dibuka. Setelah selesai bayar, tekan CEK STATUS.');
+                            if (!options.forceOpen) setQrisStatusCopy('QRIS GoPay sudah dibuka. Setelah selesai bayar, tekan CEK STATUS.');
                         return;
                     } catch (snapErr) {
                         const redirectUrl = String(currentMidtransPayment.snapRedirectUrl || '').trim();
@@ -2078,7 +2078,7 @@
                             window.open(redirectUrl, '_blank', 'noopener,noreferrer');
                                 if (button) button.dataset.mode = 'status';
                                 updateQrisActionButton(currentMidtransPayment);
-                            setQrisStatusCopy('QRIS GoPay dibuka di tab baru. Setelah selesai bayar, kembali lalu tekan CEK STATUS.');
+                            if (!options.forceOpen) setQrisStatusCopy('QRIS GoPay dibuka di tab baru. Setelah selesai bayar, kembali lalu tekan CEK STATUS.');
                             return;
                         }
                         throw snapErr;
@@ -2129,7 +2129,9 @@
                         const statusMessage = hasRenderableQrisCode(payment)
                             ? 'QRIS siap. Gunakan pembayaran lalu tekan CEK STATUS untuk memeriksa hasilnya.'
                             : 'QRIS GoPay tersedia. Popup akan dibuka otomatis.';
-                        setQrisStatusCopy(statusMessage);
+                        if (!hasSnapRedirectFlow(payment)) {
+                            setQrisStatusCopy(statusMessage);
+                        }
                         if (!hasRenderableQrisCode(payment) && hasSnapRedirectFlow(payment)) {
                             window.setTimeout(() => {
                                 if (currentMidtransPayment && currentMidtransPayment.orderId === payment.orderId) {
@@ -2273,11 +2275,12 @@
                 : 'Bulan belum dipilih';
             if (amountInfo) amountInfo.innerText = `Rp ${amount.toLocaleString('id-ID')}`;
             updateQrisTransactionInfo(null);
-            renderQrisPlaceholder('Menyiapkan kode QRIS pembayaran...');
+            renderQrisPlaceholder('Menyiapkan pembayaran QRIS GoPay...');
             resetQrisActionButton();
 
             pendingPaymentContext = params || null;
-            setQrisStatusCopy('Menghubungkan Midtrans dan menyiapkan QRIS pembayaran...');
+            setQrisStatusCopy('Menyiapkan QRIS GoPay...');
+            prewarmMidtransPaymentFlow();
             warmMidtransPaymentForModal(params).catch((err) => {
                 console.warn('Midtrans payment prewarm failed:', err);
             });

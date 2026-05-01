@@ -3459,6 +3459,31 @@ function handleMidtransNotification_(payload) {
     writeYearData_(applied.year, data);
   }
 
+  try {
+    var normalizedStatus = normalizeMidtransStatus_(payload.transaction_status || "");
+    if (isMidtransSuccessStatus_(normalizedStatus) && applied.ok) {
+      var notified = findMemberByMidtransOrderId_(data, orderId, applied.year || year);
+      if (notified && notified.member) {
+        sendFcmToAllDevices_(
+          "Pembayaran Berhasil",
+          String(notified.kat || "").toUpperCase() + " - " + String(notified.member.nama || "").toUpperCase() + " berhasil terverifikasi.",
+          {
+            year: String(applied.year || year),
+            type: "midtrans_success",
+            action: "midtrans_settlement",
+            detail: String(orderId || ""),
+            title: "Pembayaran Berhasil",
+            body: String(notified.kat || "").toUpperCase() + " - " + String(notified.member.nama || "").toUpperCase() + " berhasil terverifikasi.",
+            tag: "delta8-midtrans-success",
+            icon: DEFAULT_WEB_APP_URL + "/notification-icon.svg",
+            badge: DEFAULT_WEB_APP_URL + "/notification-badge.svg",
+            url: buildNotificationTargetUrl_("driver", "", "")
+          }
+        );
+      }
+    }
+  } catch (notifyErr) {}
+
   return jsonResponse_({
     ok: true,
     orderId: orderId,
