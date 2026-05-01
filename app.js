@@ -1957,11 +1957,7 @@
             return preparedMidtransPaymentPromise;
         }
 
-        async function openMidtransSnapQris(payment) {
-            if (!payment || !payment.snapToken) {
-                throw new Error('Token Snap Midtrans belum tersedia.');
-            }
-            const snap = await ensureMidtransSnapJs();
+        function buildMidtransSnapOptions(payment) {
             const options = {
                 onSuccess: () => {
                     syncMidtransPaymentStatus({ silent: true }).catch((err) => {
@@ -1983,7 +1979,23 @@
             if (String(payment.snapPrimaryFlow || '') === 'snap_gopay_qris') {
                 options.uiMode = 'qr';
             }
+            return options;
+        }
+
+        function triggerMidtransSnapPay(snap, payment) {
+            if (!snap || typeof snap.pay !== 'function') {
+                throw new Error('Snap Midtrans tidak siap digunakan.');
+            }
+            if (!payment || !payment.snapToken) {
+                throw new Error('Token Snap Midtrans belum tersedia.');
+            }
+            const options = buildMidtransSnapOptions(payment);
             snap.pay(payment.snapToken, options);
+        }
+
+        async function openMidtransSnapQris(payment) {
+            const snap = await ensureMidtransSnapJs();
+            triggerMidtransSnapPay(snap, payment);
         }
 
         async function openCurrentSnapPayment() {
@@ -2098,10 +2110,13 @@
                 if (snapReady && snapReady.error) {
                     throw snapReady.error;
                 }
-                hideModalSafely('modalQrisPayment');
                 resetPreparedMidtransPayment();
-                showNotif('Membuka popup pembayaran QRIS...', 'info');
-                await openMidtransSnapQris(payment);
+                const snapInstance = snapReady && snapReady.snap ? snapReady.snap : window.snap;
+                triggerMidtransSnapPay(snapInstance, payment);
+                setTimeout(() => {
+                    hideModalSafely('modalQrisPayment');
+                    showNotif('Popup pembayaran QRIS sudah dibuka.', 'info');
+                }, 0);
                 return;
             }
 
@@ -2318,7 +2333,6 @@
                     continueBtn.innerText = 'MEMBUKA...';
                 }
                 setQrisStatusCopy('Membuka popup pembayaran QRIS...');
-                await new Promise((resolve) => requestAnimationFrame(() => resolve()));
                 await launchQrisSnapPayment(pendingPaymentContext);
             } catch (err) {
                 console.error('Error in continueQrisToAuth:', err);
