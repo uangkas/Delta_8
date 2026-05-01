@@ -1815,7 +1815,7 @@
                 return;
             }
             if (hasSnapRedirectFlow(payment)) {
-                button.textContent = 'BUKA QRIS MIDTRANS';
+                button.textContent = 'BUKA QRIS GOPAY';
                 button.disabled = false;
                 return;
             }
@@ -2052,7 +2052,7 @@
                         const redirectUrl = String(currentMidtransPayment.snapRedirectUrl || '').trim();
                         if (redirectUrl) {
                             window.open(redirectUrl, '_blank', 'noopener,noreferrer');
-                            setQrisStatusCopy('QRIS Midtrans dibuka di tab baru. Selesaikan pembayaran lalu kembali ke halaman ini.');
+                            setQrisStatusCopy('QRIS GoPay dibuka di tab baru. Selesaikan pembayaran lalu kembali ke halaman ini.');
                             return;
                         }
                         throw snapErr;
@@ -2093,7 +2093,7 @@
             const imageUrl = imageEl ? String(imageEl.getAttribute('src') || '').trim() : '';
             if (!imageUrl) {
                 if (!hasRenderableQrisCode(currentMidtransPayment) && hasSnapRedirectFlow(currentMidtransPayment)) {
-                    showNotif('QRIS dibuka lewat Midtrans. Gunakan tombol BUKA QRIS MIDTRANS.', 'info');
+                    showNotif('QRIS dibuka lewat GoPay. Gunakan tombol BUKA QRIS GOPAY.', 'info');
                     return;
                 }
                 showNotif('Kode QR belum siap untuk diunduh.', 'info');
@@ -2128,14 +2128,14 @@
                     if (hasRenderableQrisCode(payment)) {
                         renderQrisCode(payment && payment.qrUrl, payment && payment.qrString);
                     } else if (hasSnapRedirectFlow(payment)) {
-                        renderQrisPlaceholder('QRIS akan dibuka dari Midtrans. Tekan BUKA QRIS MIDTRANS untuk menampilkan kode pembayaran.');
+                        renderQrisPlaceholder('QRIS GoPay siap dibuka. Tekan BUKA QRIS GOPAY untuk menampilkan kode pembayaran.');
                     } else {
                         renderQrisPlaceholder('Midtrans belum mengirimkan kode QRIS untuk transaksi ini.');
                     }
                     if (payment && (payment.qrUrl || payment.qrString || payment.snapToken || payment.snapRedirectUrl)) {
                         const statusMessage = hasRenderableQrisCode(payment)
                             ? 'QRIS siap. Scan kode di atas, lalu tekan SAYA SUDAH BAYAR untuk cek status.'
-                            : 'QRIS tersedia lewat Midtrans. Tekan BUKA QRIS MIDTRANS, selesaikan pembayaran, lalu kembali ke halaman ini.';
+                            : 'QRIS GoPay tersedia. Tekan BUKA QRIS GOPAY, selesaikan pembayaran, lalu kembali ke halaman ini.';
                         setQrisStatusCopy(statusMessage);
                         updateQrisContinueButtonState({
                             disabled: false,
@@ -2217,8 +2217,8 @@
 
             if (hasSnapRedirectFlow(payment)) {
                 updateQrisTransactionInfo(payment);
-                renderQrisPlaceholder('QRIS akan dibuka dari Midtrans. Tekan BUKA QRIS MIDTRANS untuk menampilkan kode pembayaran.');
-                setQrisStatusCopy('QRIS tersedia lewat Midtrans. Tekan BUKA QRIS MIDTRANS lalu kembali ke halaman ini setelah bayar.');
+                renderQrisPlaceholder('QRIS GoPay siap dibuka. Tekan BUKA QRIS GOPAY untuk menampilkan kode pembayaran.');
+                setQrisStatusCopy('QRIS GoPay tersedia. Tekan BUKA QRIS GOPAY lalu kembali ke halaman ini setelah bayar.');
                 updateQrisContinueButtonState({
                     disabled: false,
                     label: 'SAYA SUDAH BAYAR'
