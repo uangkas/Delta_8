@@ -2165,12 +2165,15 @@
                     disabled: true,
                     label: 'POPUP TERBUKA'
                 });
+                updateQrisTransactionInfo(payment);
                 showNotif('Popup pembayaran QRIS sudah dibuka.', 'info');
                 return;
             }
 
             if (payment.qrUrl || payment.qrString) {
                 setQrisStatusCopy('Kode QRIS siap digunakan. Silakan scan untuk melanjutkan pembayaran.');
+                renderQrisCode(payment.qrUrl, payment.qrString);
+                updateQrisTransactionInfo(payment);
                 showNotif('Kode QRIS berhasil dibuat.', 'success');
                 return;
             }
@@ -2235,6 +2238,8 @@
                 ? `Bulan: ${params.selectedMonths.map(month => PAYMENT_MONTH_NAMES[month - 1]).join(', ')}`
                 : 'Bulan belum dipilih';
             if (amountInfo) amountInfo.innerText = `Rp ${amount.toLocaleString('id-ID')}`;
+            updateQrisTransactionInfo(null);
+            renderQrisPlaceholder('Menyiapkan kode QRIS pembayaran...');
             updateQrisContinueButtonState({
                 disabled: true,
                 label: 'MENYIAPKAN...'
