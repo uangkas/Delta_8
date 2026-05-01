@@ -1799,8 +1799,29 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             wrap.innerHTML = `<div class="qris-empty-state${safeClass}">${message || 'Menyiapkan pembayaran Midtrans...'}</div>`;
         }
 
-        function toggleSnapPaymentButton() {
-            return;
+        function hasRenderableQrisCode(payment) {
+            return !!(payment && (String(payment.qrUrl || '').trim() || String(payment.qrString || '').trim()));
+        }
+
+        function hasSnapRedirectFlow(payment) {
+            return !!(payment && (String(payment.snapToken || '').trim() || String(payment.snapRedirectUrl || '').trim()));
+        }
+
+        function updateQrisActionButton(payment) {
+            const button = document.getElementById('qris-open-btn');
+            if (!button) return;
+            if (hasRenderableQrisCode(payment)) {
+                button.textContent = 'CEK STATUS';
+                button.disabled = false;
+                return;
+            }
+            if (hasSnapRedirectFlow(payment)) {
+                button.textContent = 'BUKA QRIS MIDTRANS';
+                button.disabled = false;
+                return;
+            }
+            button.textContent = 'MENUNGGU QRIS';
+            button.disabled = true;
         }
 
         function setQrisStatusCopy(message) {
@@ -2023,6 +2044,21 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                 return;
             }
             try {
+                if (!hasRenderableQrisCode(currentMidtransPayment) && hasSnapRedirectFlow(currentMidtransPayment)) {
+                    setQrisStatusCopy('Membuka QRIS Midtrans...');
+                    try {
+                        await openMidtransSnapQris(currentMidtransPayment);
+                        return;
+                    } catch (snapErr) {
+                        const redirectUrl = String(currentMidtransPayment.snapRedirectUrl || '').trim();
+                        if (redirectUrl) {
+                            window.open(redirectUrl, '_blank', 'noopener,noreferrer');
+                            setQrisStatusCopy('QRIS Midtrans dibuka di tab baru. Selesaikan pembayaran lalu kembali ke halaman ini.');
+                            return;
+                        }
+                        throw snapErr;
+                    }
+                }
                 setQrisStatusCopy('Memeriksa status pembayaran QRIS...');
                 await syncMidtransPaymentStatus({ silent: false });
             } catch (err) {
@@ -2044,17 +2080,23 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             if (!infoEl) return;
             if (!payment) {
                 infoEl.textContent = 'Menunggu transaksi dibuat';
+                updateQrisActionButton(null);
                 return;
             }
             const orderId = String(payment.orderId || '').trim();
             const transactionId = String(payment.transactionId || '').trim();
             infoEl.textContent = transactionId || orderId || 'Transaksi sedang disiapkan';
+            updateQrisActionButton(payment);
         }
 
         function downloadCurrentQrisImage() {
             const imageEl = document.querySelector('#qris-code-wrap img');
             const imageUrl = imageEl ? String(imageEl.getAttribute('src') || '').trim() : '';
             if (!imageUrl) {
+                if (!hasRenderableQrisCode(currentMidtransPayment) && hasSnapRedirectFlow(currentMidtransPayment)) {
+                    showNotif('QRIS dibuka lewat Midtrans. Gunakan tombol BUKA QRIS MIDTRANS.', 'info');
+                    return;
+                }
                 showNotif('Kode QR belum siap untuk diunduh.', 'info');
                 return;
             }
@@ -2084,9 +2126,18 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                     currentMidtransPayment = payment || null;
                     startMidtransStatusPolling();
                     updateQrisTransactionInfo(payment);
-                    renderQrisCode(payment && payment.qrUrl, payment && payment.qrString);
-                    if (payment && (payment.qrUrl || payment.qrString || payment.snapToken)) {
-                        setQrisStatusCopy('QRIS siap. Scan kode di atas, lalu tekan SAYA SUDAH BAYAR untuk cek status.');
+                    if (hasRenderableQrisCode(payment)) {
+                        renderQrisCode(payment && payment.qrUrl, payment && payment.qrString);
+                    } else if (hasSnapRedirectFlow(payment)) {
+                        renderQrisPlaceholder('QRIS akan dibuka dari Midtrans. Tekan BUKA QRIS MIDTRANS untuk menampilkan kode pembayaran.');
+                    } else {
+                        renderQrisPlaceholder('Midtrans belum mengirimkan kode QRIS untuk transaksi ini.');
+                    }
+                    if (payment && (payment.qrUrl || payment.qrString || payment.snapToken || payment.snapRedirectUrl)) {
+                        const statusMessage = hasRenderableQrisCode(payment)
+                            ? 'QRIS siap. Scan kode di atas, lalu tekan SAYA SUDAH BAYAR untuk cek status.'
+                            : 'QRIS tersedia lewat Midtrans. Tekan BUKA QRIS MIDTRANS, selesaikan pembayaran, lalu kembali ke halaman ini.';
+                        setQrisStatusCopy(statusMessage);
                         updateQrisContinueButtonState({
                             disabled: false,
                             label: 'SAYA SUDAH BAYAR'
@@ -2102,6 +2153,7 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                     stopMidtransStatusPolling();
                     updateQrisTransactionInfo(null);
                     renderQrisPlaceholder('Persiapan QRIS belum berhasil. Silakan coba lagi.');
+                    updateQrisActionButton(null);
                     updateQrisContinueButtonState({
                         disabled: false,
                         label: 'COBA LAGI'
@@ -2153,10 +2205,21 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             currentMidtransPayment = payment;
             startMidtransStatusPolling();
 
-            if (payment.qrUrl || payment.qrString) {
+            if (hasRenderableQrisCode(payment)) {
                 setQrisStatusCopy('Kode QRIS siap digunakan. Scan sekarang lalu tekan SAYA SUDAH BAYAR untuk cek status.');
                 renderQrisCode(payment.qrUrl, payment.qrString);
                 updateQrisTransactionInfo(payment);
+                updateQrisContinueButtonState({
+                    disabled: false,
+                    label: 'SAYA SUDAH BAYAR'
+                });
+                return;
+            }
+
+            if (hasSnapRedirectFlow(payment)) {
+                updateQrisTransactionInfo(payment);
+                renderQrisPlaceholder('QRIS akan dibuka dari Midtrans. Tekan BUKA QRIS MIDTRANS untuk menampilkan kode pembayaran.');
+                setQrisStatusCopy('QRIS tersedia lewat Midtrans. Tekan BUKA QRIS MIDTRANS lalu kembali ke halaman ini setelah bayar.');
                 updateQrisContinueButtonState({
                     disabled: false,
                     label: 'SAYA SUDAH BAYAR'
