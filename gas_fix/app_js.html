@@ -1838,6 +1838,8 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
         function setQrisStatusCopy(message) {
             const statusEl = document.getElementById('qris-status-copy');
             if (statusEl) statusEl.textContent = message || '';
+            const normalized = String(message || '').trim();
+            if (normalized) showNotif(normalized, 'info');
         }
 
         function blurActiveElement() {
@@ -2049,7 +2051,7 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             triggerMidtransSnapPay(snap, payment);
         }
 
-        async function openCurrentSnapPayment() {
+        async function openCurrentSnapPayment(options = {}) {
             if (!currentMidtransPayment || !currentMidtransPayment.orderId) {
                 showNotif('Transaksi QRIS belum siap.', 'error');
                 return;
@@ -2058,8 +2060,9 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                 if (!hasRenderableQrisCode(currentMidtransPayment) && hasSnapRedirectFlow(currentMidtransPayment)) {
                     const button = document.getElementById('qris-open-btn');
                     const currentMode = String(button && button.dataset ? button.dataset.mode || '' : '').trim().toLowerCase();
-                    if (currentMode !== 'status') {
-                    setQrisStatusCopy('Membuka QRIS Midtrans...');
+                    const forceOpen = !!options.forceOpen;
+                    if (forceOpen || currentMode !== 'status') {
+                    setQrisStatusCopy('Membuka QRIS GoPay...');
                     try {
                         await openMidtransSnapQris(currentMidtransPayment);
                             if (button) button.dataset.mode = 'status';
@@ -2083,7 +2086,6 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                 await syncMidtransPaymentStatus({ silent: false });
             } catch (err) {
                 const message = (err && err.message) ? err.message : 'Status pembayaran gagal diperiksa.';
-                setQrisStatusCopy(message);
                 showNotif(message, 'error');
             }
         }
@@ -2123,8 +2125,17 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                     if (payment && (payment.qrUrl || payment.qrString || payment.snapToken || payment.snapRedirectUrl)) {
                         const statusMessage = hasRenderableQrisCode(payment)
                             ? 'QRIS siap. Gunakan pembayaran lalu tekan CEK STATUS untuk memeriksa hasilnya.'
-                            : 'QRIS GoPay tersedia. Tekan BUKA QRIS GOPAY, selesaikan pembayaran, lalu kembali ke halaman ini.';
+                            : 'QRIS GoPay tersedia. Popup akan dibuka otomatis.';
                         setQrisStatusCopy(statusMessage);
+                        if (!hasRenderableQrisCode(payment) && hasSnapRedirectFlow(payment)) {
+                            window.setTimeout(() => {
+                                if (currentMidtransPayment && currentMidtransPayment.orderId === payment.orderId) {
+                                    openCurrentSnapPayment({ forceOpen: true }).catch((autoOpenErr) => {
+                                        console.warn('Automatic QRIS GoPay open failed:', autoOpenErr);
+                                    });
+                                }
+                            }, 80);
+                        }
                         return payment;
                     }
                     throw new Error('Midtrans belum mengembalikan data pembayaran yang bisa digunakan.');
@@ -2242,7 +2253,7 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                 syncMidtransPaymentStatus({ silent: true }).catch((err) => {
                     console.error('midtrans polling error:', err);
                 });
-            }, 7000);
+            }, 4000);
         }
 
         async function openQrisPaymentModal(params) {
