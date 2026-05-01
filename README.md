@@ -72,6 +72,7 @@ Catatan eksekusi:
 - `GAS_SCRIPT_ID` otomatis dibaca dari `gas_fix/.clasp.json` jika tersedia
 - jika repo target bukan repo yang sedang aktif di `gh`, pakai `-Repo owner/nama-repo`
 - isi `-GasAuthToken` saat menjalankan `set-github-secrets.ps1` jika ingin backup properties dan backend self-test otomatis di workflow deploy GAS
+- watcher auto commit lokal ada di `scripts/start-auto-commit-deploy.ps1` dan dapat dihentikan lewat `scripts/stop-auto-commit-deploy.ps1`
 
 Self-check backend:
 
