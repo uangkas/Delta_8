@@ -41,8 +41,94 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
         const QRIS_STATIC_IMAGE_URL = '/QRIS.jpg';
         const QRIS_STATIC_PAYLOAD = '';
         const ADMIN_WHATSAPP_NUMBER = '628XXXXXXXXXX';
+        const PDFJS_SCRIPT_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        const PDFJS_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const JSPDF_SCRIPT_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        const JSPDF_AUTOTABLE_SCRIPT_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js';
         const cloneData = (v) => JSON.parse(JSON.stringify(v));
         const formatCurrency = (value) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
+        let pdfJsLoadPromise = null;
+        let jsPdfLoadPromise = null;
+        let jsPdfAutoTableLoadPromise = null;
+
+        function ensureExternalScript(scriptId, scriptUrl) {
+            const existing = document.getElementById(scriptId);
+            if (existing) {
+                return Promise.resolve(existing);
+            }
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.id = scriptId;
+                script.src = scriptUrl;
+                script.async = true;
+                script.onload = () => resolve(script);
+                script.onerror = () => reject(new Error(`Gagal memuat script: ${scriptUrl}`));
+                document.head.appendChild(script);
+            });
+        }
+
+        async function ensurePdfJsLibrary() {
+            if (window.pdfjsLib && window.pdfjsLib.getDocument) {
+                if (window.pdfjsLib.GlobalWorkerOptions) {
+                    window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+                }
+                return window.pdfjsLib;
+            }
+            if (!pdfJsLoadPromise) {
+                pdfJsLoadPromise = ensureExternalScript('pdfjs-lib-script', PDFJS_SCRIPT_URL)
+                    .then(() => {
+                        if (!window.pdfjsLib || !window.pdfjsLib.getDocument) {
+                            throw new Error('Library PDF preview belum siap.');
+                        }
+                        if (window.pdfjsLib.GlobalWorkerOptions) {
+                            window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+                        }
+                        return window.pdfjsLib;
+                    })
+                    .catch((err) => {
+                        pdfJsLoadPromise = null;
+                        throw err;
+                    });
+            }
+            return pdfJsLoadPromise;
+        }
+
+        async function ensureJsPdfLibraries() {
+            if (!window.jspdf || !window.jspdf.jsPDF) {
+                if (!jsPdfLoadPromise) {
+                    jsPdfLoadPromise = ensureExternalScript('jspdf-lib-script', JSPDF_SCRIPT_URL)
+                        .then(() => {
+                            if (!window.jspdf || !window.jspdf.jsPDF) {
+                                throw new Error('Library export PDF belum siap.');
+                            }
+                            return window.jspdf;
+                        })
+                        .catch((err) => {
+                            jsPdfLoadPromise = null;
+                            throw err;
+                        });
+                }
+                await jsPdfLoadPromise;
+            }
+            if (window.jspdf && window.jspdf.jsPDF && window.jspdf.jsPDF.API && window.jspdf.jsPDF.API.autoTable) {
+                return window.jspdf;
+            }
+            if (!jsPdfAutoTableLoadPromise) {
+                jsPdfAutoTableLoadPromise = ensureExternalScript('jspdf-autotable-script', JSPDF_AUTOTABLE_SCRIPT_URL)
+                    .then(() => {
+                        if (!window.jspdf || !window.jspdf.jsPDF || !window.jspdf.jsPDF.API || !window.jspdf.jsPDF.API.autoTable) {
+                            throw new Error('Plugin tabel PDF belum siap.');
+                        }
+                        return window.jspdf;
+                    })
+                    .catch((err) => {
+                        jsPdfAutoTableLoadPromise = null;
+                        throw err;
+                    });
+            }
+            await jsPdfAutoTableLoadPromise;
+            return window.jspdf;
+        }
 
         function showNotif(message, type = 'info') {
             const wrap = document.getElementById('notify-wrap');
@@ -3161,10 +3247,6 @@ async function syncAll() {
         let currentPdfPreviewBlob = null;
         let pdfPreviewRenderToken = 0;
 
-        if (window.pdfjsLib && window.pdfjsLib.GlobalWorkerOptions) {
-            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        }
-
         function revokePdfPreviewUrl() {
             if (!currentPdfPreviewUrl) return;
             URL.revokeObjectURL(currentPdfPreviewUrl);
@@ -3182,12 +3264,10 @@ async function syncAll() {
             empty.style.display = 'block';
 
             try {
-                if (!window.pdfjsLib || !window.pdfjsLib.getDocument) {
-                    throw new Error('Viewer PDF belum siap di browser ini.');
-                }
+                const pdfjsLib = await ensurePdfJsLibrary();
 
                 const buffer = await blob.arrayBuffer();
-                const pdf = await window.pdfjsLib.getDocument({ data: buffer }).promise;
+                const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
                 if (renderToken !== pdfPreviewRenderToken) return;
 
                 empty.style.display = 'none';
@@ -3281,6 +3361,7 @@ async function syncAll() {
         }
 
         async function downloadFinancialPDF() {
+            await ensureJsPdfLibraries();
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
             const mText = document.getElementById('selMonth').options[document.getElementById('selMonth').selectedIndex].text.toUpperCase();
