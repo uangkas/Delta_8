@@ -33,6 +33,7 @@
         let midtransStatusPollTimer = null;
         let preparedMidtransPaymentKey = '';
         let preparedMidtransPaymentPromise = null;
+        let qrisPreparationToken = 0;
         let paymentOptionMode = 'default';
         const PAYMENT_MONTH_NAMES = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
         const MONTHLY_IURAN_AMOUNT = 25000;
@@ -1918,6 +1919,7 @@
         function resetPreparedMidtransPayment() {
             preparedMidtransPaymentKey = '';
             preparedMidtransPaymentPromise = null;
+            qrisPreparationToken += 1;
         }
 
         function warmMidtransPayment(params) {
@@ -1978,6 +1980,9 @@
                     setQrisStatusCopy('Snap Midtrans ditutup. Anda bisa buka lagi selama transaksi belum kedaluwarsa.');
                 }
             };
+            if (String(payment.snapPrimaryFlow || '') === 'snap_gopay_qris') {
+                options.uiMode = 'qr';
+            }
             snap.pay(payment.snapToken, options);
         }
 
@@ -1993,6 +1998,54 @@
                 setQrisStatusCopy(message);
                 showNotif(message, 'error');
             }
+        }
+
+        function updateQrisContinueButtonState(options = {}) {
+            const continueBtn = document.getElementById('qris-continue-btn');
+            if (!continueBtn) return;
+            continueBtn.disabled = !!options.disabled;
+            continueBtn.innerText = options.label || 'LANJUTKAN';
+        }
+
+        function warmMidtransPaymentForModal(params) {
+            const token = ++qrisPreparationToken;
+            updateQrisContinueButtonState({
+                disabled: true,
+                label: 'MENYIAPKAN...'
+            });
+            setQrisStatusCopy('Menghubungkan Midtrans dan menyiapkan QRIS pembayaran...');
+
+            prewarmMidtransPaymentFlow();
+            return warmMidtransPayment(params)
+                .then((payment) => {
+                    if (token !== qrisPreparationToken) return payment;
+                    if (payment && payment.snapToken) {
+                        setQrisStatusCopy('QRIS GoPay sudah siap. Tekan lanjutkan untuk langsung membuka popup pembayaran.');
+                        updateQrisContinueButtonState({
+                            disabled: false,
+                            label: 'LANJUTKAN'
+                        });
+                        return payment;
+                    }
+                    if (payment && (payment.qrUrl || payment.qrString)) {
+                        setQrisStatusCopy('QRIS pembayaran sudah siap. Tekan lanjutkan untuk melihat detail pembayaran.');
+                        updateQrisContinueButtonState({
+                            disabled: false,
+                            label: 'LANJUTKAN'
+                        });
+                        return payment;
+                    }
+                    throw new Error('Midtrans belum mengembalikan data pembayaran yang bisa digunakan.');
+                })
+                .catch((err) => {
+                    if (token !== qrisPreparationToken) throw err;
+                    updateQrisContinueButtonState({
+                        disabled: false,
+                        label: 'COBA LAGI'
+                    });
+                    setQrisStatusCopy((err && err.message) ? err.message : 'Persiapan QRIS belum berhasil. Silakan coba lagi.');
+                    throw err;
+                });
         }
 
         function getMemberGatewayPayment(params) {
@@ -2112,22 +2165,20 @@
             const memberInfo = document.getElementById('qris-member-info');
             const monthInfo = document.getElementById('qris-month-info');
             const amountInfo = document.getElementById('qris-amount-value');
-            const continueBtn = document.getElementById('qris-continue-btn');
 
             if (memberInfo) memberInfo.innerText = `${String(params && params.kat || '').toUpperCase()} - ${String(params && params.nama || '').toUpperCase()}`;
             if (monthInfo) monthInfo.innerText = (params && Array.isArray(params.selectedMonths) && params.selectedMonths.length)
                 ? `Bulan: ${params.selectedMonths.map(month => PAYMENT_MONTH_NAMES[month - 1]).join(', ')}`
                 : 'Bulan belum dipilih';
             if (amountInfo) amountInfo.innerText = `Rp ${amount.toLocaleString('id-ID')}`;
-            if (continueBtn) {
-                continueBtn.disabled = false;
-                continueBtn.innerText = 'LANJUTKAN';
-            }
+            updateQrisContinueButtonState({
+                disabled: true,
+                label: 'MENYIAPKAN...'
+            });
 
             pendingPaymentContext = params || null;
-            setQrisStatusCopy('Tekan lanjutkan untuk membuka popup pembayaran.');
-            prewarmMidtransPaymentFlow();
-            warmMidtransPayment(params).catch((err) => {
+            setQrisStatusCopy('Menghubungkan Midtrans dan menyiapkan QRIS pembayaran...');
+            warmMidtransPaymentForModal(params).catch((err) => {
                 console.warn('Midtrans payment prewarm failed:', err);
             });
             const modal = bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
@@ -2266,7 +2317,7 @@
                     continueBtn.disabled = true;
                     continueBtn.innerText = 'MEMBUKA...';
                 }
-                setQrisStatusCopy('Menyiapkan popup pembayaran Midtrans...');
+                setQrisStatusCopy('Membuka popup pembayaran QRIS...');
                 await new Promise((resolve) => requestAnimationFrame(() => resolve()));
                 await launchQrisSnapPayment(pendingPaymentContext);
             } catch (err) {
