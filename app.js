@@ -2416,12 +2416,7 @@
                 return;
             }
 
-            const continueBtn = document.getElementById('qris-continue-btn');
             try {
-                if (continueBtn) {
-                    continueBtn.disabled = true;
-                    continueBtn.innerText = 'MENGIRIM...';
-                }
                 await submitPendingPaymentToBackend({
                     ...params,
                     selectedMonths: months
@@ -2432,11 +2427,6 @@
             } catch (err) {
                 console.error('submitQrisPaymentDirect error:', err);
                 showNotif((err && err.message) ? err.message : 'Pembayaran QRIS gagal dikirim ke backend.', 'error');
-            } finally {
-                if (continueBtn) {
-                    continueBtn.disabled = false;
-                    continueBtn.innerText = 'SAYA SUDAH BAYAR';
-                }
             }
         }
 
