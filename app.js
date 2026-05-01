@@ -2103,10 +2103,6 @@
 
         function warmMidtransPaymentForModal(params) {
             const token = ++qrisPreparationToken;
-            updateQrisContinueButtonState({
-                disabled: true,
-                label: 'MENYIAPKAN...'
-            });
             preparedSnapInstance = null;
             setQrisStatusCopy('Menghubungkan Midtrans dan menyiapkan QRIS pembayaran...');
 
@@ -2125,13 +2121,9 @@
                     }
                     if (payment && (payment.qrUrl || payment.qrString || payment.snapToken || payment.snapRedirectUrl)) {
                         const statusMessage = hasRenderableQrisCode(payment)
-                            ? 'QRIS siap. Scan kode di atas, lalu tekan SAYA SUDAH BAYAR untuk cek status.'
+                            ? 'QRIS siap. Gunakan pembayaran lalu tekan CEK STATUS untuk memeriksa hasilnya.'
                             : 'QRIS GoPay tersedia. Tekan BUKA QRIS GOPAY, selesaikan pembayaran, lalu kembali ke halaman ini.';
                         setQrisStatusCopy(statusMessage);
-                        updateQrisContinueButtonState({
-                            disabled: false,
-                            label: 'SAYA SUDAH BAYAR'
-                        });
                         return payment;
                     }
                     throw new Error('Midtrans belum mengembalikan data pembayaran yang bisa digunakan.');
@@ -2144,10 +2136,6 @@
                     updateQrisTransactionInfo(null);
                     renderQrisPlaceholder('Persiapan QRIS belum berhasil. Silakan coba lagi.');
                     updateQrisActionButton(null);
-                    updateQrisContinueButtonState({
-                        disabled: false,
-                        label: 'COBA LAGI'
-                    });
                     setQrisStatusCopy((err && err.message) ? err.message : 'Persiapan QRIS belum berhasil. Silakan coba lagi.');
                     throw err;
                 });
@@ -2196,13 +2184,9 @@
             startMidtransStatusPolling();
 
             if (hasRenderableQrisCode(payment)) {
-                setQrisStatusCopy('Kode QRIS siap digunakan. Scan sekarang lalu tekan SAYA SUDAH BAYAR untuk cek status.');
+                setQrisStatusCopy('Kode QRIS siap digunakan. Lanjutkan pembayaran lalu tekan CEK STATUS.');
                 renderQrisCode(payment.qrUrl, payment.qrString);
                 updateQrisTransactionInfo(payment);
-                updateQrisContinueButtonState({
-                    disabled: false,
-                    label: 'SAYA SUDAH BAYAR'
-                });
                 return;
             }
 
@@ -2210,10 +2194,6 @@
                 updateQrisTransactionInfo(payment);
                 renderQrisPlaceholder('QRIS GoPay siap dibuka. Tekan BUKA QRIS GOPAY untuk menampilkan kode pembayaran.');
                 setQrisStatusCopy('QRIS GoPay tersedia. Tekan BUKA QRIS GOPAY lalu kembali ke halaman ini setelah bayar.');
-                updateQrisContinueButtonState({
-                    disabled: false,
-                    label: 'SAYA SUDAH BAYAR'
-                });
                 return;
             }
 
@@ -2280,10 +2260,6 @@
             updateQrisTransactionInfo(null);
             renderQrisPlaceholder('Menyiapkan kode QRIS pembayaran...');
             resetQrisActionButton();
-            updateQrisContinueButtonState({
-                disabled: true,
-                label: 'MENYIAPKAN...'
-            });
 
             pendingPaymentContext = params || null;
             setQrisStatusCopy('Menghubungkan Midtrans dan menyiapkan QRIS pembayaran...');
@@ -2415,34 +2391,6 @@
             syncAll();
             showNotif('Pembayaran QRIS berhasil masuk verifikasi. Admin akan segera memproses.', 'success');
             pendingPaymentContext = null;
-        }
-
-        async function continueQrisToAuth() {
-            try {
-                if (!pendingPaymentContext) {
-                    showNotif('Data pembayaran tidak ditemukan. Silakan mulai lagi.', 'error');
-                    return;
-                }
-                const continueBtn = document.getElementById('qris-continue-btn');
-                if (continueBtn) {
-                    continueBtn.disabled = true;
-                    continueBtn.innerText = 'MEMERIKSA...';
-                }
-                if (!currentMidtransPayment || !currentMidtransPayment.orderId) {
-                    await launchQrisSnapPayment(pendingPaymentContext);
-                }
-                setQrisStatusCopy('Memeriksa status pembayaran QRIS...');
-                await syncMidtransPaymentStatus({ silent: false });
-            } catch (err) {
-                console.error('Error in continueQrisToAuth:', err);
-                showNotif((err && err.message) ? err.message : 'Status pembayaran belum bisa diperiksa sekarang.', 'error');
-            } finally {
-                const continueBtn = document.getElementById('qris-continue-btn');
-                if (continueBtn) {
-                    continueBtn.disabled = false;
-                    continueBtn.innerText = 'SAYA SUDAH BAYAR';
-                }
-            }
         }
 
         async function submitQrisPaymentDirect(proofBase64 = null) {
@@ -2758,7 +2706,6 @@
         window.openPaymentOptions = openPaymentOptions;
         window.togglePaymentMonthSelection = togglePaymentMonthSelection;
         window.continueMemberPayment = continueMemberPayment;
-        window.continueQrisToAuth = continueQrisToAuth;
         window.submitQrisPaymentDirect = submitQrisPaymentDirect;
         window.chooseMemberPayment = chooseMemberPayment;
         window.continuePendingMemberPayment = continuePendingMemberPayment;

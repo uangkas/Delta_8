@@ -2056,18 +2056,27 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             }
             try {
                 if (!hasRenderableQrisCode(currentMidtransPayment) && hasSnapRedirectFlow(currentMidtransPayment)) {
+                    const button = document.getElementById('qris-open-btn');
+                    const currentMode = String(button && button.dataset ? button.dataset.mode || '' : '').trim().toLowerCase();
+                    if (currentMode !== 'status') {
                     setQrisStatusCopy('Membuka QRIS Midtrans...');
                     try {
                         await openMidtransSnapQris(currentMidtransPayment);
+                            if (button) button.dataset.mode = 'status';
+                            updateQrisActionButton(currentMidtransPayment);
+                            setQrisStatusCopy('QRIS GoPay sudah dibuka. Setelah selesai bayar, tekan CEK STATUS.');
                         return;
                     } catch (snapErr) {
                         const redirectUrl = String(currentMidtransPayment.snapRedirectUrl || '').trim();
                         if (redirectUrl) {
                             window.open(redirectUrl, '_blank', 'noopener,noreferrer');
-                            setQrisStatusCopy('QRIS GoPay dibuka di tab baru. Selesaikan pembayaran lalu kembali ke halaman ini.');
+                                if (button) button.dataset.mode = 'status';
+                                updateQrisActionButton(currentMidtransPayment);
+                            setQrisStatusCopy('QRIS GoPay dibuka di tab baru. Setelah selesai bayar, kembali lalu tekan CEK STATUS.');
                             return;
                         }
                         throw snapErr;
+                    }
                     }
                 }
                 setQrisStatusCopy('Memeriksa status pembayaran QRIS...');
@@ -2077,13 +2086,6 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                 setQrisStatusCopy(message);
                 showNotif(message, 'error');
             }
-        }
-
-        function updateQrisContinueButtonState(options = {}) {
-            const continueBtn = document.getElementById('qris-continue-btn');
-            if (!continueBtn) return;
-            continueBtn.disabled = !!options.disabled;
-            continueBtn.innerText = options.label || 'SAYA SUDAH BAYAR';
         }
 
         function updateQrisTransactionInfo(payment) {
@@ -2100,34 +2102,8 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             updateQrisActionButton(payment);
         }
 
-        function downloadCurrentQrisImage() {
-            const imageEl = document.querySelector('#qris-code-wrap img');
-            const imageUrl = imageEl ? String(imageEl.getAttribute('src') || '').trim() : '';
-            if (!imageUrl) {
-                if (!hasRenderableQrisCode(currentMidtransPayment) && hasSnapRedirectFlow(currentMidtransPayment)) {
-                    showNotif('QRIS dibuka lewat GoPay. Gunakan tombol BUKA QRIS GOPAY.', 'info');
-                    return;
-                }
-                showNotif('Kode QR belum siap untuk diunduh.', 'info');
-                return;
-            }
-            const payment = currentMidtransPayment || null;
-            const filenameSeed = String((payment && (payment.transactionId || payment.orderId)) || 'DELTA8-QRIS')
-                .replace(/[^A-Z0-9_-]/gi, '-');
-            const link = document.createElement('a');
-            link.href = imageUrl;
-            link.download = `QRIS-${filenameSeed}.png`;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-        }
-
         function warmMidtransPaymentForModal(params) {
             const token = ++qrisPreparationToken;
-            updateQrisContinueButtonState({
-                disabled: true,
-                label: 'MENYIAPKAN...'
-            });
             preparedSnapInstance = null;
             setQrisStatusCopy('Menghubungkan Midtrans dan menyiapkan QRIS pembayaran...');
 
@@ -2146,13 +2122,9 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                     }
                     if (payment && (payment.qrUrl || payment.qrString || payment.snapToken || payment.snapRedirectUrl)) {
                         const statusMessage = hasRenderableQrisCode(payment)
-                            ? 'QRIS siap. Scan kode di atas, lalu tekan SAYA SUDAH BAYAR untuk cek status.'
+                            ? 'QRIS siap. Gunakan pembayaran lalu tekan CEK STATUS untuk memeriksa hasilnya.'
                             : 'QRIS GoPay tersedia. Tekan BUKA QRIS GOPAY, selesaikan pembayaran, lalu kembali ke halaman ini.';
                         setQrisStatusCopy(statusMessage);
-                        updateQrisContinueButtonState({
-                            disabled: false,
-                            label: 'SAYA SUDAH BAYAR'
-                        });
                         return payment;
                     }
                     throw new Error('Midtrans belum mengembalikan data pembayaran yang bisa digunakan.');
@@ -2165,10 +2137,6 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                     updateQrisTransactionInfo(null);
                     renderQrisPlaceholder('Persiapan QRIS belum berhasil. Silakan coba lagi.');
                     updateQrisActionButton(null);
-                    updateQrisContinueButtonState({
-                        disabled: false,
-                        label: 'COBA LAGI'
-                    });
                     setQrisStatusCopy((err && err.message) ? err.message : 'Persiapan QRIS belum berhasil. Silakan coba lagi.');
                     throw err;
                 });
@@ -2217,13 +2185,9 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             startMidtransStatusPolling();
 
             if (hasRenderableQrisCode(payment)) {
-                setQrisStatusCopy('Kode QRIS siap digunakan. Scan sekarang lalu tekan SAYA SUDAH BAYAR untuk cek status.');
+                setQrisStatusCopy('Kode QRIS siap digunakan. Lanjutkan pembayaran lalu tekan CEK STATUS.');
                 renderQrisCode(payment.qrUrl, payment.qrString);
                 updateQrisTransactionInfo(payment);
-                updateQrisContinueButtonState({
-                    disabled: false,
-                    label: 'SAYA SUDAH BAYAR'
-                });
                 return;
             }
 
@@ -2231,10 +2195,6 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                 updateQrisTransactionInfo(payment);
                 renderQrisPlaceholder('QRIS GoPay siap dibuka. Tekan BUKA QRIS GOPAY untuk menampilkan kode pembayaran.');
                 setQrisStatusCopy('QRIS GoPay tersedia. Tekan BUKA QRIS GOPAY lalu kembali ke halaman ini setelah bayar.');
-                updateQrisContinueButtonState({
-                    disabled: false,
-                    label: 'SAYA SUDAH BAYAR'
-                });
                 return;
             }
 
@@ -2301,10 +2261,6 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             updateQrisTransactionInfo(null);
             renderQrisPlaceholder('Menyiapkan kode QRIS pembayaran...');
             resetQrisActionButton();
-            updateQrisContinueButtonState({
-                disabled: true,
-                label: 'MENYIAPKAN...'
-            });
 
             pendingPaymentContext = params || null;
             setQrisStatusCopy('Menghubungkan Midtrans dan menyiapkan QRIS pembayaran...');
@@ -2436,34 +2392,6 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             syncAll();
             showNotif('Pembayaran QRIS berhasil masuk verifikasi. Admin akan segera memproses.', 'success');
             pendingPaymentContext = null;
-        }
-
-        async function continueQrisToAuth() {
-            try {
-                if (!pendingPaymentContext) {
-                    showNotif('Data pembayaran tidak ditemukan. Silakan mulai lagi.', 'error');
-                    return;
-                }
-                const continueBtn = document.getElementById('qris-continue-btn');
-                if (continueBtn) {
-                    continueBtn.disabled = true;
-                    continueBtn.innerText = 'MEMERIKSA...';
-                }
-                if (!currentMidtransPayment || !currentMidtransPayment.orderId) {
-                    await launchQrisSnapPayment(pendingPaymentContext);
-                }
-                setQrisStatusCopy('Memeriksa status pembayaran QRIS...');
-                await syncMidtransPaymentStatus({ silent: false });
-            } catch (err) {
-                console.error('Error in continueQrisToAuth:', err);
-                showNotif((err && err.message) ? err.message : 'Status pembayaran belum bisa diperiksa sekarang.', 'error');
-            } finally {
-                const continueBtn = document.getElementById('qris-continue-btn');
-                if (continueBtn) {
-                    continueBtn.disabled = false;
-                    continueBtn.innerText = 'SAYA SUDAH BAYAR';
-                }
-            }
         }
 
         async function submitQrisPaymentDirect(proofBase64 = null) {
@@ -2779,7 +2707,6 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
         window.openPaymentOptions = openPaymentOptions;
         window.togglePaymentMonthSelection = togglePaymentMonthSelection;
         window.continueMemberPayment = continueMemberPayment;
-        window.continueQrisToAuth = continueQrisToAuth;
         window.submitQrisPaymentDirect = submitQrisPaymentDirect;
         window.chooseMemberPayment = chooseMemberPayment;
         window.continuePendingMemberPayment = continuePendingMemberPayment;
