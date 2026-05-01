@@ -31,7 +31,7 @@ Trigger deploy:
 
 Catatan:
 
-- File root `Code.gs`, `index.html`, `app.js`, `admin.html`, dan `firebase-messaging-sw.js` sekarang menjadi source utama yang Anda edit
+- File root `Code.gs`, `index.html`, `styles.css`, `app.js`, `admin.html`, dan `firebase-messaging-sw.js` sekarang menjadi source utama yang Anda edit
 - Workflow akan otomatis menyalin source root ke folder deploy `gas_fix/` dan `public/` sebelum deploy berjalan
 - Source yang benar-benar dideploy ke Firebase tetap berasal dari folder `public/`
 - Source yang benar-benar dipush ke Apps Script tetap berasal dari folder `gas_fix/`
