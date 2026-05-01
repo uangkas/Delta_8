@@ -3253,11 +3253,31 @@ function createMidtransQrisCharge_(payload, year) {
 }
 
 function createMidtransQrisWithFallback_(payload, year) {
-  var directCharge = createMidtransQrisCharge_(payload, year);
-  directCharge.rawSummary = directCharge.rawSummary || {};
-  directCharge.rawSummary.fallbackToSnap = false;
-  directCharge.rawSummary.primaryFlow = "direct_qris_charge";
-  return directCharge;
+  try {
+    var directCharge = createMidtransQrisCharge_(payload, year);
+    directCharge.rawSummary = directCharge.rawSummary || {};
+    directCharge.rawSummary.fallbackToSnap = false;
+    directCharge.rawSummary.primaryFlow = "direct_qris_charge";
+    return directCharge;
+  } catch (err) {
+    var message = String(err && err.message || "").trim();
+    var shouldFallbackToSnap =
+      /payment channel is not activated/i.test(message) ||
+      /channel.*not.*activated/i.test(message) ||
+      /qris/i.test(message);
+    if (!shouldFallbackToSnap) {
+      throw err;
+    }
+
+    var snapCharge = createMidtransSnapTransaction_(payload, year, {
+      enabledPayments: ["gopay"]
+    });
+    snapCharge.rawSummary = snapCharge.rawSummary || {};
+    snapCharge.rawSummary.fallbackToSnap = true;
+    snapCharge.rawSummary.primaryFlow = "snap_gopay_qris";
+    snapCharge.rawSummary.directQrisError = message || "Direct QRIS charge failed.";
+    return snapCharge;
+  }
 }
 
 function checkMidtransHealth_(config) {
