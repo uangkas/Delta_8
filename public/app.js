@@ -1750,8 +1750,7 @@
             const button = document.getElementById('qris-open-btn');
             if (!button) return;
             if (hasSnapRedirectFlow(payment)) {
-                const mode = String(button.dataset.mode || '').trim().toLowerCase();
-                button.textContent = mode === 'status' ? 'CEK STATUS' : 'BUKA QRIS GOPAY';
+                button.textContent = 'BUKA QRIS';
                 button.disabled = false;
                 return;
             }
@@ -1991,27 +1990,23 @@
             try {
                 if (hasSnapRedirectFlow(currentMidtransPayment)) {
                     const button = document.getElementById('qris-open-btn');
-                    const currentMode = String(button && button.dataset ? button.dataset.mode || '' : '').trim().toLowerCase();
-                    const forceOpen = !!options.forceOpen;
-                    if (forceOpen || currentMode !== 'status') {
-                        setQrisStatusCopy('Membuka QRIS GoPay...');
-                        try {
-                            await openMidtransSnapQris(currentMidtransPayment);
+                    setQrisStatusCopy('Membuka QRIS GoPay...');
+                    try {
+                        await openMidtransSnapQris(currentMidtransPayment);
+                        if (button) button.dataset.mode = 'status';
+                        updateQrisActionButton(currentMidtransPayment);
+                        if (!options.forceOpen) setQrisStatusCopy('QRIS GoPay sudah dibuka. Setelah selesai bayar, Anda bisa buka QRIS lagi dari tombol ini.');
+                        return;
+                    } catch (snapErr) {
+                        const redirectUrl = String(currentMidtransPayment.snapRedirectUrl || '').trim();
+                        if (redirectUrl) {
+                            window.open(redirectUrl, '_blank', 'noopener,noreferrer');
                             if (button) button.dataset.mode = 'status';
                             updateQrisActionButton(currentMidtransPayment);
-                            if (!options.forceOpen) setQrisStatusCopy('QRIS GoPay sudah dibuka. Setelah selesai bayar, tekan CEK STATUS.');
+                            if (!options.forceOpen) setQrisStatusCopy('QRIS GoPay dibuka di tab baru. Setelah selesai bayar, Anda bisa buka QRIS lagi dari tombol ini.');
                             return;
-                        } catch (snapErr) {
-                            const redirectUrl = String(currentMidtransPayment.snapRedirectUrl || '').trim();
-                            if (redirectUrl) {
-                                window.open(redirectUrl, '_blank', 'noopener,noreferrer');
-                                if (button) button.dataset.mode = 'status';
-                                updateQrisActionButton(currentMidtransPayment);
-                                if (!options.forceOpen) setQrisStatusCopy('QRIS GoPay dibuka di tab baru. Setelah selesai bayar, kembali lalu tekan CEK STATUS.');
-                                return;
-                            }
-                            throw snapErr;
                         }
+                        throw snapErr;
                     }
                 }
                 setQrisStatusCopy('Memeriksa status pembayaran QRIS...');
