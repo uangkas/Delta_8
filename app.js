@@ -2138,7 +2138,6 @@
                 currentMidtransPayment = null;
             } else if (remoteStatus === 'pending') {
                 setQrisStatusCopy('Menunggu pembayaran di Midtrans. Status akan diperbarui otomatis.');
-                if (!silent) showNotif('Pembayaran masih menunggu konfirmasi Midtrans.', 'info');
             }
 
             return statusData;
