@@ -3294,8 +3294,7 @@ function checkMidtransHealth_(config) {
 
 function handleCreateMidtransQris_(payload, e) {
   var year = getTargetYear_(payload, e);
-  ensureYearData_(year);
-  var data = readYearData_(year);
+  var data = ensureYearData_(year);
   var member = findMemberByKatAndId_(data, payload && payload.kat, payload && payload.id);
   if (!member) {
     throw new Error("Anggota pembayaran QRIS tidak ditemukan.");
@@ -3310,13 +3309,15 @@ function handleCreateMidtransQris_(payload, e) {
   }
 
   var charge = createMidtransQrisWithFallback_(payload, year);
-  applyMidtransTransactionStateToMember_(member, year, months, charge, {
+  var changed = applyMidtransTransactionStateToMember_(member, year, months, charge, {
     data: data,
     addLog: true,
     editor: normalizeEditorName_(member.nama || (payload && payload.nama) || "MIDTRANS"),
     logText: buildMidtransLogText_(payload && payload.kat, member.nama, year, months, charge.transactionStatus)
   });
-  writeYearData_(year, data);
+  if (changed) {
+    writeYearData_(year, data);
+  }
 
   return jsonResponse_({
     ok: true,
