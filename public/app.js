@@ -1957,6 +1957,9 @@
                     showNotif(message, 'error');
                 },
                 onClose: () => {
+                    const button = document.getElementById('qris-open-btn');
+                    if (button) button.dataset.mode = 'open';
+                    updateQrisActionButton(currentMidtransPayment);
                     setQrisStatusCopy('Snap Midtrans ditutup. Anda bisa buka lagi selama transaksi belum kedaluwarsa.');
                 }
             };
