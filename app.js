@@ -33,6 +33,7 @@
         let midtransStatusPollTimer = null;
         let preparedMidtransPaymentKey = '';
         let preparedMidtransPaymentPromise = null;
+        let preparedSnapInstance = null;
         let qrisPreparationToken = 0;
         let paymentOptionMode = 'default';
         const PAYMENT_MONTH_NAMES = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
@@ -1919,6 +1920,7 @@
         function resetPreparedMidtransPayment() {
             preparedMidtransPaymentKey = '';
             preparedMidtransPaymentPromise = null;
+            preparedSnapInstance = null;
             qrisPreparationToken += 1;
         }
 
@@ -2025,14 +2027,21 @@
                 disabled: true,
                 label: 'MENYIAPKAN...'
             });
-            setQrisStatusCopy('Menghubungkan Midtrans dan menyiapkan QRIS pembayaran...');
+            preparedSnapInstance = null;
+            setQrisStatusCopy('Menghubungkan Midtrans dan menyiapkan popup QRIS pembayaran...');
 
             prewarmMidtransPaymentFlow();
-            return warmMidtransPayment(params)
-                .then((payment) => {
+            return Promise.all([
+                warmMidtransPayment(params),
+                ensureMidtransSnapJs()
+            ])
+                .then((results) => {
+                    const payment = results[0];
+                    const snap = results[1];
                     if (token !== qrisPreparationToken) return payment;
+                    preparedSnapInstance = snap || null;
                     if (payment && payment.snapToken) {
-                        setQrisStatusCopy('QRIS GoPay sudah siap. Tekan lanjutkan untuk langsung membuka popup pembayaran.');
+                        setQrisStatusCopy('Popup QRIS GoPay sudah siap. Tekan lanjutkan untuk langsung membuka pembayaran.');
                         updateQrisContinueButtonState({
                             disabled: false,
                             label: 'LANJUTKAN'
@@ -2051,11 +2060,12 @@
                 })
                 .catch((err) => {
                     if (token !== qrisPreparationToken) throw err;
+                    preparedSnapInstance = null;
                     updateQrisContinueButtonState({
                         disabled: false,
                         label: 'COBA LAGI'
                     });
-                    setQrisStatusCopy((err && err.message) ? err.message : 'Persiapan QRIS belum berhasil. Silakan coba lagi.');
+                    setQrisStatusCopy((err && err.message) ? err.message : 'Persiapan popup QRIS belum berhasil. Silakan coba lagi.');
                     throw err;
                 });
         }
@@ -2091,7 +2101,9 @@
 
         async function launchQrisSnapPayment(params) {
             let payment = getMemberGatewayPayment(params);
-            const snapReadyPromise = ensureMidtransSnapJs()
+            const snapReadyPromise = preparedSnapInstance
+                ? Promise.resolve({ snap: preparedSnapInstance, error: null })
+                : ensureMidtransSnapJs()
                 .then((snap) => ({ snap, error: null }))
                 .catch((error) => ({ snap: null, error }));
             if (!payment || (!payment.qrUrl && !payment.qrString && !payment.snapToken)) {
@@ -2192,7 +2204,7 @@
             });
 
             pendingPaymentContext = params || null;
-            setQrisStatusCopy('Menghubungkan Midtrans dan menyiapkan QRIS pembayaran...');
+            setQrisStatusCopy('Menghubungkan Midtrans dan menyiapkan popup QRIS pembayaran...');
             warmMidtransPaymentForModal(params).catch((err) => {
                 console.warn('Midtrans payment prewarm failed:', err);
             });
