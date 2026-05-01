@@ -1755,18 +1755,34 @@
             return `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(payload)}`;
         }
 
+        function buildQrisImageFromPayload(qrString) {
+            const payload = String(qrString || '').trim();
+            if (!payload) return '';
+            return `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(payload)}`;
+        }
+
+        function isProtectedMidtransQrUrl(url) {
+            const normalized = String(url || '').trim();
+            return /https:\/\/api(?:\.sandbox)?\.midtrans\.com\/v2\/qris\/.+\/qr-code/i.test(normalized);
+        }
+
         function renderQrisCode(customUrl, qrString) {
             const wrap = document.getElementById('qris-code-wrap');
             if (!wrap) return;
+            const fallbackQrUrl = buildQrisImageFromPayload(qrString);
             let imageUrl = String(customUrl || '').trim();
-            if (!imageUrl && qrString) {
-                imageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(String(qrString || '').trim())}`;
+            if (!imageUrl || isProtectedMidtransQrUrl(imageUrl)) {
+                imageUrl = fallbackQrUrl || imageUrl;
             }
             if (imageUrl) {
                 wrap.innerHTML = `<img src="${imageUrl}" alt="Kode QRIS" class="qris-code-image">`;
                 const imageEl = wrap.querySelector('img');
                 if (imageEl) {
                     imageEl.addEventListener('error', () => {
+                        if (fallbackQrUrl && imageEl.getAttribute('src') !== fallbackQrUrl) {
+                            imageEl.src = fallbackQrUrl;
+                            return;
+                        }
                         wrap.innerHTML = `<div class="qris-empty-state">QRIS dinamis belum bisa ditampilkan. Muat ulang transaksi atau cek kembali beberapa detik lagi.</div>`;
                     }, { once: true });
                 }
