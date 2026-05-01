@@ -1813,15 +1813,18 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             if (hasRenderableQrisCode(payment)) {
                 button.textContent = 'CEK STATUS';
                 button.disabled = false;
+                button.dataset.mode = 'status';
                 return;
             }
             if (hasSnapRedirectFlow(payment)) {
-                button.textContent = 'BUKA QRIS GOPAY';
+                const mode = String(button.dataset.mode || '').trim().toLowerCase();
+                button.textContent = mode === 'status' ? 'CEK STATUS' : 'BUKA QRIS GOPAY';
                 button.disabled = false;
                 return;
             }
             button.textContent = 'MENUNGGU QRIS';
             button.disabled = true;
+            button.dataset.mode = 'waiting';
         }
 
         function resetQrisActionButton() {
@@ -1829,6 +1832,7 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             if (!button) return;
             button.textContent = 'MENYIAPKAN...';
             button.disabled = true;
+            button.dataset.mode = 'preparing';
         }
 
         function setQrisStatusCopy(message) {

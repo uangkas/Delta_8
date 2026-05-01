@@ -1812,15 +1812,18 @@
             if (hasRenderableQrisCode(payment)) {
                 button.textContent = 'CEK STATUS';
                 button.disabled = false;
+                button.dataset.mode = 'status';
                 return;
             }
             if (hasSnapRedirectFlow(payment)) {
-                button.textContent = 'BUKA QRIS GOPAY';
+                const mode = String(button.dataset.mode || '').trim().toLowerCase();
+                button.textContent = mode === 'status' ? 'CEK STATUS' : 'BUKA QRIS GOPAY';
                 button.disabled = false;
                 return;
             }
             button.textContent = 'MENUNGGU QRIS';
             button.disabled = true;
+            button.dataset.mode = 'waiting';
         }
 
         function resetQrisActionButton() {
@@ -1828,6 +1831,7 @@
             if (!button) return;
             button.textContent = 'MENYIAPKAN...';
             button.disabled = true;
+            button.dataset.mode = 'preparing';
         }
 
         function setQrisStatusCopy(message) {
@@ -2051,18 +2055,27 @@
             }
             try {
                 if (!hasRenderableQrisCode(currentMidtransPayment) && hasSnapRedirectFlow(currentMidtransPayment)) {
+                    const button = document.getElementById('qris-open-btn');
+                    const currentMode = String(button && button.dataset ? button.dataset.mode || '' : '').trim().toLowerCase();
+                    if (currentMode !== 'status') {
                     setQrisStatusCopy('Membuka QRIS Midtrans...');
                     try {
                         await openMidtransSnapQris(currentMidtransPayment);
+                            if (button) button.dataset.mode = 'status';
+                            updateQrisActionButton(currentMidtransPayment);
+                            setQrisStatusCopy('QRIS GoPay sudah dibuka. Setelah selesai bayar, tekan CEK STATUS.');
                         return;
                     } catch (snapErr) {
                         const redirectUrl = String(currentMidtransPayment.snapRedirectUrl || '').trim();
                         if (redirectUrl) {
                             window.open(redirectUrl, '_blank', 'noopener,noreferrer');
-                            setQrisStatusCopy('QRIS GoPay dibuka di tab baru. Selesaikan pembayaran lalu kembali ke halaman ini.');
+                                if (button) button.dataset.mode = 'status';
+                                updateQrisActionButton(currentMidtransPayment);
+                            setQrisStatusCopy('QRIS GoPay dibuka di tab baru. Setelah selesai bayar, kembali lalu tekan CEK STATUS.');
                             return;
                         }
                         throw snapErr;
+                    }
                     }
                 }
                 setQrisStatusCopy('Memeriksa status pembayaran QRIS...');
@@ -2072,13 +2085,6 @@
                 setQrisStatusCopy(message);
                 showNotif(message, 'error');
             }
-        }
-
-        function updateQrisContinueButtonState(options = {}) {
-            const continueBtn = document.getElementById('qris-continue-btn');
-            if (!continueBtn) return;
-            continueBtn.disabled = !!options.disabled;
-            continueBtn.innerText = options.label || 'SAYA SUDAH BAYAR';
         }
 
         function updateQrisTransactionInfo(payment) {
@@ -2093,28 +2099,6 @@
             const transactionId = String(payment.transactionId || '').trim();
             infoEl.textContent = transactionId || orderId || 'Transaksi sedang disiapkan';
             updateQrisActionButton(payment);
-        }
-
-        function downloadCurrentQrisImage() {
-            const imageEl = document.querySelector('#qris-code-wrap img');
-            const imageUrl = imageEl ? String(imageEl.getAttribute('src') || '').trim() : '';
-            if (!imageUrl) {
-                if (!hasRenderableQrisCode(currentMidtransPayment) && hasSnapRedirectFlow(currentMidtransPayment)) {
-                    showNotif('QRIS dibuka lewat GoPay. Gunakan tombol BUKA QRIS GOPAY.', 'info');
-                    return;
-                }
-                showNotif('Kode QR belum siap untuk diunduh.', 'info');
-                return;
-            }
-            const payment = currentMidtransPayment || null;
-            const filenameSeed = String((payment && (payment.transactionId || payment.orderId)) || 'DELTA8-QRIS')
-                .replace(/[^A-Z0-9_-]/gi, '-');
-            const link = document.createElement('a');
-            link.href = imageUrl;
-            link.download = `QRIS-${filenameSeed}.png`;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
         }
 
         function warmMidtransPaymentForModal(params) {
