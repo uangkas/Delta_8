@@ -2018,7 +2018,7 @@
             const continueBtn = document.getElementById('qris-continue-btn');
             if (!continueBtn) return;
             continueBtn.disabled = !!options.disabled;
-            continueBtn.innerText = options.label || 'LANJUTKAN';
+            continueBtn.innerText = options.label || 'BUKA PEMBAYARAN';
         }
 
         function warmMidtransPaymentForModal(params) {
@@ -2041,18 +2041,18 @@
                     if (token !== qrisPreparationToken) return payment;
                     preparedSnapInstance = snap || null;
                     if (payment && payment.snapToken) {
-                        setQrisStatusCopy('Popup QRIS GoPay sudah siap. Tekan lanjutkan untuk langsung membuka pembayaran.');
+                        setQrisStatusCopy('Popup QRIS GoPay sudah siap. Tekan buka pembayaran untuk langsung melanjutkan.');
                         updateQrisContinueButtonState({
                             disabled: false,
-                            label: 'LANJUTKAN'
+                            label: 'BUKA PEMBAYARAN'
                         });
                         return payment;
                     }
                     if (payment && (payment.qrUrl || payment.qrString)) {
-                        setQrisStatusCopy('QRIS pembayaran sudah siap. Tekan lanjutkan untuk melihat detail pembayaran.');
+                        setQrisStatusCopy('QRIS pembayaran sudah siap. Tekan buka pembayaran untuk melanjutkan.');
                         updateQrisContinueButtonState({
                             disabled: false,
-                            label: 'LANJUTKAN'
+                            label: 'BUKA PEMBAYARAN'
                         });
                         return payment;
                     }
@@ -2125,10 +2125,12 @@
                 resetPreparedMidtransPayment();
                 const snapInstance = snapReady && snapReady.snap ? snapReady.snap : window.snap;
                 triggerMidtransSnapPay(snapInstance, payment);
-                setTimeout(() => {
-                    hideModalSafely('modalQrisPayment');
-                    showNotif('Popup pembayaran QRIS sudah dibuka.', 'info');
-                }, 0);
+                setQrisStatusCopy('Popup pembayaran QRIS sudah dibuka. Selesaikan pembayaran di jendela Midtrans.');
+                updateQrisContinueButtonState({
+                    disabled: true,
+                    label: 'POPUP TERBUKA'
+                });
+                showNotif('Popup pembayaran QRIS sudah dibuka.', 'info');
                 return;
             }
 
@@ -2353,7 +2355,7 @@
                 const continueBtn = document.getElementById('qris-continue-btn');
                 if (continueBtn) {
                     continueBtn.disabled = false;
-                    continueBtn.innerText = 'LANJUTKAN';
+                    continueBtn.innerText = 'BUKA PEMBAYARAN';
                 }
             }
         }
