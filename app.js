@@ -31,6 +31,8 @@
         let pendingPaymentContext = null;
         let currentMidtransPayment = null;
         let midtransStatusPollTimer = null;
+        let preparedMidtransPaymentKey = '';
+        let preparedMidtransPaymentPromise = null;
         let paymentOptionMode = 'default';
         const PAYMENT_MONTH_NAMES = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
         const MONTHLY_IURAN_AMOUNT = 25000;
@@ -1798,6 +1800,75 @@
             });
         }
 
+        function buildMidtransPaymentContextKey(params) {
+            if (!params) return '';
+            const year = normalizeYearValue(params.y);
+            const months = Array.isArray(params.selectedMonths)
+                ? Array.from(new Set(params.selectedMonths.map(Number).filter(month => month >= 1 && month <= 12))).sort((a, b) => a - b)
+                : [];
+            return [
+                year,
+                String(params.kat || '').trim().toUpperCase(),
+                String(params.id || '').trim(),
+                months.join(',')
+            ].join('|');
+        }
+
+        function mapCreatedMidtransPayment(created, params) {
+            return {
+                orderId: created.orderId,
+                transactionId: created.transactionId,
+                transactionStatus: created.transactionStatus,
+                qrUrl: created.qrUrl,
+                qrString: created.qrString || '',
+                snapToken: created.snapToken || '',
+                snapPrimaryFlow: created.debug && created.debug.primaryFlow ? created.debug.primaryFlow : '',
+                expiresAt: created.expiresAt,
+                year: normalizeYearValue(created.year || params.y),
+                months: params.selectedMonths || []
+            };
+        }
+
+        function resetPreparedMidtransPayment() {
+            preparedMidtransPaymentKey = '';
+            preparedMidtransPaymentPromise = null;
+        }
+
+        function warmMidtransPayment(params) {
+            const payment = getMemberGatewayPayment(params);
+            if (payment && (payment.qrUrl || payment.qrString || payment.snapToken)) {
+                preparedMidtransPaymentKey = buildMidtransPaymentContextKey(params);
+                preparedMidtransPaymentPromise = Promise.resolve(payment);
+                return preparedMidtransPaymentPromise;
+            }
+
+            const contextKey = buildMidtransPaymentContextKey(params);
+            if (!contextKey) {
+                return Promise.reject(new Error('Konteks pembayaran QRIS tidak valid.'));
+            }
+            if (preparedMidtransPaymentPromise && preparedMidtransPaymentKey === contextKey) {
+                return preparedMidtransPaymentPromise;
+            }
+
+            preparedMidtransPaymentKey = contextKey;
+            preparedMidtransPaymentPromise = createMidtransQrisTransaction(params)
+                .then((created) => {
+                    const mappedPayment = mapCreatedMidtransPayment(created, params);
+                    loadFromCloudSmart(mappedPayment.year, { silent: true, forceRender: true }).catch((refreshErr) => {
+                        console.warn('Background refresh after Midtrans create failed:', refreshErr);
+                    });
+                    return mappedPayment;
+                })
+                .catch((err) => {
+                    if (preparedMidtransPaymentKey === contextKey) {
+                        resetPreparedMidtransPayment();
+                    }
+                    throw err;
+                });
+
+            return preparedMidtransPaymentPromise;
+        }
+
         async function openMidtransSnapQris(payment) {
             if (!payment || !payment.snapToken) {
                 throw new Error('Token Snap Midtrans belum tersedia.');
@@ -1871,28 +1942,12 @@
         }
 
         async function launchQrisSnapPayment(params) {
-            let created = null;
             let payment = getMemberGatewayPayment(params);
             const snapReadyPromise = ensureMidtransSnapJs()
                 .then((snap) => ({ snap, error: null }))
                 .catch((error) => ({ snap: null, error }));
             if (!payment || (!payment.qrUrl && !payment.qrString && !payment.snapToken)) {
-                created = await createMidtransQrisTransaction(params);
-                payment = {
-                    orderId: created.orderId,
-                    transactionId: created.transactionId,
-                    transactionStatus: created.transactionStatus,
-                    qrUrl: created.qrUrl,
-                    qrString: created.qrString || '',
-                    snapToken: created.snapToken || '',
-                    snapPrimaryFlow: created.debug && created.debug.primaryFlow ? created.debug.primaryFlow : '',
-                    expiresAt: created.expiresAt,
-                    year: normalizeYearValue(created.year || params.y),
-                    months: params.selectedMonths || []
-                };
-                loadFromCloudSmart(payment.year, { silent: true, forceRender: true }).catch((refreshErr) => {
-                    console.warn('Background refresh after Midtrans create failed:', refreshErr);
-                });
+                payment = await warmMidtransPayment(params);
             }
 
             if (!payment.snapToken && !payment.qrUrl && !payment.qrString) {
@@ -1908,6 +1963,7 @@
                     throw snapReady.error;
                 }
                 hideModalSafely('modalQrisPayment');
+                resetPreparedMidtransPayment();
                 if (String(payment.snapPrimaryFlow || '') === 'snap_gopay_qris') {
                     showNotif('Membuka popup GoPay/QRIS...', 'info');
                 } else {
@@ -1986,12 +2042,16 @@
             pendingPaymentContext = params || null;
             setQrisStatusCopy('Tekan lanjutkan untuk membuka popup pembayaran.');
             prewarmMidtransPaymentFlow();
+            warmMidtransPayment(params).catch((err) => {
+                console.warn('Midtrans payment prewarm failed:', err);
+            });
             const modal = bootstrap.Modal.getOrCreateInstance('#modalQrisPayment');
             modal.show();
         }
 
         function cancelQrisPaymentFlow() {
             pendingPaymentContext = null;
+            resetPreparedMidtransPayment();
             hideModalSafely('modalQrisPayment');
         }
 
@@ -2122,6 +2182,7 @@
                     continueBtn.innerText = 'MEMBUKA...';
                 }
                 setQrisStatusCopy('Menyiapkan popup pembayaran Midtrans...');
+                await new Promise((resolve) => requestAnimationFrame(() => resolve()));
                 await launchQrisSnapPayment(pendingPaymentContext);
             } catch (err) {
                 console.error('Error in continueQrisToAuth:', err);
