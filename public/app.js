@@ -2355,18 +2355,21 @@
                 const continueBtn = document.getElementById('qris-continue-btn');
                 if (continueBtn) {
                     continueBtn.disabled = true;
-                    continueBtn.innerText = 'MEMBUKA...';
+                    continueBtn.innerText = 'MEMERIKSA...';
                 }
-                setQrisStatusCopy('Membuka popup pembayaran QRIS...');
-                await launchQrisSnapPayment(pendingPaymentContext);
+                if (!currentMidtransPayment || !currentMidtransPayment.orderId) {
+                    await launchQrisSnapPayment(pendingPaymentContext);
+                }
+                setQrisStatusCopy('Memeriksa status pembayaran QRIS...');
+                await syncMidtransPaymentStatus({ silent: false });
             } catch (err) {
                 console.error('Error in continueQrisToAuth:', err);
-                showNotif((err && err.message) ? err.message : 'Popup pembayaran belum bisa dibuka sekarang.', 'error');
+                showNotif((err && err.message) ? err.message : 'Status pembayaran belum bisa diperiksa sekarang.', 'error');
             } finally {
                 const continueBtn = document.getElementById('qris-continue-btn');
                 if (continueBtn) {
                     continueBtn.disabled = false;
-                    continueBtn.innerText = 'BUKA PEMBAYARAN';
+                    continueBtn.innerText = 'SAYA SUDAH BAYAR';
                 }
             }
         }
