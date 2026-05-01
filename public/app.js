@@ -2021,6 +2021,36 @@
             continueBtn.innerText = options.label || 'BUKA PEMBAYARAN';
         }
 
+        function updateQrisTransactionInfo(payment) {
+            const infoEl = document.getElementById('qris-transaction-info');
+            if (!infoEl) return;
+            if (!payment) {
+                infoEl.textContent = 'Menunggu transaksi dibuat';
+                return;
+            }
+            const orderId = String(payment.orderId || '').trim();
+            const transactionId = String(payment.transactionId || '').trim();
+            infoEl.textContent = transactionId || orderId || 'Transaksi sedang disiapkan';
+        }
+
+        function downloadCurrentQrisImage() {
+            const imageEl = document.querySelector('#qris-code-wrap img');
+            const imageUrl = imageEl ? String(imageEl.getAttribute('src') || '').trim() : '';
+            if (!imageUrl) {
+                showNotif('Kode QR belum siap untuk diunduh.', 'info');
+                return;
+            }
+            const payment = currentMidtransPayment || null;
+            const filenameSeed = String((payment && (payment.transactionId || payment.orderId)) || 'DELTA8-QRIS')
+                .replace(/[^A-Z0-9_-]/gi, '-');
+            const link = document.createElement('a');
+            link.href = imageUrl;
+            link.download = `QRIS-${filenameSeed}.png`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        }
+
         function warmMidtransPaymentForModal(params) {
             const token = ++qrisPreparationToken;
             updateQrisContinueButtonState({
@@ -2040,6 +2070,9 @@
                     const snap = results[1];
                     if (token !== qrisPreparationToken) return payment;
                     preparedSnapInstance = snap || null;
+                    currentMidtransPayment = payment || null;
+                    updateQrisTransactionInfo(payment);
+                    renderQrisCode(payment && payment.qrUrl, payment && payment.qrString);
                     if (payment && payment.snapToken) {
                         setQrisStatusCopy('Popup QRIS GoPay sudah siap. Tekan buka pembayaran untuk langsung melanjutkan.');
                         updateQrisContinueButtonState({
@@ -2061,6 +2094,8 @@
                 .catch((err) => {
                     if (token !== qrisPreparationToken) throw err;
                     preparedSnapInstance = null;
+                    updateQrisTransactionInfo(null);
+                    renderQrisPlaceholder('Persiapan QRIS belum berhasil. Silakan coba lagi.');
                     updateQrisContinueButtonState({
                         disabled: false,
                         label: 'COBA LAGI'
