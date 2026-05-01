@@ -1823,6 +1823,13 @@
             button.disabled = true;
         }
 
+        function resetQrisActionButton() {
+            const button = document.getElementById('qris-open-btn');
+            if (!button) return;
+            button.textContent = 'MENYIAPKAN...';
+            button.disabled = true;
+        }
+
         function setQrisStatusCopy(message) {
             const statusEl = document.getElementById('qris-status-copy');
             if (statusEl) statusEl.textContent = message || '';
@@ -2288,6 +2295,7 @@
             if (amountInfo) amountInfo.innerText = `Rp ${amount.toLocaleString('id-ID')}`;
             updateQrisTransactionInfo(null);
             renderQrisPlaceholder('Menyiapkan kode QRIS pembayaran...');
+            resetQrisActionButton();
             updateQrisContinueButtonState({
                 disabled: true,
                 label: 'MENYIAPKAN...'
