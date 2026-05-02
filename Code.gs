@@ -141,8 +141,9 @@ function doGet(e) {
 function doPost(e) {
   ensureBootstrapConfig_();
   ACTIVE_JSONP_CALLBACK = "";
+  var payload = {};
   try {
-    var payload = parsePostBody_(e);
+    payload = parsePostBody_(e);
 
     if (payload.action === "verifyAuth") {
       return maybeWrapPostMessageResponse_(handleVerifyAuthPayload_(payload, e), payload);
@@ -188,19 +189,19 @@ function doPost(e) {
     writeYearData_(year, normalized);
     maybeBroadcastFcmAfterWrite_(beforeData, normalized, payload, year);
 
-    return jsonResponse_({
+    return maybeWrapPostMessageResponse_({
       ok: true,
       year: Number(year),
       revision: buildYearRevision_(normalized)
-    });
+    }, payload);
   } catch (err) {
     if (err && err.details) {
-      return jsonResponse_(err.details);
+      return maybeWrapPostMessageResponse_(err.details, payload);
     }
-    return jsonResponse_({
+    return maybeWrapPostMessageResponse_({
       ok: false,
       error: err && err.message ? err.message : String(err)
-    });
+    }, payload);
   }
 }
 
