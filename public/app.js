@@ -37,6 +37,7 @@
         let preparedMidtransPaymentPromise = null;
         let qrisPreparationToken = 0;
         let paymentOptionMode = 'default';
+        let deferredInstallPrompt = null;
         const PAYMENT_MONTH_NAMES = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
         const MONTHLY_IURAN_AMOUNT = 25000;
         let pendingIuranPaymentData = null;
@@ -610,6 +611,60 @@
 
             return true;
         }
+
+        function isStandaloneAppMode() {
+            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        function updateInstallPromptUI() {
+            const button = document.getElementById('install-app-btn');
+            if (!button) return;
+            const shouldShow = !!deferredInstallPrompt && !isStandaloneAppMode();
+            button.classList.toggle('d-none', !shouldShow);
+        }
+
+        async function registerAppShellServiceWorker() {
+            if (!('serviceWorker' in navigator) || !window.isSecureContext) return null;
+            try {
+                return await navigator.serviceWorker.register('./app-sw.js');
+            } catch (err) {
+                console.warn('App shell service worker registration failed:', err);
+                return null;
+            }
+        }
+
+        async function promptAppInstall() {
+            if (isStandaloneAppMode()) {
+                showNotif('Aplikasi ini sudah terpasang di perangkat.', 'info');
+                updateInstallPromptUI();
+                return;
+            }
+            if (!deferredInstallPrompt) {
+                showNotif('Gunakan menu browser lalu pilih Install App atau Tambahkan ke layar utama.', 'info');
+                return;
+            }
+            try {
+                deferredInstallPrompt.prompt();
+                await deferredInstallPrompt.userChoice;
+            } catch (err) {
+                console.warn('App install prompt failed:', err);
+            } finally {
+                deferredInstallPrompt = null;
+                updateInstallPromptUI();
+            }
+        }
+
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            deferredInstallPrompt = event;
+            updateInstallPromptUI();
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredInstallPrompt = null;
+            updateInstallPromptUI();
+            showNotif('Aplikasi berhasil dipasang di perangkat ini.', 'success');
+        });
 
         async function showStatusBarNotification(title, body, options = {}) {
             try {
