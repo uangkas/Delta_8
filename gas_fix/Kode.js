@@ -184,11 +184,19 @@ function doPost(e) {
         return entry;
       });
     }
+    assertExpectedYearRevision_(payload, beforeData, year);
     writeYearData_(year, normalized);
     maybeBroadcastFcmAfterWrite_(beforeData, normalized, payload, year);
 
-    return jsonResponse_({ ok: true, year: year });
+    return jsonResponse_({
+      ok: true,
+      year: Number(year),
+      revision: buildYearRevision_(normalized)
+    });
   } catch (err) {
+    if (err && err.details) {
+      return jsonResponse_(err.details);
+    }
     return jsonResponse_({
       ok: false,
       error: err && err.message ? err.message : String(err)
@@ -237,7 +245,7 @@ function handleCancelMemberPending_(payload, e) {
     year: year,
     memberId: result.memberId,
     months: result.months,
-    data: readYearData_(year)
+    data: buildYearDataResponse_(year, readYearData_(year))
   });
 }
 
@@ -1168,17 +1176,14 @@ function handleRead_(e) {
   var year = getYearFromRequest_(e);
   var data = readYearData_(year);
   setActiveYear_(year);
-  return jsonResponse_(data);
+  return jsonResponse_(buildYearDataResponse_(year, data));
 }
 
 function handleEnsureYear_(e) {
   var year = getYearFromRequest_(e);
   ensureYearData_(year);
   setActiveYear_(year);
-  return jsonResponse_({
-    ok: true,
-    year: year
-  });
+  return jsonResponse_(buildYearDataResponse_(year, readYearData_(year)));
 }
 
 function handleSheetInfo_(e) {
