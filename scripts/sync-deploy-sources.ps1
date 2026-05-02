@@ -23,6 +23,18 @@ $syncMap = @(
         Destinations = @(
             "public\firebase-messaging-sw.js"
         )
+    },
+    @{
+        Source = "app-sw.js"
+        Destinations = @(
+            "public\app-sw.js"
+        )
+    },
+    @{
+        Source = "manifest.webmanifest"
+        Destinations = @(
+            "public\manifest.webmanifest"
+        )
     }
 )
 

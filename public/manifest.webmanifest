@@ -1,0 +1,19 @@
+{
+  "name": "Kas Delta 8",
+  "short_name": "Delta 8",
+  "description": "Aplikasi kas Driver Helper Delta 8 yang bisa dipasang langsung dari browser.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#111111",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./notification-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
