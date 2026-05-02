@@ -2647,6 +2647,22 @@
             return normalized;
         }
 
+        function commitCurrentYearRevision(year, revision) {
+            const normalizedYear = normalizeYearValue(year);
+            const normalized = {
+                driver: cloneData(DB_DRIVER),
+                helper: cloneData(DB_HELPER),
+                transaksi: cloneData(DB_TRANSAKSI),
+                logs: cloneData(DB_LOGS)
+            };
+            const cleanRevision = String(revision || '').trim();
+            YEAR_CACHE[normalizedYear] = normalized;
+            YEAR_SIGNATURES[normalizedYear] = buildYearSignature(normalized);
+            YEAR_REVISIONS[normalizedYear] = cleanRevision;
+            saveYearCacheToStorage(normalizedYear, { ...normalized, revision: cleanRevision });
+            return normalized;
+        }
+
         function hasOpenBlockingModal() {
             return !!document.querySelector('.modal.show');
         }
@@ -2693,41 +2709,6 @@
                 if (!silent && Number(year) === Number(CURRENT_YEAR)) render();
                 return { changed: false, ignored: false, error: e };
             }
-        }
-
-        async function waitForRemoteYearSignature(year, expectedRevision, options = {}) {
-            const timeoutMs = Number(options.timeoutMs || 15000);
-            const intervalMs = Number(options.intervalMs || 400);
-            const startedAt = Date.now();
-            let lastData = null;
-            let lastError = null;
-
-            while ((Date.now() - startedAt) < timeoutMs) {
-                try {
-                    const data = await fetchJson(`${CLOUD_URL}?action=read&year=${year}`);
-                    lastData = data;
-                    lastError = null;
-
-                    if (extractYearRevision(data) && extractYearRevision(data) === String(expectedRevision || '')) {
-                        return {
-                            ok: true,
-                            data,
-                            elapsedMs: Date.now() - startedAt
-                        };
-                    }
-                } catch (err) {
-                    lastError = err;
-                }
-
-                await new Promise(resolve => setTimeout(resolve, intervalMs));
-            }
-
-            return {
-                ok: false,
-                data: lastData,
-                elapsedMs: Date.now() - startedAt,
-                error: lastError && lastError.message ? lastError.message : ''
-            };
         }
 
         async function refreshCurrentYearInBackground(reason = 'interval') {
@@ -2811,17 +2792,7 @@
             }
             throw new Error((writeResult && writeResult.error) || 'Sinkronisasi ditolak backend.');
         }
-        setSyncStatusText("â³ MEMVERIFIKASI...");
-        const verification = await waitForRemoteYearSignature(CURRENT_YEAR, writeResult.revision || YEAR_REVISIONS[CURRENT_YEAR], {
-            timeoutMs: 15000,
-            intervalMs: 400
-        });
-        if (!verification.ok) {
-            throw new Error(verification.error || 'Spreadsheet belum mengonfirmasi data terbaru.');
-        }
-        if (verification.data) {
-            applyYearData(CURRENT_YEAR, verification.data);
-        }
+        commitCurrentYearRevision(CURRENT_YEAR, writeResult.revision || YEAR_REVISIONS[CURRENT_YEAR]);
         const shouldRerun = syncQueued;
         syncInProgress = false;
         syncQueued = false;
