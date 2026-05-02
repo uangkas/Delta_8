@@ -1171,9 +1171,7 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
 
                 if (action === 'toggle') {
                     if (optimisticToggle) {
-                        const mm = params.m.toString().padStart(2, '0');
-                        addLog("Iuran", `${params.kat.toUpperCase()} - ${optimisticToggle.person.nama} - ${mm}/${params.y} - [${optimisticToggle.isLunas ? "âœ… - LUNAS" : "âŒ - BATAL"}]`);
-                        syncAll();
+                        await submitMemberStatusTogglePatch(params, optimisticToggle);
                     } else {
                         executeAction(action, params);
                     }
@@ -1198,6 +1196,42 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
         window.handlePinInput = handlePinInput;
         window.submitAuth = submitAuth;
         window.checkAuth = submitAuth;
+
+        async function submitMemberStatusTogglePatch(params, optimisticToggle) {
+            const activeSession = getAuthSession();
+            const writeToken = activeSession && activeSession.writeToken ? activeSession.writeToken : '';
+            if (!writeToken) {
+                throw new Error('Write token belum tersedia. Verifikasi ulang dulu.');
+            }
+
+            const response = await postToAppsScriptForResult({
+                action: 'toggleMemberStatus',
+                authToken: writeToken,
+                editor: getActiveEditor(),
+                deviceId: getDeviceId(),
+                year: params.y,
+                id: params.id,
+                kat: params.kat,
+                month: params.m,
+                expectedRevision: YEAR_REVISIONS[params.y] || ''
+            }, 20000);
+
+            if (!response || response.ok !== true) {
+                if (response && response.data) {
+                    applyYearData(params.y, response.data);
+                } else if (optimisticToggle) {
+                    executeAction('toggle', params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
+                }
+                throw new Error((response && response.error) || 'Toggle status ditolak backend.');
+            }
+
+            if (response.data) {
+                applyYearData(params.y, response.data);
+            } else if (optimisticToggle) {
+                commitCurrentYearRevision(params.y, response.revision || YEAR_REVISIONS[params.y] || '');
+            }
+            suppressRemoteRefreshUntil = Date.now() + AUTO_SYNC_SUPPRESS_MS;
+        }
 
         function executeAction(action = pendingAction, params = pendingParams, options = {}) {
             if (action === 'tambah') { 

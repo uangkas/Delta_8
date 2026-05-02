@@ -241,15 +241,15 @@ function handleToggleMemberStatus_(payload, e) {
   assertExpectedYearRevision_(payload, data, year);
   var result = applyToggleMemberStatus_(data, payload, year);
   if (!result.ok) {
-    return jsonResponse_(result);
+    return result;
   }
   writeYearData_(year, data);
-  return jsonResponse_({
+  return {
     ok: true,
     year: Number(year),
     revision: buildYearRevision_(data),
     data: buildYearDataResponse_(year, readYearData_(year))
-  });
+  };
 }
 
 function handleCancelMemberPending_(payload, e) {
@@ -2997,6 +2997,65 @@ function applyMemberStatusUpdate_(data, info, value) {
     }
   });
   return true;
+}
+
+function applyToggleMemberStatus_(data, payload, year) {
+  if (!data || !payload) {
+    return { ok: false, error: "Payload toggle status tidak valid." };
+  }
+  var kat = String(payload.kat || "").trim().toUpperCase();
+  var memberId = String(payload.id || "").trim();
+  var yy = String(parseInt(year, 10) || new Date().getFullYear());
+  var month = parseInt(payload.month, 10);
+  if (!memberId) {
+    return { ok: false, error: "ID anggota tidak ditemukan." };
+  }
+  if (month < 1 || month > 12) {
+    return { ok: false, error: "Bulan iuran tidak valid." };
+  }
+
+  var list = kat === "HELPER" ? data.helper : data.driver;
+  if (!Array.isArray(list)) {
+    return { ok: false, error: "Data anggota tidak tersedia." };
+  }
+
+  var member = null;
+  for (var i = 0; i < list.length; i++) {
+    if (String(list[i] && list[i].id || "") === memberId) {
+      member = list[i];
+      break;
+    }
+  }
+  if (!member) {
+    return { ok: false, error: "Anggota tidak ditemukan." };
+  }
+
+  if (!member.status) member.status = {};
+  if (!member.status[yy]) member.status[yy] = {};
+
+  var currentRaw = member.status[yy][month];
+  if (currentRaw === "pending" || currentRaw === "gateway_pending") {
+    return { ok: false, error: "Status pending tidak bisa diubah dari ceklis manual." };
+  }
+
+  var previousValue = currentRaw === true;
+  var nextValue = !(previousValue);
+  member.status[yy][month] = nextValue;
+
+  appendLog_(
+    data,
+    normalizeEditorName_(payload.editor || "ADMIN"),
+    "IURAN",
+    kat + " - " + String(member.nama || "").toUpperCase() + " - " + pad2_(month) + "/" + yy + " - [" + (nextValue ? "LUNAS" : "BATAL") + "]"
+  );
+
+  return {
+    ok: true,
+    memberId: memberId,
+    month: month,
+    previousValue: previousValue,
+    nextValue: nextValue
+  };
 }
 
 function applyPendingPaymentSubmission_(data, payload, year) {
