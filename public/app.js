@@ -1983,7 +1983,7 @@
         }
 
         function hasSnapRedirectFlow(payment) {
-            return !!(payment && (String(payment.snapToken || '').trim() || String(payment.snapRedirectUrl || '').trim()));
+            return !!(payment && String(payment.snapToken || '').trim());
         }
 
         function updateQrisActionButton(payment) {
@@ -2234,23 +2234,11 @@
                 if (hasSnapRedirectFlow(currentMidtransPayment)) {
                     const button = document.getElementById('qris-open-btn');
                     setQrisStatusCopy('Membuka QRIS...');
-                    try {
-                        await openMidtransSnapQris(currentMidtransPayment);
-                        if (button) button.dataset.mode = 'status';
-                        updateQrisActionButton(currentMidtransPayment);
-                        if (!options.forceOpen) setQrisStatusCopy('QRIS sudah dibuka. Setelah selesai bayar, Anda bisa buka QRIS lagi dari tombol ini.');
-                        return;
-                    } catch (snapErr) {
-                        const redirectUrl = String(currentMidtransPayment.snapRedirectUrl || '').trim();
-                        if (redirectUrl) {
-                            window.open(redirectUrl, '_blank', 'noopener,noreferrer');
-                            if (button) button.dataset.mode = 'status';
-                            updateQrisActionButton(currentMidtransPayment);
-                            if (!options.forceOpen) setQrisStatusCopy('QRIS dibuka di tab baru. Setelah selesai bayar, Anda bisa buka QRIS lagi dari tombol ini.');
-                            return;
-                        }
-                        throw snapErr;
-                    }
+                    await openMidtransSnapQris(currentMidtransPayment);
+                    if (button) button.dataset.mode = 'status';
+                    updateQrisActionButton(currentMidtransPayment);
+                    if (!options.forceOpen) setQrisStatusCopy('QRIS sudah dibuka. Setelah selesai bayar, Anda bisa buka QRIS lagi dari tombol ini.');
+                    return;
                 }
                 setQrisStatusCopy('Memeriksa status pembayaran QRIS...');
                 await syncMidtransPaymentStatus({ silent: false });
@@ -3411,8 +3399,10 @@
             const pdfBlob = doc.output('blob');
             showPdfPreview(pdfBlob, fileName);
         }
-        window.onload = () => {
+window.onload = () => {
     setTheme(localStorage.getItem('delta8_theme') || 'luxury');
+    updateInstallPromptUI();
+    registerAppShellServiceWorker();
     applyAdminMode();
     syncPaymentOptionAvailability();
     initTahun();
