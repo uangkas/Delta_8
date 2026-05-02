@@ -160,6 +160,9 @@ function doPost(e) {
     if (payload.action === "createMidtransQris") {
       return handleCreateMidtransQris_(payload, e);
     }
+    if (payload.action === "toggleMemberStatus") {
+      return maybeWrapPostMessageResponse_(handleToggleMemberStatus_(payload, e), payload);
+    }
     if (payload.action === "submitPendingPayment") {
       return handleSubmitPendingPayment_(payload, e);
     }
@@ -228,6 +231,25 @@ function handleAdminPendingSnapshot_(e) {
   ensureYearData_(year);
   var data = readYearData_(year);
   return jsonResponse_(buildPendingPaymentSnapshot_(data, year));
+}
+
+function handleToggleMemberStatus_(payload, e) {
+  validateWriteAuth_(payload, e);
+  var year = getTargetYear_(payload, e);
+  ensureYearData_(year);
+  var data = readYearData_(year);
+  assertExpectedYearRevision_(payload, data, year);
+  var result = applyToggleMemberStatus_(data, payload, year);
+  if (!result.ok) {
+    return jsonResponse_(result);
+  }
+  writeYearData_(year, data);
+  return jsonResponse_({
+    ok: true,
+    year: Number(year),
+    revision: buildYearRevision_(data),
+    data: buildYearDataResponse_(year, readYearData_(year))
+  });
 }
 
 function handleCancelMemberPending_(payload, e) {
