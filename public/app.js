@@ -1,4 +1,4 @@
-﻿const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg/exec';
+﻿﻿const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg/exec';
         const DEFAULT_FCM_CONFIG = {
             apiKey: 'AIzaSyAIZx9jjiW1uUdXmG-P7ZqQRloFuo4L7G8',
             authDomain: 'kas-delta-8.firebaseapp.com',
@@ -19,7 +19,6 @@
         let DB_DRIVER = [], DB_HELPER = [], DB_TRANSAKSI = [], DB_LOGS = [];
         const YEAR_CACHE = {};
         const YEAR_SIGNATURES = {};
-        const YEAR_REVISIONS = {};
         let loadToken = 0;
         let autoSyncTimer = null;
         let autoSyncInProgress = false;
@@ -37,10 +36,10 @@
         let preparedMidtransPaymentPromise = null;
         let qrisPreparationToken = 0;
         let paymentOptionMode = 'default';
-        let deferredInstallPrompt = null;
         const PAYMENT_MONTH_NAMES = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
         const MONTHLY_IURAN_AMOUNT = 25000;
         let pendingIuranPaymentData = null;
+        const ADMIN_WHATSAPP_NUMBER = '628XXXXXXXXXX';
         const PDFJS_SCRIPT_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
         const PDFJS_WORKER_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         const JSPDF_SCRIPT_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
@@ -50,59 +49,6 @@
         let pdfJsLoadPromise = null;
         let jsPdfLoadPromise = null;
         let jsPdfAutoTableLoadPromise = null;
-
-        function escapeHtml(value) {
-            return String(value == null ? '' : value)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
-        function escapeJsString(value) {
-            return String(value == null ? '' : value)
-                .replace(/\\/g, '\\\\')
-                .replace(/'/g, "\\'")
-                .replace(/\r/g, '\\r')
-                .replace(/\n/g, '\\n');
-        }
-
-        function getPersistentStorage() {
-            try {
-                return window.localStorage;
-            } catch (err) {
-                return null;
-            }
-        }
-
-        function getSessionStorageSafe() {
-            try {
-                return window.sessionStorage;
-            } catch (err) {
-                return null;
-            }
-        }
-
-        function getStorageItem(storage, key) {
-            try {
-                return storage ? storage.getItem(key) : null;
-            } catch (err) {
-                return null;
-            }
-        }
-
-        function setStorageItem(storage, key, value) {
-            try {
-                if (storage) storage.setItem(key, value);
-            } catch (err) {}
-        }
-
-        function removeStorageItem(storage, key) {
-            try {
-                if (storage) storage.removeItem(key);
-            } catch (err) {}
-        }
 
         function ensureExternalScript(scriptId, scriptUrl) {
             const existing = document.getElementById(scriptId);
@@ -234,24 +180,17 @@
         }
 
         function getDeviceId() {
-            const persistentStorage = getPersistentStorage();
-            let value = String(getStorageItem(persistentStorage, DEVICE_ID_KEY) || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+            let value = String(localStorage.getItem(DEVICE_ID_KEY) || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
             if (!value) {
                 value = createDeviceId();
-                setStorageItem(persistentStorage, DEVICE_ID_KEY, value);
+                localStorage.setItem(DEVICE_ID_KEY, value);
             }
             return value;
         }
 
-        function getAuthSessionStorage() {
-            return getSessionStorageSafe();
-        }
-
         function getAuthSession() {
-            const authStorage = getAuthSessionStorage();
-            const persistentStorage = getPersistentStorage();
             try {
-                const raw = getStorageItem(authStorage, AUTH_SESSION_KEY);
+                const raw = localStorage.getItem(AUTH_SESSION_KEY);
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     if (parsed && typeof parsed === 'object') {
@@ -266,8 +205,8 @@
                 }
             } catch (err) {}
 
-            const legacyToken = String(getStorageItem(persistentStorage, 'delta8_write_token') || '').trim();
-            const legacyEditor = String(getStorageItem(persistentStorage, 'delta8_editor') || '').trim().toUpperCase();
+            const legacyToken = String(localStorage.getItem('delta8_write_token') || '').trim();
+            const legacyEditor = String(localStorage.getItem('delta8_editor') || '').trim().toUpperCase();
             if (!legacyToken && !legacyEditor) return null;
 
             const migrated = {
@@ -277,14 +216,11 @@
                 issuedAt: 0,
                 expiresAt: 0
             };
-            setStorageItem(authStorage, AUTH_SESSION_KEY, JSON.stringify(migrated));
-            removeStorageItem(persistentStorage, 'delta8_write_token');
+            localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(migrated));
             return migrated;
         }
 
         function saveAuthSession(session, notify = false) {
-            const authStorage = getAuthSessionStorage();
-            const persistentStorage = getPersistentStorage();
             const next = {
                 editor: String((session && session.editor) || '').trim().toUpperCase(),
                 writeToken: String((session && session.writeToken) || '').trim(),
@@ -292,13 +228,9 @@
                 issuedAt: Number((session && session.issuedAt) || 0) || 0,
                 expiresAt: Number((session && session.expiresAt) || 0) || 0
             };
-            if (next.writeToken) {
-                setStorageItem(authStorage, AUTH_SESSION_KEY, JSON.stringify(next));
-            } else {
-                removeStorageItem(authStorage, AUTH_SESSION_KEY);
-            }
-            setStorageItem(persistentStorage, 'delta8_editor', next.editor);
-            removeStorageItem(persistentStorage, 'delta8_write_token');
+            localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(next));
+            localStorage.setItem('delta8_editor', next.editor);
+            localStorage.setItem('delta8_write_token', next.writeToken);
             if (notify) {
                 showNotif(next.writeToken ? 'Write token disimpan' : 'Write token dikosongkan', 'info');
             }
@@ -312,12 +244,12 @@
 
         function getActiveEditor() {
             const session = getAuthSession();
-            return session && session.editor ? session.editor : String(getStorageItem(getPersistentStorage(), 'delta8_editor') || '').trim().toUpperCase();
+            return session && session.editor ? session.editor : String(localStorage.getItem('delta8_editor') || '').trim().toUpperCase();
         }
 
         function getWriteToken() {
             const session = getAuthSession();
-            return session && session.writeToken ? session.writeToken : '';
+            return session && session.writeToken ? session.writeToken : (localStorage.getItem('delta8_write_token') || '');
         }
 
         window.setWriteToken = function(token) {
@@ -429,9 +361,7 @@
         async function fetchJson(url, timeoutMs = 12000) {
             const data = await jsonpRequest(url, timeoutMs);
             if (!data || data.ok === false) {
-                const error = new Error((data && data.error) || 'Request gagal.');
-                error.responseData = data || null;
-                throw error;
+                throw new Error((data && data.error) || 'Request gagal.');
             }
             return data;
         }
@@ -513,70 +443,6 @@
             });
         }
 
-        function postToAppsScriptForResult(payload, timeoutMs = 15000) {
-            return new Promise((resolve, reject) => {
-                const messageId = `gas_rpc_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-                const frameName = `${messageId}_frame`;
-                const iframe = document.createElement('iframe');
-                iframe.name = frameName;
-                iframe.style.display = 'none';
-                document.body.appendChild(iframe);
-
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = CLOUD_URL;
-                form.target = frameName;
-                form.style.display = 'none';
-
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'payload';
-                input.value = JSON.stringify({
-                    ...payload,
-                    responseTransport: 'web_message',
-                    messageId,
-                    parentOrigin: window.location.origin
-                });
-                form.appendChild(input);
-                document.body.appendChild(form);
-
-                let finished = false;
-                let timerId = 0;
-
-                const cleanup = () => {
-                    window.removeEventListener('message', onMessage);
-                    if (timerId) clearTimeout(timerId);
-                    setTimeout(() => {
-                        iframe.remove();
-                        form.remove();
-                    }, 250);
-                };
-
-                const settle = (resolver, value) => {
-                    if (finished) return;
-                    finished = true;
-                    cleanup();
-                    resolver(value);
-                };
-
-                const onMessage = (event) => {
-                    if (event.origin !== 'https://script.google.com' && event.origin !== 'https://script.googleusercontent.com') return;
-                    const data = event.data;
-                    if (!data || data.source !== 'delta8_apps_script' || data.messageId !== messageId) return;
-                    settle(resolve, data.payload || null);
-                };
-
-                window.addEventListener('message', onMessage);
-                timerId = window.setTimeout(() => settle(reject, new Error('Backend tidak merespons.')), timeoutMs);
-
-                try {
-                    form.submit();
-                } catch (err) {
-                    settle(reject, err);
-                }
-            });
-        }
-
         async function initFcm() {
             if (!('serviceWorker' in navigator) || !('Notification' in window)) return false;
             if (!window.firebase || !firebase.messaging) return false;
@@ -612,60 +478,6 @@
             return true;
         }
 
-        function isStandaloneAppMode() {
-            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-        }
-
-        function updateInstallPromptUI() {
-            const button = document.getElementById('install-app-btn');
-            if (!button) return;
-            const shouldShow = !!deferredInstallPrompt && !isStandaloneAppMode();
-            button.classList.toggle('d-none', !shouldShow);
-        }
-
-        async function registerAppShellServiceWorker() {
-            if (!('serviceWorker' in navigator) || !window.isSecureContext) return null;
-            try {
-                return await navigator.serviceWorker.register('./app-sw.js');
-            } catch (err) {
-                console.warn('App shell service worker registration failed:', err);
-                return null;
-            }
-        }
-
-        async function promptAppInstall() {
-            if (isStandaloneAppMode()) {
-                showNotif('Aplikasi ini sudah terpasang di perangkat.', 'info');
-                updateInstallPromptUI();
-                return;
-            }
-            if (!deferredInstallPrompt) {
-                showNotif('Gunakan menu browser lalu pilih Install App atau Tambahkan ke layar utama.', 'info');
-                return;
-            }
-            try {
-                deferredInstallPrompt.prompt();
-                await deferredInstallPrompt.userChoice;
-            } catch (err) {
-                console.warn('App install prompt failed:', err);
-            } finally {
-                deferredInstallPrompt = null;
-                updateInstallPromptUI();
-            }
-        }
-
-        window.addEventListener('beforeinstallprompt', (event) => {
-            event.preventDefault();
-            deferredInstallPrompt = event;
-            updateInstallPromptUI();
-        });
-
-        window.addEventListener('appinstalled', () => {
-            deferredInstallPrompt = null;
-            updateInstallPromptUI();
-            showNotif('Aplikasi berhasil dipasang di perangkat ini.', 'success');
-        });
-
         async function showStatusBarNotification(title, body, options = {}) {
             try {
                 if (Notification.permission !== 'granted') return;
@@ -693,7 +505,7 @@
             if (!panel || panel.classList.contains('show')) return;
             panel.classList.add('show');
             const icon = document.getElementById(`${id.split('-')[0]}-icon`);
-            if (icon) icon.innerText = 'â–²';
+            if (icon) icon.innerText = '▲';
         }
 
         function focusLaunchTarget(targetId) {
@@ -783,9 +595,9 @@
             if (exportCol) exportCol.classList.remove('show');
 
             const logIcon = document.getElementById('log-icon');
-            if (logIcon) logIcon.innerText = 'â–¼';
+            if (logIcon) logIcon.innerText = '▼';
             const exportIcon = document.getElementById('export-icon');
-            if (exportIcon) exportIcon.innerText = 'â–¼';
+            if (exportIcon) exportIcon.innerText = '▼';
         }
 
         window.addEventListener('message', async (event) => {
@@ -852,10 +664,8 @@
             };
 
             try {
-                const data = await postToAppsScriptForResult(payload, 15000);
-                if (!data || data.ok === false) {
-                    throw new Error((data && data.error) || 'Request gagal.');
-                }
+                const url = `${CLOUD_URL}?action=saveFcmToken&authToken=${encodeURIComponent(writeToken)}&token=${encodeURIComponent(token)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
+                const data = await fetchJson(url);
                 return { saved: !!(data && data.saved), data };
             } catch (err) {
                 const message = String((err && err.message) || '');
@@ -886,20 +696,9 @@
 
             const deviceId = session && session.deviceId ? session.deviceId : getDeviceId();
             const editor = session && session.editor ? session.editor : getActiveEditor();
+            const url = `${CLOUD_URL}?action=testFcm&authToken=${encodeURIComponent(writeToken)}&token=${encodeURIComponent(token)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}&title=${encodeURIComponent('Tes Notifikasi Delta 8')}&body=${encodeURIComponent('Kalau pesan ini masuk, FCM sudah aktif di perangkat ini.')}`;
             try {
-                const data = await postToAppsScriptForResult({
-                    action: 'testFcm',
-                    authToken: writeToken,
-                    token,
-                    editor,
-                    deviceId,
-                    title: 'Tes Notifikasi Delta 8',
-                    body: 'Kalau pesan ini masuk, FCM sudah aktif di perangkat ini.'
-                }, 15000);
-                if (!data || data.ok === false) {
-                    throw new Error((data && data.error) || 'Request gagal.');
-                }
-                return data;
+                return await fetchJson(url);
             } catch (err) {
                 return { ok: false, skipped: true, error: err && err.message ? err.message : 'fetch_failed' };
             }
@@ -1014,7 +813,7 @@
             touchDiff = e.touches[0].pageY - touchStart;
             if (touchDiff > 0 && touchDiff < 150) {
                 ptrIndicator.style.transform = `translateY(${touchDiff / 2}px)`;
-                ptrIcon.innerText = touchDiff > 100 ? '' : 'â¬‡ï¸';
+                ptrIcon.innerText = touchDiff > 100 ? '🆙' : '⬇️';
             }
         }, {passive: true});
 
@@ -1023,7 +822,7 @@
             if (touchDiff > 100) {
                 isRefreshing = true;
                 ptrIndicator.style.transform = `translateY(70px)`;
-                ptrIcon.innerText = 'â³';
+                ptrIcon.innerText = '⏳';
                 ptrIcon.classList.add('ptr-loading');
                 await loadFromCloudSmart(CURRENT_YEAR, { forceRender: true });
                 setTimeout(() => {
@@ -1038,7 +837,7 @@
         });
 
         function setTheme(t) { document.body.setAttribute('data-theme', t); localStorage.setItem('delta8_theme', t); document.querySelectorAll('.theme-dot').forEach(d => d.classList.remove('active')); if (document.getElementById('dot-' + t)) document.getElementById('dot-' + t).classList.add('active'); }
-        function toggleCol(id) { const el = document.getElementById(id); el.classList.toggle('show'); document.getElementById(id.split('-')[0] + '-icon').innerText = el.classList.contains('show') ? 'â–²' : 'â–¼'; }
+        function toggleCol(id) { const el = document.getElementById(id); el.classList.toggle('show'); document.getElementById(id.split('-')[0] + '-icon').innerText = el.classList.contains('show') ? '▲' : '▼'; }
 
         window.onclick = function(e) {
             const menu = document.getElementById('actionMenu');
@@ -1194,12 +993,8 @@
                 }
 
                 const deviceId = getDeviceId();
-                const data = await postToAppsScriptForResult({
-                    action: 'verifyAuth',
-                    pin,
-                    editor,
-                    deviceId
-                }, 12000);
+                const url = `${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
+                const data = await fetchVerifyAuth(url);
                 if (!data || !data.ok || !data.writeToken) {
                     if (optimisticToggle) {
                         executeAction(action, params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
@@ -1225,7 +1020,9 @@
 
                 if (action === 'toggle') {
                     if (optimisticToggle) {
-                        await submitMemberStatusTogglePatch(params, optimisticToggle);
+                        const mm = params.m.toString().padStart(2, '0');
+                        addLog("Iuran", `${params.kat.toUpperCase()} - ${optimisticToggle.person.nama} - ${mm}/${params.y} - [${optimisticToggle.isLunas ? "✅ - LUNAS" : "❌ - BATAL"}]`);
+                        syncAll();
                     } else {
                         executeAction(action, params);
                     }
@@ -1250,42 +1047,6 @@
         window.handlePinInput = handlePinInput;
         window.submitAuth = submitAuth;
         window.checkAuth = submitAuth;
-
-        async function submitMemberStatusTogglePatch(params, optimisticToggle) {
-            const activeSession = getAuthSession();
-            const writeToken = activeSession && activeSession.writeToken ? activeSession.writeToken : '';
-            if (!writeToken) {
-                throw new Error('Write token belum tersedia. Verifikasi ulang dulu.');
-            }
-
-            const response = await postToAppsScriptForResult({
-                action: 'toggleMemberStatus',
-                authToken: writeToken,
-                editor: getActiveEditor(),
-                deviceId: getDeviceId(),
-                year: params.y,
-                id: params.id,
-                kat: params.kat,
-                month: params.m,
-                expectedRevision: YEAR_REVISIONS[params.y] || ''
-            }, 20000);
-
-            if (!response || response.ok !== true) {
-                if (response && response.data) {
-                    applyYearData(params.y, response.data);
-                } else if (optimisticToggle) {
-                    executeAction('toggle', params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
-                }
-                throw new Error((response && response.error) || 'Toggle status ditolak backend.');
-            }
-
-            if (response.data) {
-                applyYearData(params.y, response.data);
-            } else if (optimisticToggle) {
-                commitCurrentYearRevision(params.y, response.revision || YEAR_REVISIONS[params.y] || '');
-            }
-            suppressRemoteRefreshUntil = Date.now() + AUTO_SYNC_SUPPRESS_MS;
-        }
 
         function executeAction(action = pendingAction, params = pendingParams, options = {}) {
             if (action === 'tambah') { 
@@ -1412,7 +1173,7 @@
                 const monthText = pendingMonths.map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
                 addLog(
                     "Iuran",
-                    `${String(params.kat || '').toUpperCase()} - ${updatedPerson.nama} - ${monthText} - [${statusValue === true ? "âœ… - LUNAS VERIFIKASI ADMIN" : "âŒ - PEMBAYARAN QRIS DIBATALKAN"}]`
+                    `${String(params.kat || '').toUpperCase()} - ${updatedPerson.nama} - ${monthText} - [${statusValue === true ? "✅ - LUNAS VERIFIKASI ADMIN" : "❌ - PEMBAYARAN QRIS DIBATALKAN"}]`
                 );
                 syncAll();
                 return { person: updatedPerson, statusValue };
@@ -1478,8 +1239,7 @@
             });
             YEAR_CACHE[normalizedYear] = cloneYearDataShape(snapshot);
             YEAR_SIGNATURES[normalizedYear] = buildYearSignature(snapshot);
-            YEAR_REVISIONS[normalizedYear] = extractYearRevision(data);
-            saveYearCacheToStorage(normalizedYear, { ...snapshot, revision: YEAR_REVISIONS[normalizedYear] });
+            saveYearCacheToStorage(normalizedYear, snapshot);
             return cloneYearDataShape(snapshot);
         }
 
@@ -1730,8 +1490,8 @@
                 const monthLabel = item.months.map(month => PAYMENT_MONTH_NAMES[month - 1]).join(', ');
                 const safePayload = encodeURIComponent(JSON.stringify(item));
                 return `<tr>
-                    <td>${escapeHtml(String(item.kat || '').toUpperCase())} - ${escapeHtml(item.nama)}</td>
-                    <td>${escapeHtml(monthLabel)}</td>
+                    <td>${String(item.kat || '').toUpperCase()} - ${item.nama}</td>
+                    <td>${monthLabel}</td>
                     <td class="fw-bold text-end">Rp ${item.nominal.toLocaleString('id-ID')}</td>
                     <td><span class="badge bg-warning text-dark">PENDING</span></td>
                     <td class="text-nowrap">
@@ -1983,7 +1743,7 @@
         }
 
         function hasSnapRedirectFlow(payment) {
-            return !!(payment && String(payment.snapToken || '').trim());
+            return !!(payment && (String(payment.snapToken || '').trim() || String(payment.snapRedirectUrl || '').trim()));
         }
 
         function updateQrisActionButton(payment) {
@@ -2233,12 +1993,24 @@
             try {
                 if (hasSnapRedirectFlow(currentMidtransPayment)) {
                     const button = document.getElementById('qris-open-btn');
-                    setQrisStatusCopy('Membuka QRIS...');
-                    await openMidtransSnapQris(currentMidtransPayment);
-                    if (button) button.dataset.mode = 'status';
-                    updateQrisActionButton(currentMidtransPayment);
-                    if (!options.forceOpen) setQrisStatusCopy('QRIS sudah dibuka. Setelah selesai bayar, Anda bisa buka QRIS lagi dari tombol ini.');
-                    return;
+                    setQrisStatusCopy('Membuka QRIS GoPay...');
+                    try {
+                        await openMidtransSnapQris(currentMidtransPayment);
+                        if (button) button.dataset.mode = 'status';
+                        updateQrisActionButton(currentMidtransPayment);
+                        if (!options.forceOpen) setQrisStatusCopy('QRIS GoPay sudah dibuka. Setelah selesai bayar, Anda bisa buka QRIS lagi dari tombol ini.');
+                        return;
+                    } catch (snapErr) {
+                        const redirectUrl = String(currentMidtransPayment.snapRedirectUrl || '').trim();
+                        if (redirectUrl) {
+                            window.open(redirectUrl, '_blank', 'noopener,noreferrer');
+                            if (button) button.dataset.mode = 'status';
+                            updateQrisActionButton(currentMidtransPayment);
+                            if (!options.forceOpen) setQrisStatusCopy('QRIS GoPay dibuka di tab baru. Setelah selesai bayar, Anda bisa buka QRIS lagi dari tombol ini.');
+                            return;
+                        }
+                        throw snapErr;
+                    }
                 }
                 setQrisStatusCopy('Memeriksa status pembayaran QRIS...');
                 await syncMidtransPaymentStatus({ silent: false });
@@ -2273,11 +2045,11 @@
                     startMidtransStatusPolling();
                     updateQrisTransactionInfo(payment);
                     if (payment && hasSnapRedirectFlow(payment)) {
-                        setQrisStatusCopy('QRIS tersedia. Popup akan dibuka otomatis.');
+                        setQrisStatusCopy('QRIS GoPay tersedia. Popup akan dibuka otomatis.');
                         window.setTimeout(() => {
                             if (currentMidtransPayment && currentMidtransPayment.orderId === payment.orderId) {
                                 openCurrentSnapPayment({ forceOpen: true }).catch((autoOpenErr) => {
-                                    console.warn('Automatic QRIS open failed:', autoOpenErr);
+                                    console.warn('Automatic QRIS GoPay open failed:', autoOpenErr);
                                 });
                             }
                         }, 80);
@@ -2332,13 +2104,13 @@
             }
 
             if (!hasSnapRedirectFlow(payment)) {
-                throw new Error('Midtrans belum mengembalikan akses pembayaran QRIS untuk transaksi ini.');
+                throw new Error('Midtrans belum mengembalikan akses pembayaran GoPay untuk transaksi ini.');
             }
 
             currentMidtransPayment = payment;
             startMidtransStatusPolling();
             updateQrisTransactionInfo(payment);
-            setQrisStatusCopy('QRIS tersedia. Popup akan dibuka otomatis.');
+            setQrisStatusCopy('QRIS GoPay tersedia. Popup akan dibuka otomatis.');
         }
 
         async function syncMidtransPaymentStatus(options = {}) {
@@ -2401,7 +2173,7 @@
             resetQrisActionButton();
 
             pendingPaymentContext = params || null;
-            setQrisStatusCopy('Menyiapkan QRIS...');
+            setQrisStatusCopy('Menyiapkan QRIS GoPay...');
             prewarmMidtransPaymentFlow();
             warmMidtransPaymentForModal(params).catch((err) => {
                 console.warn('Midtrans payment prewarm failed:', err);
@@ -2438,7 +2210,7 @@
             monthGrid.innerHTML = PAYMENT_MONTH_NAMES.map((monthName, idx) => {
                 const month = idx + 1;
                 const paid = statusMap[month] === true || statusMap[month] === 'pending' || statusMap[month] === 'gateway_pending';
-                return `<button type="button" id="payment-month-${month}" class="month-option-btn" ${paid ? 'disabled' : ''} onclick="togglePaymentMonthSelection(${month})">${escapeHtml(monthName)}</button>`;
+                return `<button type="button" id="payment-month-${month}" class="month-option-btn" ${paid ? 'disabled' : ''} onclick="togglePaymentMonthSelection(${month})">${monthName}</button>`;
             }).join('');
 
             const paidCount = Object.values(statusMap).filter(v => v === true || v === 'pending' || v === 'gateway_pending').length;
@@ -2570,6 +2342,269 @@
             }
         }
 
+        let uploadedImageFile = null;
+        let currentUploadProofBase64 = null;
+        let selectedUploadMethod = 'web';
+
+        function getUploadModalElements() {
+            return {
+                modalEl: document.getElementById('modalUploadBukti'),
+                memberNameEl: document.getElementById('upload-member-name'),
+                memberKatEl: document.getElementById('upload-member-kat'),
+                monthsEl: document.getElementById('upload-months'),
+                amountEl: document.getElementById('upload-amount'),
+                adminWhatsappEl: document.getElementById('admin-whatsapp-number'),
+                whatsappLinkEl: document.getElementById('whatsapp-link'),
+                submitBtn: document.getElementById('upload-submit-btn'),
+                uploadLaterBtn: document.getElementById('upload-later-btn'),
+                methodWebBtn: document.getElementById('method-web'),
+                methodWhatsappBtn: document.getElementById('method-whatsapp'),
+                uploadWebSection: document.getElementById('upload-web-section'),
+                uploadWhatsappSection: document.getElementById('upload-whatsapp-section'),
+                uploadPlaceholder: document.getElementById('upload-placeholder'),
+                uploadPreview: document.getElementById('upload-preview')
+            };
+        }
+
+        function getConfiguredAdminWhatsappNumber() {
+            return String(ADMIN_WHATSAPP_NUMBER || '').replace(/[^\d]/g, '');
+        }
+
+        function compressProofImage(file) {
+            return new Promise((resolve, reject) => {
+                if (!file) {
+                    reject(new Error('File bukti pembayaran tidak ditemukan.'));
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onerror = () => reject(new Error('Gagal membaca file gambar.'));
+                reader.onload = () => {
+                    const img = new Image();
+                    img.onerror = () => reject(new Error('File gambar tidak bisa diproses.'));
+                    img.onload = () => {
+                        const maxWidth = 720;
+                        const maxHeight = 1280;
+                        let { width, height } = img;
+                        const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
+                        width = Math.max(1, Math.round(width * ratio));
+                        height = Math.max(1, Math.round(height * ratio));
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const context = canvas.getContext('2d');
+                        if (!context) {
+                            reject(new Error('Browser tidak mendukung kompresi gambar.'));
+                            return;
+                        }
+
+                        context.fillStyle = '#ffffff';
+                        context.fillRect(0, 0, width, height);
+                        context.drawImage(img, 0, 0, width, height);
+
+                        let quality = 0.82;
+                        let output = canvas.toDataURL('image/jpeg', quality);
+                        while (output.length > 45000 && quality > 0.3) {
+                            quality -= 0.08;
+                            output = canvas.toDataURL('image/jpeg', quality);
+                        }
+
+                        if (output.length > 45000) {
+                            reject(new Error('Bukti pembayaran terlalu besar. Coba foto yang lebih ringan atau crop dulu.'));
+                            return;
+                        }
+
+                        resolve(output);
+                    };
+                    img.src = reader.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function handleSelectedUploadFile(file) {
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                showNotif('File harus berupa gambar (JPG, PNG, dll).', 'error');
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                showNotif('Ukuran file maksimal 5MB.', 'error');
+                return;
+            }
+
+            try {
+                const compressedProof = await compressProofImage(file);
+                uploadedImageFile = file;
+                currentUploadProofBase64 = compressedProof;
+                uploadImagePreview.src = compressedProof;
+                document.getElementById('upload-placeholder').classList.add('d-none');
+                document.getElementById('upload-preview').classList.remove('d-none');
+                document.getElementById('upload-submit-btn').disabled = false;
+            } catch (err) {
+                uploadedImageFile = null;
+                currentUploadProofBase64 = null;
+                document.getElementById('upload-placeholder').classList.remove('d-none');
+                document.getElementById('upload-preview').classList.add('d-none');
+                document.getElementById('upload-submit-btn').disabled = true;
+                showNotif((err && err.message) ? err.message : 'Bukti pembayaran gagal diproses.', 'error');
+            }
+        }
+
+        function selectUploadMethod(method) {
+            selectedUploadMethod = method;
+            const {
+                methodWebBtn,
+                methodWhatsappBtn,
+                uploadWebSection,
+                uploadWhatsappSection,
+                submitBtn,
+                uploadLaterBtn
+            } = getUploadModalElements();
+
+            if (methodWebBtn) methodWebBtn.classList.toggle('active', method === 'web');
+            if (methodWhatsappBtn) methodWhatsappBtn.classList.toggle('active', method === 'whatsapp');
+            if (uploadWebSection) uploadWebSection.classList.toggle('d-none', method !== 'web');
+            if (uploadWhatsappSection) uploadWhatsappSection.classList.toggle('d-none', method !== 'whatsapp');
+            if (uploadLaterBtn) uploadLaterBtn.classList.toggle('d-none', method === 'whatsapp');
+            if (!submitBtn) return;
+            if (method === 'web') {
+                submitBtn.disabled = !uploadedImageFile;
+                submitBtn.textContent = 'KIRIM PEMBAYARAN';
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'LANJUT KE WHATSAPP';
+            }
+        }
+
+        function showUploadBuktiModal() {
+            if (!pendingPaymentContext) {
+                showNotif('Data pembayaran tidak ditemukan.', 'error');
+                return;
+            }
+
+            const {
+                modalEl,
+                memberNameEl,
+                memberKatEl,
+                monthsEl,
+                amountEl,
+                adminWhatsappEl,
+                whatsappLinkEl
+            } = getUploadModalElements();
+
+            if (!modalEl) {
+                showNotif('Popup upload bukti belum tersedia.', 'error');
+                return;
+            }
+
+            const months = Array.isArray(pendingPaymentContext.selectedMonths) 
+                ? pendingPaymentContext.selectedMonths.map(m => PAYMENT_MONTH_NAMES[m-1]).join(', ')
+                : '-';
+            const total = (pendingPaymentContext.selectedMonths?.length || 0) * MONTHLY_IURAN_AMOUNT;
+            const adminWhatsappNumber = getConfiguredAdminWhatsappNumber();
+
+            if (memberNameEl) memberNameEl.textContent = pendingPaymentContext.nama || '-';
+            if (memberKatEl) memberKatEl.textContent = pendingPaymentContext.kat || '-';
+            if (monthsEl) monthsEl.textContent = months;
+            if (amountEl) amountEl.textContent = formatCurrency(total);
+            if (adminWhatsappEl) adminWhatsappEl.textContent = adminWhatsappNumber ? `+${adminWhatsappNumber}` : '-';
+
+            const whatsappMessage = encodeURIComponent(
+                `Halo Admin, saya sudah transfer pembayaran iuran:\n\n` +
+                `Nama: ${pendingPaymentContext.nama}\n` +
+                `Kategori: ${pendingPaymentContext.kat}\n` +
+                `Bulan: ${months}\n` +
+                `Nominal: ${formatCurrency(total)}\n\n` +
+                `Mohon verifikasi pembayaran saya.`
+            );
+            if (whatsappLinkEl) {
+                whatsappLinkEl.href = adminWhatsappNumber
+                    ? `https://wa.me/${adminWhatsappNumber}?text=${whatsappMessage}`
+                    : '#';
+                whatsappLinkEl.classList.toggle('disabled', !adminWhatsappNumber);
+                whatsappLinkEl.setAttribute('aria-disabled', adminWhatsappNumber ? 'false' : 'true');
+            }
+
+            uploadedImageFile = null;
+            currentUploadProofBase64 = null;
+            selectedUploadMethod = 'web';
+            removeUploadImage();
+            selectUploadMethod('web');
+
+            hideModalSafely('modalQrisPayment');
+
+            const uploadModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            window.setTimeout(() => uploadModal.show(), 180);
+        }
+
+        function removeUploadImage() {
+            const { uploadPlaceholder, uploadPreview, submitBtn } = getUploadModalElements();
+            uploadedImageFile = null;
+            currentUploadProofBase64 = null;
+            if (uploadFileInput) uploadFileInput.value = '';
+            if (uploadPlaceholder) uploadPlaceholder.classList.remove('d-none');
+            if (uploadPreview) uploadPreview.classList.add('d-none');
+            if (submitBtn) submitBtn.disabled = true;
+        }
+
+        function submitPaymentWithProof() {
+            if (selectedUploadMethod === 'web') {
+                if (!uploadedImageFile) {
+                    showNotif('Silakan upload bukti pembayaran terlebih dahulu.', 'error');
+                    return;
+                }
+                submitPaymentWithImageProof(uploadedImageFile);
+            } else {
+                // WhatsApp method - just submit payment and redirect to WhatsApp
+                submitPaymentWithWhatsAppProof();
+            }
+        }
+
+        function submitPaymentWithoutProof() {
+            hideModalSafely('modalUploadBukti');
+
+            submitQrisPaymentDirect();
+            showNotif('Pembayaran QRIS dikirim tanpa bukti. Bukti bisa diupload nanti jika diperlukan.', 'info');
+        }
+
+        function submitPaymentWithImageProof(imageFile) {
+            // Close upload modal
+            hideModalSafely('modalUploadBukti');
+            hideModalSafely('modalQrisPayment');
+
+            // Submit payment with proof
+            submitQrisPaymentDirect(currentUploadProofBase64);
+
+            // Show success message
+            showNotif('Pembayaran QRIS dengan bukti berhasil dikirim. Admin akan segera memproses.', 'success');
+        }
+
+        function submitPaymentWithWhatsAppProof() {
+            const { whatsappLinkEl } = getUploadModalElements();
+            const whatsappLink = whatsappLinkEl ? String(whatsappLinkEl.href || '').trim() : '';
+            if (!whatsappLink || whatsappLink === '#') {
+                showNotif('Nomor WhatsApp admin belum dikonfigurasi.', 'error');
+                return;
+            }
+
+            // Close upload modal
+            hideModalSafely('modalUploadBukti');
+            hideModalSafely('modalQrisPayment');
+
+            // Submit payment
+            submitQrisPaymentDirect();
+
+            // Show WhatsApp redirect message
+            showNotif('Pembayaran dikirim. Silakan kirim bukti via WhatsApp untuk verifikasi.', 'info');
+            
+            // Open WhatsApp after a short delay
+            setTimeout(() => {
+                window.open(whatsappLink, '_blank');
+            }, 1000);
+        }
+
         window.openPaymentOptions = openPaymentOptions;
         window.togglePaymentMonthSelection = togglePaymentMonthSelection;
         window.continueMemberPayment = continueMemberPayment;
@@ -2578,11 +2613,55 @@
         window.continuePendingMemberPayment = continuePendingMemberPayment;
         window.cancelMemberPendingPayment = cancelMemberPendingPayment;
         window.triggerAdminPendingAction = triggerAdminPendingAction;
+        window.showUploadBuktiModal = showUploadBuktiModal;
+        window.removeUploadImage = removeUploadImage;
+        window.submitPaymentWithProof = submitPaymentWithProof;
+        window.submitPaymentWithoutProof = submitPaymentWithoutProof;
+        window.selectUploadMethod = selectUploadMethod;
+
+        // Upload bukti pembayaran event listeners
+        const uploadArea = document.getElementById('upload-area');
+        const uploadFileInput = document.getElementById('upload-file-input');
+        const uploadImagePreview = document.getElementById('upload-image-preview');
+
+        if (uploadArea) {
+            uploadArea.addEventListener('click', () => {
+                uploadFileInput.click();
+            });
+
+            // Drag and drop functionality
+            uploadArea.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', (event) => {
+                event.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (event) => {
+                event.preventDefault();
+                uploadArea.classList.remove('dragover');
+
+                const files = event.dataTransfer.files;
+                if (files.length > 0) {
+                    handleSelectedUploadFile(files[0]);
+                }
+            });
+        }
+
+        if (uploadFileInput) {
+            uploadFileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) handleSelectedUploadFile(file);
+            });
+        }
 
         async function loadFromCloud(year = CURRENT_YEAR, options = {}) {
 
     const token = ++loadToken;
-    setSyncStatusText("â³ MEMUAT DATA...");
+    setSyncStatusText("⏳ MEMUAT DATA...");
 
     try {
 
@@ -2603,16 +2682,15 @@
             logs: cloneData(DB_LOGS)
         };
         YEAR_SIGNATURES[year] = buildYearSignature(YEAR_CACHE[year]);
-        YEAR_REVISIONS[year] = extractYearRevision(data);
 
         render();
 
-        setSyncStatusText("â˜ï¸ TERHUBUNG");
+        setSyncStatusText("☁️ TERHUBUNG");
 
     } catch (e) {
 
         if (token !== loadToken) return;
-        setSyncStatusText("â˜ï¸ TERPUTUS");
+        setSyncStatusText("☁️ TERPUTUS");
         render();
 
     }
@@ -2628,10 +2706,6 @@
             });
         }
 
-        function extractYearRevision(data) {
-            return String(data && data.revision ? data.revision : '').trim();
-        }
-
         function getYearCacheStorageKey(year) {
             return `${YEAR_CACHE_STORAGE_PREFIX}${Number(year) || 0}`;
         }
@@ -2640,7 +2714,6 @@
             try {
                 localStorage.setItem(getYearCacheStorageKey(year), JSON.stringify({
                     savedAt: Date.now(),
-                    revision: extractYearRevision(data),
                     data: {
                         driver: cloneData(data.driver || []),
                         helper: cloneData(data.helper || []),
@@ -2659,7 +2732,6 @@
                 if (!parsed || typeof parsed !== 'object' || !parsed.data) return null;
                 return {
                     savedAt: Number(parsed.savedAt || 0) || 0,
-                    revision: String(parsed.revision || '').trim(),
                     data: {
                         driver: Array.isArray(parsed.data.driver) ? parsed.data.driver : [],
                         helper: Array.isArray(parsed.data.helper) ? parsed.data.helper : [],
@@ -2686,7 +2758,6 @@
 
             YEAR_CACHE[year] = normalized;
             YEAR_SIGNATURES[year] = buildYearSignature(normalized);
-            YEAR_REVISIONS[year] = String(stored.revision || '').trim();
 
             if (renderIfCurrent && Number(year) === Number(CURRENT_YEAR)) {
                 DB_DRIVER = cloneData(normalized.driver);
@@ -2706,12 +2777,10 @@
                 transaksi: cloneData(data.transaksi || []),
                 logs: cloneData(data.logs || [])
             };
-            const revision = extractYearRevision(data);
 
             YEAR_CACHE[year] = normalized;
             YEAR_SIGNATURES[year] = buildYearSignature(normalized);
-            YEAR_REVISIONS[year] = revision;
-            saveYearCacheToStorage(year, { ...normalized, revision });
+            saveYearCacheToStorage(year, normalized);
 
             if (Number(year) === Number(CURRENT_YEAR)) {
                 DB_DRIVER = cloneData(normalized.driver);
@@ -2721,22 +2790,6 @@
                 render();
             }
 
-            return normalized;
-        }
-
-        function commitCurrentYearRevision(year, revision) {
-            const normalizedYear = normalizeYearValue(year);
-            const normalized = {
-                driver: cloneData(DB_DRIVER),
-                helper: cloneData(DB_HELPER),
-                transaksi: cloneData(DB_TRANSAKSI),
-                logs: cloneData(DB_LOGS)
-            };
-            const cleanRevision = String(revision || '').trim();
-            YEAR_CACHE[normalizedYear] = normalized;
-            YEAR_SIGNATURES[normalizedYear] = buildYearSignature(normalized);
-            YEAR_REVISIONS[normalizedYear] = cleanRevision;
-            saveYearCacheToStorage(normalizedYear, { ...normalized, revision: cleanRevision });
             return normalized;
         }
 
@@ -2771,11 +2824,10 @@
                     logs: data.logs || []
                 };
                 const nextSignature = buildYearSignature(normalized);
-                const nextRevision = extractYearRevision(data);
-                const changed = YEAR_SIGNATURES[year] !== nextSignature || YEAR_REVISIONS[year] !== nextRevision;
+                const changed = YEAR_SIGNATURES[year] !== nextSignature;
 
                 if (changed || !silent || forceRender || !YEAR_CACHE[year]) {
-                    applyYearData(year, data);
+                    applyYearData(year, normalized);
                 }
 
                 if (status) status.innerText = "TERHUBUNG";
@@ -2786,6 +2838,46 @@
                 if (!silent && Number(year) === Number(CURRENT_YEAR)) render();
                 return { changed: false, ignored: false, error: e };
             }
+        }
+
+        async function waitForRemoteYearSignature(year, expectedSignature, options = {}) {
+            const timeoutMs = Number(options.timeoutMs || 15000);
+            const intervalMs = Number(options.intervalMs || 400);
+            const startedAt = Date.now();
+            let lastData = null;
+            let lastError = null;
+
+            while ((Date.now() - startedAt) < timeoutMs) {
+                try {
+                    const data = await fetchJson(`${CLOUD_URL}?action=read&year=${year}`);
+                    lastData = {
+                        driver: data.driver || [],
+                        helper: data.helper || [],
+                        transaksi: data.transaksi || [],
+                        logs: data.logs || []
+                    };
+                    lastError = null;
+
+                    if (buildYearSignature(lastData) === expectedSignature) {
+                        return {
+                            ok: true,
+                            data: lastData,
+                            elapsedMs: Date.now() - startedAt
+                        };
+                    }
+                } catch (err) {
+                    lastError = err;
+                }
+
+                await new Promise(resolve => setTimeout(resolve, intervalMs));
+            }
+
+            return {
+                ok: false,
+                data: lastData,
+                elapsedMs: Date.now() - startedAt,
+                error: lastError && lastError.message ? lastError.message : ''
+            };
         }
 
         async function refreshCurrentYearInBackground(reason = 'interval') {
@@ -2818,7 +2910,7 @@
             });
         }
 
-        async function syncAll() {
+async function syncAll() {
     if (syncInProgress) {
         syncQueued = true;
         return;
@@ -2826,16 +2918,25 @@
     syncQueued = false;
     syncInProgress = true;
 
+    // render dulu data lokal
     render();
+    YEAR_CACHE[CURRENT_YEAR] = {
+        driver: cloneData(DB_DRIVER),
+        helper: cloneData(DB_HELPER),
+        transaksi: cloneData(DB_TRANSAKSI),
+        logs: cloneData(DB_LOGS)
+    };
+    YEAR_SIGNATURES[CURRENT_YEAR] = buildYearSignature(YEAR_CACHE[CURRENT_YEAR]);
+    saveYearCacheToStorage(CURRENT_YEAR, YEAR_CACHE[CURRENT_YEAR]);
 
         const status = document.getElementById('sync-status');
-        setSyncStatusText("â³ MENYIMPAN...");
+        setSyncStatusText("⏳ MENYIMPAN...");
 
     try {
         const writeToken = getWriteToken();
         if (!writeToken) {
             showNotif('Write token belum tersedia. Verifikasi ulang dulu.', 'error');
-            setSyncStatusText("âš ï¸ GAGAL SINKRON");
+            setSyncStatusText("⚠️ GAGAL SINKRON");
             const shouldRerun = syncQueued;
             syncInProgress = false;
             syncQueued = false;
@@ -2849,34 +2950,32 @@
             editor: getActiveEditor(),
             deviceId: getDeviceId(),
             year: CURRENT_YEAR,
-            expectedRevision: YEAR_REVISIONS[CURRENT_YEAR] || '',
             driver: DB_DRIVER,
             helper: DB_HELPER,
             transaksi: DB_TRANSAKSI,
             logs: DB_LOGS
         };
 
-        const writeResult = await postToAppsScriptForResult(payload, 20000);
-        if (!writeResult || writeResult.ok !== true) {
-            if (writeResult && writeResult.data) {
-                applyYearData(CURRENT_YEAR, writeResult.data);
-            } else if (writeResult && writeResult.responseData && writeResult.responseData.data) {
-                applyYearData(CURRENT_YEAR, writeResult.responseData.data);
-            }
-            const serverCode = String(writeResult && writeResult.code ? writeResult.code : '').trim().toLowerCase();
-            if (serverCode === 'revision_conflict' || serverCode === 'revision_required') {
-                showNotif('Perubahan dibatalkan karena data sudah diubah admin/perangkat lain. Tampilan dimuat ulang ke versi terbaru.', 'error');
-            }
-            throw new Error((writeResult && writeResult.error) || 'Sinkronisasi ditolak backend.');
+        // kirim ke Google Apps Script
+        await postToAppsScript(payload);
+        setSyncStatusText("⏳ MEMVERIFIKASI...");
+        const verification = await waitForRemoteYearSignature(CURRENT_YEAR, YEAR_SIGNATURES[CURRENT_YEAR], {
+            timeoutMs: 15000,
+            intervalMs: 400
+        });
+        if (!verification.ok) {
+            throw new Error(verification.error || 'Spreadsheet belum mengonfirmasi data terbaru.');
         }
-        commitCurrentYearRevision(CURRENT_YEAR, writeResult.revision || YEAR_REVISIONS[CURRENT_YEAR]);
+        if (verification.data) {
+            applyYearData(CURRENT_YEAR, verification.data);
+        }
         const shouldRerun = syncQueued;
         syncInProgress = false;
         syncQueued = false;
         if (shouldRerun) setTimeout(() => syncAll(), 0);
         suppressRemoteRefreshUntil = Date.now() + AUTO_SYNC_SUPPRESS_MS;
 
-        setSyncStatusText("â˜ï¸ TERHUBUNG");
+        setSyncStatusText("☁️ TERHUBUNG");
 
     } catch (err) {
 
@@ -2886,7 +2985,7 @@
         syncQueued = false;
         if (shouldRerun) setTimeout(() => syncAll(), 0);
 
-        setSyncStatusText("âš ï¸ GAGAL SINKRON");
+        setSyncStatusText("⚠️ GAGAL SINKRON");
 
     }
 }
@@ -2939,8 +3038,7 @@
             if (!p.status) p.status = {};
             let count = 0;
             const cellParts = [];
-            const safeName = escapeJsString(p.nama);
-            const safeMemberName = escapeHtml(p.nama);
+            const safeName = String(p.nama || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
             for (let i = 1; i <= 12; i++) {
                 const rawStatus = p.status[y]?.[i];
@@ -2958,7 +3056,7 @@
             }
 
             rows.push(
-                `<tr><td class="no-col">${idx + 1}</td><td class="name-col">${safeMemberName}</td>${cellParts.join('')}<td class="text-center-force">${count}/12</td>${adminMode ? `<td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="member" data-id="${p.id}">&#8942;</div></td>` : ''}<td class="col-bayar"><button type="button" class="btn-bayar-mini" onclick="openPaymentOptions({ id: '${p.id}', nama: '${safeName}', kat: '${kat}', y: ${y}, m: ${m} })">BAYAR</button></td></tr>`
+                `<tr><td class="no-col">${idx + 1}</td><td class="name-col">${p.nama}</td>${cellParts.join('')}<td class="text-center-force">${count}/12</td>${adminMode ? `<td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="member" data-id="${p.id}">&#8942;</div></td>` : ''}<td class="col-bayar"><button type="button" class="btn-bayar-mini" onclick="openPaymentOptions({ id: '${p.id}', nama: '${safeName}', kat: '${kat}', y: ${y}, m: ${m} })">BAYAR</button></td></tr>`
             );
         });
 
@@ -2983,7 +3081,7 @@
         else cOut += x.v;
 
         transaksiRows.push(
-            `<tr><td class="text-center">${escapeHtml(x.d.split('-').reverse().join('/'))}</td><td class="fw-bold ${x.tp === 'Pemasukan' ? 'text-success' : 'text-danger'} text-center">${escapeHtml(x.tp.toUpperCase())}</td><td>${escapeHtml(x.p)}</td><td>${escapeHtml(x.k || '-')}</td><td class="fw-bold text-end">Rp ${x.v.toLocaleString()}</td>${adminMode ? `<td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="trans" data-idx="${idx}">&#8942;</div></td>` : ''}</tr>`
+            `<tr><td class="text-center">${x.d.split('-').reverse().join('/')}</td><td class="fw-bold ${x.tp === 'Pemasukan' ? 'text-success' : 'text-danger'} text-center">${x.tp.toUpperCase()}</td><td>${x.p}</td><td>${x.k || '-'}</td><td class="fw-bold text-end">Rp ${x.v.toLocaleString()}</td>${adminMode ? `<td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="trans" data-idx="${idx}">&#8942;</div></td>` : ''}</tr>`
         );
     }
     hi.innerHTML = transaksiRows.join('');
@@ -3006,7 +3104,7 @@
     for (let i = 0; i < Math.min(50, DB_LOGS.length); i++) {
         const l = DB_LOGS[i];
         logRows.push(
-            `<tr><td>${escapeHtml(l.time)}</td><td>${escapeHtml(l.editor)}</td><td><small class="badge bg-dark">${escapeHtml(l.aksi)}</small></td><td>${escapeHtml(l.ket)}</td></tr>`
+            `<tr><td>${l.time}</td><td>${l.editor}</td><td><small class="badge bg-dark">${l.aksi}</small></td><td>${l.ket}</td></tr>`
         );
     }
     lg.innerHTML = logRows.join('');
@@ -3144,7 +3242,7 @@
                 });
                 addLog(
                     "Iuran",
-                    `${String(pendingIuranPaymentData.kat || '').toUpperCase()} - ${String(pendingIuranPaymentData.nama || '').toUpperCase()} - ${pendingIuranPaymentData.months.map(month => `${String(month).padStart(2, '0')}/${pendingIuranPaymentData.y}`).join(', ')} - [${isQris ? "â³ - PENDING VERIFIKASI QRIS" : "âœ… - LUNAS VIA " + pendingIuranPaymentData.method}]`
+                    `${String(pendingIuranPaymentData.kat || '').toUpperCase()} - ${String(pendingIuranPaymentData.nama || '').toUpperCase()} - ${pendingIuranPaymentData.months.map(month => `${String(month).padStart(2, '0')}/${pendingIuranPaymentData.y}`).join(', ')} - [${isQris ? "⏳ - PENDING VERIFIKASI QRIS" : "✅ - LUNAS VIA " + pendingIuranPaymentData.method}]`
                 );
             }
         }
@@ -3399,10 +3497,8 @@
             const pdfBlob = doc.output('blob');
             showPdfPreview(pdfBlob, fileName);
         }
-window.onload = () => {
+        window.onload = () => {
     setTheme(localStorage.getItem('delta8_theme') || 'luxury');
-    updateInstallPromptUI();
-    registerAppShellServiceWorker();
     applyAdminMode();
     syncPaymentOptionAvailability();
     initTahun();
@@ -3436,7 +3532,7 @@ window.onload = () => {
         if (status) status.innerText = "MEMUAT CACHE...";
     }
 
-    // Ini yang bikin saldo langsung update
+    // ðŸ”¥ INI YANG BIKIN SALDO LANGSUNG UPDATE
     sm.addEventListener('change', render);
     sy.addEventListener('change', () => gantiTahun(sy.value));
 
@@ -3537,7 +3633,7 @@ async function gantiTahun(tahun){
 
     CURRENT_YEAR = Number(tahun);
     syncYearDropdowns(CURRENT_YEAR);
-    setSyncStatusText("â³ MEMUAT DATA...");
+    setSyncStatusText("⏳ MEMUAT DATA...");
 
     // Tampilkan cepat dari cache jika sudah pernah dibuka
     if (YEAR_CACHE[CURRENT_YEAR]) {
@@ -3558,5 +3654,4 @@ async function gantiTahun(tahun){
         .catch(err => console.error("ensureYear error:", err));
 
 }
-
 
