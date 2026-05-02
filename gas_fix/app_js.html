@@ -960,7 +960,7 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             touchDiff = e.touches[0].pageY - touchStart;
             if (touchDiff > 0 && touchDiff < 150) {
                 ptrIndicator.style.transform = `translateY(${touchDiff / 2}px)`;
-                ptrIcon.innerText = touchDiff > 100 ? 'ðŸ†™' : 'â¬‡ï¸';
+                ptrIcon.innerText = touchDiff > 100 ? '' : 'â¬‡ï¸';
             }
         }, {passive: true});
 
@@ -3392,7 +3392,7 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
         if (status) status.innerText = "MEMUAT CACHE...";
     }
 
-    // ðŸ”¥ INI YANG BIKIN SALDO LANGSUNG UPDATE
+    // Ini yang bikin saldo langsung update
     sm.addEventListener('change', render);
     sy.addEventListener('change', () => gantiTahun(sy.value));
 

@@ -959,7 +959,7 @@
             touchDiff = e.touches[0].pageY - touchStart;
             if (touchDiff > 0 && touchDiff < 150) {
                 ptrIndicator.style.transform = `translateY(${touchDiff / 2}px)`;
-                ptrIcon.innerText = touchDiff > 100 ? 'ðŸ†™' : 'â¬‡ï¸';
+                ptrIcon.innerText = touchDiff > 100 ? '' : 'â¬‡ï¸';
             }
         }, {passive: true});
 
@@ -3391,7 +3391,7 @@
         if (status) status.innerText = "MEMUAT CACHE...";
     }
 
-    // ðŸ”¥ INI YANG BIKIN SALDO LANGSUNG UPDATE
+    // Ini yang bikin saldo langsung update
     sm.addEventListener('change', render);
     sy.addEventListener('change', () => gantiTahun(sy.value));
 
