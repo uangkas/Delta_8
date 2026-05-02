@@ -2527,6 +2527,7 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             logs: cloneData(DB_LOGS)
         };
         YEAR_SIGNATURES[year] = buildYearSignature(YEAR_CACHE[year]);
+        YEAR_REVISIONS[year] = extractYearRevision(data);
 
         render();
 
@@ -2678,10 +2679,11 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                     logs: data.logs || []
                 };
                 const nextSignature = buildYearSignature(normalized);
-                const changed = YEAR_SIGNATURES[year] !== nextSignature;
+                const nextRevision = extractYearRevision(data);
+                const changed = YEAR_SIGNATURES[year] !== nextSignature || YEAR_REVISIONS[year] !== nextRevision;
 
                 if (changed || !silent || forceRender || !YEAR_CACHE[year]) {
-                    applyYearData(year, normalized);
+                    applyYearData(year, data);
                 }
 
                 if (status) status.innerText = "TERHUBUNG";
@@ -2694,7 +2696,7 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             }
         }
 
-        async function waitForRemoteYearSignature(year, expectedSignature, options = {}) {
+        async function waitForRemoteYearSignature(year, expectedRevision, options = {}) {
             const timeoutMs = Number(options.timeoutMs || 15000);
             const intervalMs = Number(options.intervalMs || 400);
             const startedAt = Date.now();
@@ -2704,18 +2706,13 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             while ((Date.now() - startedAt) < timeoutMs) {
                 try {
                     const data = await fetchJson(`${CLOUD_URL}?action=read&year=${year}`);
-                    lastData = {
-                        driver: data.driver || [],
-                        helper: data.helper || [],
-                        transaksi: data.transaksi || [],
-                        logs: data.logs || []
-                    };
+                    lastData = data;
                     lastError = null;
 
-                    if (buildYearSignature(lastData) === expectedSignature) {
+                    if (extractYearRevision(data) && extractYearRevision(data) === String(expectedRevision || '')) {
                         return {
                             ok: true,
-                            data: lastData,
+                            data,
                             elapsedMs: Date.now() - startedAt
                         };
                     }
@@ -2764,7 +2761,7 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             });
         }
 
-async function syncAll() {
+        async function syncAll() {
     if (syncInProgress) {
         syncQueued = true;
         return;
@@ -2772,16 +2769,7 @@ async function syncAll() {
     syncQueued = false;
     syncInProgress = true;
 
-    // render dulu data lokal
     render();
-    YEAR_CACHE[CURRENT_YEAR] = {
-        driver: cloneData(DB_DRIVER),
-        helper: cloneData(DB_HELPER),
-        transaksi: cloneData(DB_TRANSAKSI),
-        logs: cloneData(DB_LOGS)
-    };
-    YEAR_SIGNATURES[CURRENT_YEAR] = buildYearSignature(YEAR_CACHE[CURRENT_YEAR]);
-    saveYearCacheToStorage(CURRENT_YEAR, YEAR_CACHE[CURRENT_YEAR]);
 
         const status = document.getElementById('sync-status');
         setSyncStatusText("â³ MENYIMPAN...");
@@ -2804,16 +2792,28 @@ async function syncAll() {
             editor: getActiveEditor(),
             deviceId: getDeviceId(),
             year: CURRENT_YEAR,
+            expectedRevision: YEAR_REVISIONS[CURRENT_YEAR] || '',
             driver: DB_DRIVER,
             helper: DB_HELPER,
             transaksi: DB_TRANSAKSI,
             logs: DB_LOGS
         };
 
-        // kirim ke Google Apps Script
-        await postToAppsScript(payload);
+        const writeResult = await postToAppsScriptForResult(payload, 20000);
+        if (!writeResult || writeResult.ok !== true) {
+            if (writeResult && writeResult.data) {
+                applyYearData(CURRENT_YEAR, writeResult.data);
+            } else if (writeResult && writeResult.responseData && writeResult.responseData.data) {
+                applyYearData(CURRENT_YEAR, writeResult.responseData.data);
+            }
+            const serverCode = String(writeResult && writeResult.code ? writeResult.code : '').trim().toLowerCase();
+            if (serverCode === 'revision_conflict' || serverCode === 'revision_required') {
+                showNotif('Perubahan dibatalkan karena data sudah diubah admin/perangkat lain. Tampilan dimuat ulang ke versi terbaru.', 'error');
+            }
+            throw new Error((writeResult && writeResult.error) || 'Sinkronisasi ditolak backend.');
+        }
         setSyncStatusText("â³ MEMVERIFIKASI...");
-        const verification = await waitForRemoteYearSignature(CURRENT_YEAR, YEAR_SIGNATURES[CURRENT_YEAR], {
+        const verification = await waitForRemoteYearSignature(CURRENT_YEAR, writeResult.revision || YEAR_REVISIONS[CURRENT_YEAR], {
             timeoutMs: 15000,
             intervalMs: 400
         });
