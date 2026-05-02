@@ -51,6 +51,59 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
         let jsPdfLoadPromise = null;
         let jsPdfAutoTableLoadPromise = null;
 
+        function escapeHtml(value) {
+            return String(value == null ? '' : value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function escapeJsString(value) {
+            return String(value == null ? '' : value)
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/\r/g, '\\r')
+                .replace(/\n/g, '\\n');
+        }
+
+        function getPersistentStorage() {
+            try {
+                return window.localStorage;
+            } catch (err) {
+                return null;
+            }
+        }
+
+        function getSessionStorageSafe() {
+            try {
+                return window.sessionStorage;
+            } catch (err) {
+                return null;
+            }
+        }
+
+        function getStorageItem(storage, key) {
+            try {
+                return storage ? storage.getItem(key) : null;
+            } catch (err) {
+                return null;
+            }
+        }
+
+        function setStorageItem(storage, key, value) {
+            try {
+                if (storage) storage.setItem(key, value);
+            } catch (err) {}
+        }
+
+        function removeStorageItem(storage, key) {
+            try {
+                if (storage) storage.removeItem(key);
+            } catch (err) {}
+        }
+
         function ensureExternalScript(scriptId, scriptUrl) {
             const existing = document.getElementById(scriptId);
             if (existing) {
@@ -181,17 +234,24 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
         }
 
         function getDeviceId() {
-            let value = String(localStorage.getItem(DEVICE_ID_KEY) || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
+            const persistentStorage = getPersistentStorage();
+            let value = String(getStorageItem(persistentStorage, DEVICE_ID_KEY) || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 80);
             if (!value) {
                 value = createDeviceId();
-                localStorage.setItem(DEVICE_ID_KEY, value);
+                setStorageItem(persistentStorage, DEVICE_ID_KEY, value);
             }
             return value;
         }
 
+        function getAuthSessionStorage() {
+            return getSessionStorageSafe();
+        }
+
         function getAuthSession() {
+            const authStorage = getAuthSessionStorage();
+            const persistentStorage = getPersistentStorage();
             try {
-                const raw = localStorage.getItem(AUTH_SESSION_KEY);
+                const raw = getStorageItem(authStorage, AUTH_SESSION_KEY);
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     if (parsed && typeof parsed === 'object') {
@@ -206,8 +266,8 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                 }
             } catch (err) {}
 
-            const legacyToken = String(localStorage.getItem('delta8_write_token') || '').trim();
-            const legacyEditor = String(localStorage.getItem('delta8_editor') || '').trim().toUpperCase();
+            const legacyToken = String(getStorageItem(persistentStorage, 'delta8_write_token') || '').trim();
+            const legacyEditor = String(getStorageItem(persistentStorage, 'delta8_editor') || '').trim().toUpperCase();
             if (!legacyToken && !legacyEditor) return null;
 
             const migrated = {
@@ -217,11 +277,14 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                 issuedAt: 0,
                 expiresAt: 0
             };
-            localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(migrated));
+            setStorageItem(authStorage, AUTH_SESSION_KEY, JSON.stringify(migrated));
+            removeStorageItem(persistentStorage, 'delta8_write_token');
             return migrated;
         }
 
         function saveAuthSession(session, notify = false) {
+            const authStorage = getAuthSessionStorage();
+            const persistentStorage = getPersistentStorage();
             const next = {
                 editor: String((session && session.editor) || '').trim().toUpperCase(),
                 writeToken: String((session && session.writeToken) || '').trim(),
@@ -229,9 +292,13 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                 issuedAt: Number((session && session.issuedAt) || 0) || 0,
                 expiresAt: Number((session && session.expiresAt) || 0) || 0
             };
-            localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(next));
-            localStorage.setItem('delta8_editor', next.editor);
-            localStorage.setItem('delta8_write_token', next.writeToken);
+            if (next.writeToken) {
+                setStorageItem(authStorage, AUTH_SESSION_KEY, JSON.stringify(next));
+            } else {
+                removeStorageItem(authStorage, AUTH_SESSION_KEY);
+            }
+            setStorageItem(persistentStorage, 'delta8_editor', next.editor);
+            removeStorageItem(persistentStorage, 'delta8_write_token');
             if (notify) {
                 showNotif(next.writeToken ? 'Write token disimpan' : 'Write token dikosongkan', 'info');
             }
@@ -245,12 +312,12 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
 
         function getActiveEditor() {
             const session = getAuthSession();
-            return session && session.editor ? session.editor : String(localStorage.getItem('delta8_editor') || '').trim().toUpperCase();
+            return session && session.editor ? session.editor : String(getStorageItem(getPersistentStorage(), 'delta8_editor') || '').trim().toUpperCase();
         }
 
         function getWriteToken() {
             const session = getAuthSession();
-            return session && session.writeToken ? session.writeToken : (localStorage.getItem('delta8_write_token') || '');
+            return session && session.writeToken ? session.writeToken : '';
         }
 
         window.setWriteToken = function(token) {
@@ -440,6 +507,70 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                 } catch (err) {
                     cleanup();
                     reject(err);
+                }
+            });
+        }
+
+        function postToAppsScriptForResult(payload, timeoutMs = 15000) {
+            return new Promise((resolve, reject) => {
+                const messageId = `gas_rpc_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                const frameName = `${messageId}_frame`;
+                const iframe = document.createElement('iframe');
+                iframe.name = frameName;
+                iframe.style.display = 'none';
+                document.body.appendChild(iframe);
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = CLOUD_URL;
+                form.target = frameName;
+                form.style.display = 'none';
+
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'payload';
+                input.value = JSON.stringify({
+                    ...payload,
+                    responseTransport: 'web_message',
+                    messageId,
+                    parentOrigin: window.location.origin
+                });
+                form.appendChild(input);
+                document.body.appendChild(form);
+
+                let finished = false;
+                let timerId = 0;
+
+                const cleanup = () => {
+                    window.removeEventListener('message', onMessage);
+                    if (timerId) clearTimeout(timerId);
+                    setTimeout(() => {
+                        iframe.remove();
+                        form.remove();
+                    }, 250);
+                };
+
+                const settle = (resolver, value) => {
+                    if (finished) return;
+                    finished = true;
+                    cleanup();
+                    resolver(value);
+                };
+
+                const onMessage = (event) => {
+                    if (event.origin !== 'https://script.google.com' && event.origin !== 'https://script.googleusercontent.com') return;
+                    const data = event.data;
+                    if (!data || data.source !== 'delta8_apps_script' || data.messageId !== messageId) return;
+                    settle(resolve, data.payload || null);
+                };
+
+                window.addEventListener('message', onMessage);
+                timerId = window.setTimeout(() => settle(reject, new Error('Backend tidak merespons.')), timeoutMs);
+
+                try {
+                    form.submit();
+                } catch (err) {
+                    settle(reject, err);
                 }
             });
         }
@@ -665,8 +796,10 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             };
 
             try {
-                const url = `${CLOUD_URL}?action=saveFcmToken&authToken=${encodeURIComponent(writeToken)}&token=${encodeURIComponent(token)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
-                const data = await fetchJson(url);
+                const data = await postToAppsScriptForResult(payload, 15000);
+                if (!data || data.ok === false) {
+                    throw new Error((data && data.error) || 'Request gagal.');
+                }
                 return { saved: !!(data && data.saved), data };
             } catch (err) {
                 const message = String((err && err.message) || '');
@@ -697,9 +830,20 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
 
             const deviceId = session && session.deviceId ? session.deviceId : getDeviceId();
             const editor = session && session.editor ? session.editor : getActiveEditor();
-            const url = `${CLOUD_URL}?action=testFcm&authToken=${encodeURIComponent(writeToken)}&token=${encodeURIComponent(token)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}&title=${encodeURIComponent('Tes Notifikasi Delta 8')}&body=${encodeURIComponent('Kalau pesan ini masuk, FCM sudah aktif di perangkat ini.')}`;
             try {
-                return await fetchJson(url);
+                const data = await postToAppsScriptForResult({
+                    action: 'testFcm',
+                    authToken: writeToken,
+                    token,
+                    editor,
+                    deviceId,
+                    title: 'Tes Notifikasi Delta 8',
+                    body: 'Kalau pesan ini masuk, FCM sudah aktif di perangkat ini.'
+                }, 15000);
+                if (!data || data.ok === false) {
+                    throw new Error((data && data.error) || 'Request gagal.');
+                }
+                return data;
             } catch (err) {
                 return { ok: false, skipped: true, error: err && err.message ? err.message : 'fetch_failed' };
             }
@@ -994,8 +1138,12 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                 }
 
                 const deviceId = getDeviceId();
-                const url = `${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
-                const data = await fetchVerifyAuth(url);
+                const data = await postToAppsScriptForResult({
+                    action: 'verifyAuth',
+                    pin,
+                    editor,
+                    deviceId
+                }, 12000);
                 if (!data || !data.ok || !data.writeToken) {
                     if (optimisticToggle) {
                         executeAction(action, params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
@@ -1491,8 +1639,8 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
                 const monthLabel = item.months.map(month => PAYMENT_MONTH_NAMES[month - 1]).join(', ');
                 const safePayload = encodeURIComponent(JSON.stringify(item));
                 return `<tr>
-                    <td>${String(item.kat || '').toUpperCase()} - ${item.nama}</td>
-                    <td>${monthLabel}</td>
+                    <td>${escapeHtml(String(item.kat || '').toUpperCase())} - ${escapeHtml(item.nama)}</td>
+                    <td>${escapeHtml(monthLabel)}</td>
                     <td class="fw-bold text-end">Rp ${item.nominal.toLocaleString('id-ID')}</td>
                     <td><span class="badge bg-warning text-dark">PENDING</span></td>
                     <td class="text-nowrap">
@@ -2211,7 +2359,7 @@ const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2
             monthGrid.innerHTML = PAYMENT_MONTH_NAMES.map((monthName, idx) => {
                 const month = idx + 1;
                 const paid = statusMap[month] === true || statusMap[month] === 'pending' || statusMap[month] === 'gateway_pending';
-                return `<button type="button" id="payment-month-${month}" class="month-option-btn" ${paid ? 'disabled' : ''} onclick="togglePaymentMonthSelection(${month})">${monthName}</button>`;
+                return `<button type="button" id="payment-month-${month}" class="month-option-btn" ${paid ? 'disabled' : ''} onclick="togglePaymentMonthSelection(${month})">${escapeHtml(monthName)}</button>`;
             }).join('');
 
             const paidCount = Object.values(statusMap).filter(v => v === true || v === 'pending' || v === 'gateway_pending').length;
@@ -3039,7 +3187,8 @@ async function syncAll() {
             if (!p.status) p.status = {};
             let count = 0;
             const cellParts = [];
-            const safeName = String(p.nama || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            const safeName = escapeJsString(p.nama);
+            const safeMemberName = escapeHtml(p.nama);
 
             for (let i = 1; i <= 12; i++) {
                 const rawStatus = p.status[y]?.[i];
@@ -3057,7 +3206,7 @@ async function syncAll() {
             }
 
             rows.push(
-                `<tr><td class="no-col">${idx + 1}</td><td class="name-col">${p.nama}</td>${cellParts.join('')}<td class="text-center-force">${count}/12</td>${adminMode ? `<td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="member" data-id="${p.id}">&#8942;</div></td>` : ''}<td class="col-bayar"><button type="button" class="btn-bayar-mini" onclick="openPaymentOptions({ id: '${p.id}', nama: '${safeName}', kat: '${kat}', y: ${y}, m: ${m} })">BAYAR</button></td></tr>`
+                `<tr><td class="no-col">${idx + 1}</td><td class="name-col">${safeMemberName}</td>${cellParts.join('')}<td class="text-center-force">${count}/12</td>${adminMode ? `<td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="member" data-id="${p.id}">&#8942;</div></td>` : ''}<td class="col-bayar"><button type="button" class="btn-bayar-mini" onclick="openPaymentOptions({ id: '${p.id}', nama: '${safeName}', kat: '${kat}', y: ${y}, m: ${m} })">BAYAR</button></td></tr>`
             );
         });
 
@@ -3082,7 +3231,7 @@ async function syncAll() {
         else cOut += x.v;
 
         transaksiRows.push(
-            `<tr><td class="text-center">${x.d.split('-').reverse().join('/')}</td><td class="fw-bold ${x.tp === 'Pemasukan' ? 'text-success' : 'text-danger'} text-center">${x.tp.toUpperCase()}</td><td>${x.p}</td><td>${x.k || '-'}</td><td class="fw-bold text-end">Rp ${x.v.toLocaleString()}</td>${adminMode ? `<td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="trans" data-idx="${idx}">&#8942;</div></td>` : ''}</tr>`
+            `<tr><td class="text-center">${escapeHtml(x.d.split('-').reverse().join('/'))}</td><td class="fw-bold ${x.tp === 'Pemasukan' ? 'text-success' : 'text-danger'} text-center">${escapeHtml(x.tp.toUpperCase())}</td><td>${escapeHtml(x.p)}</td><td>${escapeHtml(x.k || '-')}</td><td class="fw-bold text-end">Rp ${x.v.toLocaleString()}</td>${adminMode ? `<td class="col-aksi-center"><div class="btn-aksi-trigger" data-type="trans" data-idx="${idx}">&#8942;</div></td>` : ''}</tr>`
         );
     }
     hi.innerHTML = transaksiRows.join('');
@@ -3105,7 +3254,7 @@ async function syncAll() {
     for (let i = 0; i < Math.min(50, DB_LOGS.length); i++) {
         const l = DB_LOGS[i];
         logRows.push(
-            `<tr><td>${l.time}</td><td>${l.editor}</td><td><small class="badge bg-dark">${l.aksi}</small></td><td>${l.ket}</td></tr>`
+            `<tr><td>${escapeHtml(l.time)}</td><td>${escapeHtml(l.editor)}</td><td><small class="badge bg-dark">${escapeHtml(l.aksi)}</small></td><td>${escapeHtml(l.ket)}</td></tr>`
         );
     }
     lg.innerHTML = logRows.join('');

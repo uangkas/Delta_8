@@ -31,7 +31,9 @@ var ALLOWED_EDITORS_CACHE_KEY = "allowed_editors_cache_v1";
 var ALLOWED_EDITORS_CACHE_TTL_SEC = 300;
 var DEFAULT_SPREADSHEET_ID = "10GWGUs4ILzb1Hb3tm3OFy_dcRXCQKHqSQ0zPa3YmfpY";
 var DATA_TYPES = ["driver", "helper", "transaksi", "logs"];
-var DEFAULT_APP_PIN = "0000";
+var DEFAULT_APP_PIN = "";
+var VERIFY_AUTH_RATE_LIMIT_WINDOW_SEC = 600;
+var VERIFY_AUTH_MAX_ATTEMPTS = 5;
 var DEFAULT_FIREBASE_CONFIG = {
   apiKey: "AIzaSyAIZx9jjiW1uUdXmG-P7ZqQRloFuo4L7G8",
   authDomain: "kas-delta-8.firebaseapp.com",
@@ -94,7 +96,9 @@ function doGet(e) {
     if (action === "migrateYear") return handleMigrateYear_(e);
     if (action === "fixHeaders") return handleFixHeaders_(e);
     if (action === "backupYear") return handleBackupYear_(e);
-    if (action === "verifyAuth") return handleVerifyAuth_(e);
+    if (action === "verifyAuth") {
+      return jsonResponse_({ ok: false, error: "Gunakan POST untuk verifyAuth." });
+    }
     if (action === "adminHealth") return handleAdminHealth_(e);
     if (action === "adminSelfTest") return handleAdminSelfTest_(e);
     if (action === "backupConfig") return handleBackupConfig_(e);
@@ -103,8 +107,12 @@ function doGet(e) {
     if (action === "fcmConfig") return handleFcmConfig_();
     if (action === "fcmHealth") return handleFcmHealth_(e);
     if (action === "fcmSw") return handleFcmSw_();
-    if (action === "saveFcmToken") return handleSaveFcmTokenFromGet_(e);
-    if (action === "testFcm") return handleTestFcm_(e);
+    if (action === "saveFcmToken") {
+      return jsonResponse_({ ok: false, error: "Gunakan POST untuk saveFcmToken." });
+    }
+    if (action === "testFcm") {
+      return jsonResponse_({ ok: false, error: "Gunakan POST untuk testFcm." });
+    }
     if (action === "createMidtransQris") return handleCreateMidtransQris_(e && e.parameter ? e.parameter : {}, e);
     if (action === "midtransStatus") return handleMidtransStatus_(e);
     if (action === "midtransHealth") return handleMidtransHealth_(e);
@@ -136,8 +144,14 @@ function doPost(e) {
   try {
     var payload = parsePostBody_(e);
 
+    if (payload.action === "verifyAuth") {
+      return maybeWrapPostMessageResponse_(handleVerifyAuthPayload_(payload, e), payload);
+    }
     if (payload.action === "saveFcmToken") {
-      return handleSaveFcmToken_(payload, e);
+      return maybeWrapPostMessageResponse_(handleSaveFcmToken_(payload, e), payload);
+    }
+    if (payload.action === "testFcm") {
+      return maybeWrapPostMessageResponse_(handleTestFcmPayload_(payload, e), payload);
     }
     if (isMidtransNotificationPayload_(payload)) {
       return handleMidtransNotification_(payload);
@@ -534,10 +548,6 @@ function ensureBootstrapConfig_() {
 
   // Try to restore properties from backup first
   restoreScriptProperties_();
-
-  if (!props.getProperty(APP_PIN_KEY) && DEFAULT_APP_PIN) {
-    props.setProperty(APP_PIN_KEY, DEFAULT_APP_PIN);
-  }
 
   if (!props.getProperty(FCM_API_KEY) && DEFAULT_FIREBASE_CONFIG.apiKey) {
     props.setProperty(FCM_API_KEY, DEFAULT_FIREBASE_CONFIG.apiKey);
@@ -1020,6 +1030,58 @@ function handleSaveFcmTokenFromGet_(e) {
   return handleSaveFcmToken_(payload, e);
 }
 
+function handleTestFcm_(e) {
+  return jsonResponse_(handleTestFcmPayload_(
+    {
+      authToken: (e && e.parameter && e.parameter.authToken) || "",
+      token: (e && e.parameter && e.parameter.token) || "",
+      editor: (e && e.parameter && e.parameter.editor) || "",
+      deviceId: (e && e.parameter && e.parameter.deviceId) || "",
+      title: (e && e.parameter && e.parameter.title) || "",
+      body: (e && e.parameter && e.parameter.body) || ""
+    },
+    e
+  ));
+}
+
+function handleTestFcmPayload_(payload, e) {
+  validateWriteAuth_(payload, e);
+  var cfg = getFirestoreConfig_();
+  if (!cfg.projectId || !cfg.clientEmail || !cfg.privateKey) {
+    return { ok: false, error: "Konfigurasi FCM backend belum lengkap." };
+  }
+
+  var token = String((payload && payload.token) || "").trim();
+  if (token.length < 20) {
+    return { ok: false, error: "Invalid FCM token." };
+  }
+
+  var title = truncateText_(String((payload && payload.title) || "Tes Notifikasi Delta 8"), 120);
+  var body = truncateText_(String((payload && payload.body) || "Kalau pesan ini masuk, FCM sudah aktif di perangkat ini."), 240);
+  var accessToken = getFcmAccessToken_(cfg.clientEmail, cfg.privateKey);
+  if (!accessToken) {
+    return { ok: false, error: "Gagal mendapatkan access token FCM." };
+  }
+
+  var result = sendFcmToToken_(cfg.projectId, accessToken, token, title, body, {
+    link: DEFAULT_WEB_APP_URL,
+    title: title,
+    body: body
+  });
+  setLastFcmSendStatus_({
+    ok: result && result.code >= 200 && result.code < 300,
+    code: result ? result.code : 0,
+    sentAt: new Date().toISOString(),
+    tokenTail: token.slice(-12)
+  });
+
+  return {
+    ok: !!(result && result.code >= 200 && result.code < 300),
+    code: result ? result.code : 0,
+    response: result ? truncateText_(result.text, 500) : ""
+  };
+}
+
 function handleBackupProperties_(e) {
   validateActionAuth_(e);
   var success = backupScriptProperties_();
@@ -1205,39 +1267,64 @@ function handleBackupYear_(e) {
 }
 
 function handleVerifyAuth_(e) {
-  var pin = (e && e.parameter && e.parameter.pin) || "";
-  var editor = (e && e.parameter && e.parameter.editor) || "";
-  var deviceId = normalizeDeviceId_((e && e.parameter && e.parameter.deviceId) || "");
-  editor = normalizeEditorName_(editor);
+  return jsonResponse_(handleVerifyAuthPayload_(
+    {
+      pin: (e && e.parameter && e.parameter.pin) || "",
+      editor: (e && e.parameter && e.parameter.editor) || "",
+      deviceId: (e && e.parameter && e.parameter.deviceId) || ""
+    },
+    e
+  ));
+}
 
-  if (editor.length < 2) {
-    return jsonResponse_({ ok: false, error: "Nama editor minimal 2 karakter." });
+function handleVerifyAuthPayload_(payload, e) {
+  var pin = (payload && payload.pin) || "";
+  var editor = normalizeEditorName_((payload && payload.editor) || "");
+  var deviceId = normalizeDeviceId_((payload && payload.deviceId) || "");
+  var rateLimitKey = buildVerifyAuthRateLimitKey_(editor, deviceId);
+
+  if (isVerifyAuthRateLimited_(rateLimitKey)) {
+    return {
+      ok: false,
+      error: "Terlalu banyak percobaan verifikasi. Tunggu beberapa menit lalu coba lagi."
+    };
   }
 
-  var expectedPin = PropertiesService.getScriptProperties().getProperty(APP_PIN_KEY);
+  if (editor.length < 2) {
+    noteVerifyAuthFailure_(rateLimitKey);
+    return { ok: false, error: "Nama editor minimal 2 karakter." };
+  }
+
+  var expectedPin = getPropWithFirestoreFallback_(APP_PIN_KEY);
   if (!expectedPin) {
-    return jsonResponse_({ ok: false, error: "PIN belum dikonfigurasi di backend." });
+    return { ok: false, error: "PIN belum dikonfigurasi di backend." };
+  }
+  if (String(expectedPin) === "0000") {
+    return { ok: false, error: "PIN backend masih default dan harus diganti dulu." };
   }
 
   if (String(pin) !== String(expectedPin)) {
-    return jsonResponse_({ ok: false, error: "PIN salah." });
+    noteVerifyAuthFailure_(rateLimitKey);
+    return { ok: false, error: "PIN salah." };
   }
 
   if (!isEditorAllowed_(editor)) {
-    return jsonResponse_({
+    noteVerifyAuthFailure_(rateLimitKey);
+    return {
       ok: false,
       error: "Editor tidak terdaftar di spreadsheet allowed_editors."
-    });
+    };
   }
 
+  clearVerifyAuthFailures_(rateLimitKey);
   var writeToken = issueWriteSessionToken_(editor.toUpperCase(), deviceId);
-  return jsonResponse_({
+  return {
     ok: true,
     editor: editor.toUpperCase(),
     deviceId: deviceId,
     writeToken: writeToken,
     expiresInSec: WRITE_SESSION_TTL_SEC
-  });
+  };
 }
 
 function handleBackupConfig_(e) {
@@ -1383,6 +1470,37 @@ function normalizeDeviceId_(value) {
     .trim()
     .replace(/[^a-zA-Z0-9_-]/g, "")
     .slice(0, 80);
+}
+
+function buildVerifyAuthRateLimitKey_(editor, deviceId) {
+  var normalizedEditor = normalizeEditorName_(editor || "");
+  var normalizedDeviceId = normalizeDeviceId_(deviceId || "");
+  return "verify_auth_fail_" + (normalizedDeviceId || normalizedEditor || "anonymous");
+}
+
+function getVerifyAuthFailureCount_(key) {
+  if (!key) return 0;
+  var cache = CacheService.getScriptCache();
+  var raw = cache.get(key);
+  var count = parseInt(raw, 10);
+  return count > 0 ? count : 0;
+}
+
+function isVerifyAuthRateLimited_(key) {
+  return getVerifyAuthFailureCount_(key) >= VERIFY_AUTH_MAX_ATTEMPTS;
+}
+
+function noteVerifyAuthFailure_(key) {
+  if (!key) return 0;
+  var cache = CacheService.getScriptCache();
+  var next = getVerifyAuthFailureCount_(key) + 1;
+  cache.put(key, String(next), VERIFY_AUTH_RATE_LIMIT_WINDOW_SEC);
+  return next;
+}
+
+function clearVerifyAuthFailures_(key) {
+  if (!key) return;
+  CacheService.getScriptCache().remove(key);
 }
 
 function issueWriteSessionToken_(editor, deviceId) {
@@ -2566,6 +2684,29 @@ function jsonResponse_(obj) {
   );
 }
 
+function maybeWrapPostMessageResponse_(obj, payload) {
+  var transport = String((payload && payload.responseTransport) || "").trim();
+  if (transport !== "web_message") {
+    return jsonResponse_(obj);
+  }
+
+  var messageId = String((payload && payload.messageId) || "").trim();
+  var targetOrigin = sanitizePostMessageOrigin_((payload && payload.parentOrigin) || "");
+  var script =
+    "<!DOCTYPE html><html><body><script>(function(){" +
+    "var payload=" + JSON.stringify({
+      source: "delta8_apps_script",
+      messageId: messageId,
+      payload: obj
+    }) + ";" +
+    "try{if(window.parent&&window.parent!==window){window.parent.postMessage(payload," + JSON.stringify(targetOrigin || "*") + ");}}" +
+    "catch(err){}" +
+    "document.body.textContent='OK';" +
+    "})();<\/script></body></html>";
+  return HtmlService.createHtmlOutput(script)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
 function getJsonpCallback_(e) {
   return (e && e.parameter && e.parameter.callback) || "";
 }
@@ -2574,6 +2715,12 @@ function sanitizeJsonpCallback_(callback) {
   var value = String(callback || "").trim();
   if (!value) return "";
   if (!/^[A-Za-z_$][0-9A-Za-z_$.]{0,127}$/.test(value)) return "";
+  return value;
+}
+
+function sanitizePostMessageOrigin_(origin) {
+  var value = String(origin || "").trim();
+  if (!/^https:\/\/[A-Za-z0-9.-]+(?::\d+)?$/.test(value)) return "";
   return value;
 }
 
@@ -4107,10 +4254,11 @@ function assertSelfTest_(condition, message) {
 function adminGetHealthSummary_() {
   ensureBootstrapConfig_();
   var props = PropertiesService.getScriptProperties();
+  var effectivePin = String(getPropWithFirestoreFallback_(APP_PIN_KEY) || "");
   return {
     ok: true,
-    hasPin: !!props.getProperty(APP_PIN_KEY),
-    pinValue: props.getProperty(APP_PIN_KEY) || "",
+    hasPin: !!effectivePin,
+    pinDefault: effectivePin === "0000",
     fcmProjectId: props.getProperty(FCM_PROJECT_ID) || DEFAULT_FIREBASE_CONFIG.projectId,
     hasServiceAccountEmail: !!(props.getProperty(FCM_SA_CLIENT_EMAIL_KEY) || DEFAULT_SERVICE_ACCOUNT_EMAIL),
     hasServiceAccountPrivateKey: !!props.getProperty(FCM_SA_PRIVATE_KEY_KEY)
