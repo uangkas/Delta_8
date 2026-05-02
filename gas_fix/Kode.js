@@ -3458,28 +3458,6 @@ function handleCreateMidtransQris_(payload, e) {
     writeYearData_(year, data);
   }
 
-  try {
-    var monthText = months.map(function(month) {
-      return pad2_(month) + "/" + String(year);
-    }).join(", ");
-    sendFcmToAllDevices_(
-      "Pembayaran QRIS Masuk",
-      String(payload && payload.kat || "").toUpperCase() + " - " + String(member.nama || "").toUpperCase() + " untuk " + monthText + " sedang menunggu pembayaran.",
-      {
-        year: String(year),
-        type: "midtrans_pending",
-        action: "create_midtrans_qris",
-        detail: String(charge.orderId || ""),
-        title: "Pembayaran QRIS Masuk",
-        body: String(payload && payload.kat || "").toUpperCase() + " - " + String(member.nama || "").toUpperCase() + " untuk " + monthText + " sedang menunggu pembayaran.",
-        tag: "delta8-midtrans-pending",
-        icon: DEFAULT_WEB_APP_URL + "/notification-icon.svg",
-        badge: DEFAULT_WEB_APP_URL + "/notification-badge.svg",
-        url: buildNotificationTargetUrl_("driver", "", "")
-      }
-    );
-  } catch (notifyErr) {}
-
   return jsonResponse_({
     ok: true,
     year: year,
