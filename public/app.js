@@ -2140,12 +2140,12 @@
             try {
                 if (hasSnapRedirectFlow(currentMidtransPayment)) {
                     const button = document.getElementById('qris-open-btn');
-                    setQrisStatusCopy('Membuka QRIS GoPay...');
+                    setQrisStatusCopy('Membuka QRIS...');
                     try {
                         await openMidtransSnapQris(currentMidtransPayment);
                         if (button) button.dataset.mode = 'status';
                         updateQrisActionButton(currentMidtransPayment);
-                        if (!options.forceOpen) setQrisStatusCopy('QRIS GoPay sudah dibuka. Setelah selesai bayar, Anda bisa buka QRIS lagi dari tombol ini.');
+                        if (!options.forceOpen) setQrisStatusCopy('QRIS sudah dibuka. Setelah selesai bayar, Anda bisa buka QRIS lagi dari tombol ini.');
                         return;
                     } catch (snapErr) {
                         const redirectUrl = String(currentMidtransPayment.snapRedirectUrl || '').trim();
@@ -2153,7 +2153,7 @@
                             window.open(redirectUrl, '_blank', 'noopener,noreferrer');
                             if (button) button.dataset.mode = 'status';
                             updateQrisActionButton(currentMidtransPayment);
-                            if (!options.forceOpen) setQrisStatusCopy('QRIS GoPay dibuka di tab baru. Setelah selesai bayar, Anda bisa buka QRIS lagi dari tombol ini.');
+                            if (!options.forceOpen) setQrisStatusCopy('QRIS dibuka di tab baru. Setelah selesai bayar, Anda bisa buka QRIS lagi dari tombol ini.');
                             return;
                         }
                         throw snapErr;
@@ -2192,11 +2192,11 @@
                     startMidtransStatusPolling();
                     updateQrisTransactionInfo(payment);
                     if (payment && hasSnapRedirectFlow(payment)) {
-                        setQrisStatusCopy('QRIS GoPay tersedia. Popup akan dibuka otomatis.');
+                        setQrisStatusCopy('QRIS tersedia. Popup akan dibuka otomatis.');
                         window.setTimeout(() => {
                             if (currentMidtransPayment && currentMidtransPayment.orderId === payment.orderId) {
                                 openCurrentSnapPayment({ forceOpen: true }).catch((autoOpenErr) => {
-                                    console.warn('Automatic QRIS GoPay open failed:', autoOpenErr);
+                                    console.warn('Automatic QRIS open failed:', autoOpenErr);
                                 });
                             }
                         }, 80);
@@ -2251,13 +2251,13 @@
             }
 
             if (!hasSnapRedirectFlow(payment)) {
-                throw new Error('Midtrans belum mengembalikan akses pembayaran GoPay untuk transaksi ini.');
+                throw new Error('Midtrans belum mengembalikan akses pembayaran QRIS untuk transaksi ini.');
             }
 
             currentMidtransPayment = payment;
             startMidtransStatusPolling();
             updateQrisTransactionInfo(payment);
-            setQrisStatusCopy('QRIS GoPay tersedia. Popup akan dibuka otomatis.');
+            setQrisStatusCopy('QRIS tersedia. Popup akan dibuka otomatis.');
         }
 
         async function syncMidtransPaymentStatus(options = {}) {
@@ -2320,7 +2320,7 @@
             resetQrisActionButton();
 
             pendingPaymentContext = params || null;
-            setQrisStatusCopy('Menyiapkan QRIS GoPay...');
+            setQrisStatusCopy('Menyiapkan QRIS...');
             prewarmMidtransPaymentFlow();
             warmMidtransPaymentForModal(params).catch((err) => {
                 console.warn('Midtrans payment prewarm failed:', err);
