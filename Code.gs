@@ -2591,6 +2591,60 @@ function normalizePayload_(payload) {
   };
 }
 
+function buildYearRevision_(data) {
+  return hashText_(JSON.stringify(normalizePayload_(data)));
+}
+
+function buildYearDataResponse_(year, data, extra) {
+  var normalized = normalizePayload_(data);
+  var out = {
+    ok: true,
+    year: Number(parseInt(year, 10) || new Date().getFullYear()),
+    revision: buildYearRevision_(normalized),
+    driver: normalized.driver,
+    helper: normalized.helper,
+    transaksi: normalized.transaksi,
+    logs: normalized.logs
+  };
+  if (extra && typeof extra === "object") {
+    Object.keys(extra).forEach(function(key) {
+      out[key] = extra[key];
+    });
+  }
+  return out;
+}
+
+function assertExpectedYearRevision_(payload, currentData, year) {
+  var provided = String(payload && payload.expectedRevision || "").trim();
+  var currentRevision = buildYearRevision_(currentData);
+  if (!provided) {
+    var missingErr = new Error("Konflik data: aplikasi harus dimuat ulang sebelum menyimpan perubahan.");
+    missingErr.details = {
+      ok: false,
+      code: "revision_required",
+      error: missingErr.message,
+      year: Number(parseInt(year, 10) || new Date().getFullYear()),
+      currentRevision: currentRevision,
+      data: buildYearDataResponse_(year, currentData)
+    };
+    throw missingErr;
+  }
+  if (provided !== currentRevision) {
+    var conflictErr = new Error("Konflik data: data sudah berubah di perangkat atau admin lain. Data terbaru telah dimuat ulang.");
+    conflictErr.details = {
+      ok: false,
+      code: "revision_conflict",
+      error: conflictErr.message,
+      year: Number(parseInt(year, 10) || new Date().getFullYear()),
+      expectedRevision: provided,
+      currentRevision: currentRevision,
+      data: buildYearDataResponse_(year, currentData)
+    };
+    throw conflictErr;
+  }
+  return currentRevision;
+}
+
 function serializeMemberMeta_(item, year) {
   var yy = String(year || new Date().getFullYear());
   var pendingProofs = {};
@@ -3552,14 +3606,15 @@ function handleMidtransStatus_(e) {
   if (applied.ok && applied.changed) {
     writeYearData_(applied.year, data);
   }
+  var responseYear = applied.year || year || new Date().getFullYear();
 
   return jsonResponse_({
     ok: true,
-    year: applied.year || year,
+    year: responseYear,
     synced: !!(applied && applied.changed),
     transactionStatus: normalizeMidtransStatus_(statusResponse.transaction_status || ""),
     orderId: String(statusResponse.order_id || orderId),
-    data: applied.ok ? readYearData_(applied.year || year || new Date().getFullYear()) : null
+    data: applied.ok ? buildYearDataResponse_(responseYear, readYearData_(responseYear)) : null
   });
 }
 

@@ -19,6 +19,7 @@
         let DB_DRIVER = [], DB_HELPER = [], DB_TRANSAKSI = [], DB_LOGS = [];
         const YEAR_CACHE = {};
         const YEAR_SIGNATURES = {};
+        const YEAR_REVISIONS = {};
         let loadToken = 0;
         let autoSyncTimer = null;
         let autoSyncInProgress = false;
@@ -427,7 +428,9 @@
         async function fetchJson(url, timeoutMs = 12000) {
             const data = await jsonpRequest(url, timeoutMs);
             if (!data || data.ok === false) {
-                throw new Error((data && data.error) || 'Request gagal.');
+                const error = new Error((data && data.error) || 'Request gagal.');
+                error.responseData = data || null;
+                throw error;
             }
             return data;
         }
@@ -1386,7 +1389,8 @@
             });
             YEAR_CACHE[normalizedYear] = cloneYearDataShape(snapshot);
             YEAR_SIGNATURES[normalizedYear] = buildYearSignature(snapshot);
-            saveYearCacheToStorage(normalizedYear, snapshot);
+            YEAR_REVISIONS[normalizedYear] = extractYearRevision(data);
+            saveYearCacheToStorage(normalizedYear, { ...snapshot, revision: YEAR_REVISIONS[normalizedYear] });
             return cloneYearDataShape(snapshot);
         }
 
@@ -2546,6 +2550,10 @@
             });
         }
 
+        function extractYearRevision(data) {
+            return String(data && data.revision ? data.revision : '').trim();
+        }
+
         function getYearCacheStorageKey(year) {
             return `${YEAR_CACHE_STORAGE_PREFIX}${Number(year) || 0}`;
         }
@@ -2554,6 +2562,7 @@
             try {
                 localStorage.setItem(getYearCacheStorageKey(year), JSON.stringify({
                     savedAt: Date.now(),
+                    revision: extractYearRevision(data),
                     data: {
                         driver: cloneData(data.driver || []),
                         helper: cloneData(data.helper || []),
@@ -2572,6 +2581,7 @@
                 if (!parsed || typeof parsed !== 'object' || !parsed.data) return null;
                 return {
                     savedAt: Number(parsed.savedAt || 0) || 0,
+                    revision: String(parsed.revision || '').trim(),
                     data: {
                         driver: Array.isArray(parsed.data.driver) ? parsed.data.driver : [],
                         helper: Array.isArray(parsed.data.helper) ? parsed.data.helper : [],
@@ -2598,6 +2608,7 @@
 
             YEAR_CACHE[year] = normalized;
             YEAR_SIGNATURES[year] = buildYearSignature(normalized);
+            YEAR_REVISIONS[year] = String(stored.revision || '').trim();
 
             if (renderIfCurrent && Number(year) === Number(CURRENT_YEAR)) {
                 DB_DRIVER = cloneData(normalized.driver);
@@ -2617,10 +2628,12 @@
                 transaksi: cloneData(data.transaksi || []),
                 logs: cloneData(data.logs || [])
             };
+            const revision = extractYearRevision(data);
 
             YEAR_CACHE[year] = normalized;
             YEAR_SIGNATURES[year] = buildYearSignature(normalized);
-            saveYearCacheToStorage(year, normalized);
+            YEAR_REVISIONS[year] = revision;
+            saveYearCacheToStorage(year, { ...normalized, revision });
 
             if (Number(year) === Number(CURRENT_YEAR)) {
                 DB_DRIVER = cloneData(normalized.driver);
