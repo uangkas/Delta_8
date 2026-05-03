@@ -123,7 +123,10 @@ const Actions = {
     async switchView(view) {
         State.currentView = view;
         Object.keys(DOM.views).forEach(k => DOM.views[k].classList.toggle('active', k === view));
-        DOM.nav.links.forEach(l => l.classList.toggle('active', l.id === `${view}-link`));
+        
+        // Memperbaiki pemetaan ID navigasi
+        const activeId = view === 'verification' ? 'payment-verification-link' : 'dashboard-link';
+        DOM.nav.links.forEach(l => l.classList.toggle('active', l.id === activeId));
         
         if (view === 'verification') {
             DOM.topbar.title.innerText = 'VERIFIKASI QRIS';
