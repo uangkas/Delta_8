@@ -146,7 +146,7 @@ body::before {
 .admin-view {
     display: none;
     flex: 1;
-    overflow-y: auto; /* View ini yang akan scroll */
+    overflow: hidden; /* Iframe di dalamnya yang akan menangani scroll */
     padding: 0;
 }
 
