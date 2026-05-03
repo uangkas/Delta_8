@@ -1,4 +1,4 @@
-const APP_SHELL_CACHE = 'delta8-app-shell-v1';
+const APP_SHELL_CACHE = 'delta8-app-shell-v2';
 const APP_SHELL_ASSETS = [
   './',
   './index.html',
