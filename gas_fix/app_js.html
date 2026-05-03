@@ -575,14 +575,18 @@
             const status = document.getElementById('sync-status');
             if (status) status.innerText = 'ADMIN CONTROL PANEL';
 
+            // Tambahkan class khusus ke body untuk CSS override yang lebih mudah
+            document.body.classList.add('is-iframe-admin');
+
             const hideSelectors = [
-                '#header-section', // Sembunyikan Logo & Judul Utama di dalam iframe
+                '#header-section', 
                 '.footer-app',
                 '.theme-container',
                 '#install-app-btn',
                 '#btn-enable-notif',
-                '.banner-bar',      // Sembunyikan banner teks laporan yang besar
-                '.judul-utama'
+                '.banner-bar',      
+                '.judul-utama',
+                '#ptr-indicator'    // Sembunyikan pull-to-refresh di dalam iframe
             ];
             hideSelectors.forEach((selector) => {
                 document.querySelectorAll(selector).forEach((el) => {
@@ -590,11 +594,19 @@
                 });
             });
 
-            // Perkecil jarak atas toolbar agar rapat ke topbar admin
+            // Reset style container agar tidak ada padding/margin ganda
+            const appContent = document.getElementById('app-content');
+            if (appContent) {
+                appContent.style.paddingTop = '0';
+                appContent.style.marginTop = '0';
+            }
+
+            // Rapatkan toolbar ke atas
             const toolbar = document.getElementById('member-toolbar');
             if (toolbar) {
                 toolbar.style.marginTop = '0';
-                toolbar.style.paddingTop = '5px';
+                toolbar.style.padding = '10px 0';
+                toolbar.style.background = 'transparent';
             }
 
             // Sembunyikan panel verifikasi internal agar tidak double dengan menu Admin luar
