@@ -55,7 +55,7 @@
 
         .admin-shell {
             min-height: 100vh;
-            padding: 8px;
+            padding: 0; /* Hilangkan padding luar agar frame mentok ke tepi */
         }
 
         .admin-main {
@@ -180,11 +180,11 @@
             justify-content: space-between;
             align-items: center;
             gap: 14px;
-            padding: 10px 18px;
-            border: 1px solid var(--line);
-            border-radius: 28px;
-            background: var(--panel);
-            backdrop-filter: blur(18px);
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--line);
+            border-radius: 0; /* Topbar kotak di atas agar lebih modern */
+            background: #ffffff;
+            backdrop-filter: none;
             box-shadow: var(--shadow);
             position: relative;
             z-index: 30;
@@ -373,11 +373,11 @@
 
         .admin-frame {
             width: 100%;
-            height: calc(100vh - 110px);
-            min-height: 550px;
+            height: calc(100vh - 75px); /* Sesuaikan dengan tinggi topbar baru */
+            min-height: 500px;
             border: 0;
             background: #ffffff;
-            border-radius: 28px;
+            border-radius: 0;
             position: relative;
             z-index: 1;
         }
