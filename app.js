@@ -1085,7 +1085,6 @@
         }
         window.handlePinInput = handlePinInput;
         window.submitAuth = submitAuth;
-        window.checkAuth = submitAuth;
 
         function executeAction(action = pendingAction, params = pendingParams, options = {}) {
             if (action === 'tambah') { 

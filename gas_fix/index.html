@@ -1,9 +1,26 @@
-﻿﻿﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="id">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script>
+        /** 
+         * Frame-busting Protection (Secure Version)
+         * Mencegah aplikasi dimuat di iframe situs luar untuk menghindari Clickjacking.
+         * Tetap mengizinkan framing jika berasal dari origin yang sama (diperlukan untuk Panel Admin).
+         */
+        if (window.top !== window.self) {
+            try {
+                if (window.top.location.origin !== window.self.location.origin) {
+                    window.top.location = window.self.location;
+                }
+            } catch (e) {
+                // Gagal mengakses origin parent menandakan framing lintas situs (unauthorized)
+                window.top.location = window.self.location;
+            }
+        }
+    </script>
     <meta name="theme-color" content="#111111">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
