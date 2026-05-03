@@ -1242,7 +1242,9 @@
             setMenuOpen(false);
         });
         if (refreshPaymentsButton) {
-            refreshPaymentsButton.addEventListener('click', () => 
+            refreshPaymentsButton.addEventListener('click', () => {
+                requestPendingSnapshot(true);
+                postAdminAction('refresh_data');
             });
         }
         if (paymentListCard) {
