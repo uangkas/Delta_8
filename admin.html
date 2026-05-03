@@ -4,6 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Admin Delta 8</title>
+    <script>
+        // Frame-busting protection
+        if (window.top !== window.self) {
+            try {
+                // Attempt to break out of the frame
+                window.top.location = window.self.location;
+            } catch (e) {
+                // Fallback for cross-origin restrictions: display a message
+                document.body.innerHTML = '<h1 style="text-align:center; margin-top: 50px; font-family: \'Manrope\', \'Segoe UI\', sans-serif; color: #18212b;">Halaman ini tidak dapat ditampilkan dalam frame.</h1>';
+                document.body.style.margin = '0';
+                document.body.style.height = '100vh';
+                document.body.style.display = 'flex';
+                document.body.style.alignItems = 'center';
+                document.body.style.justifyContent = 'center';
+                document.body.style.backgroundColor = '#f4f1ea'; // Match admin.html background
+            }
+        }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
