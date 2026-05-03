@@ -1,4 +1,5 @@
 ﻿﻿:root {
+﻿﻿:root {
             --bg-body: #0a0a0a;
             --bg-card: #151515;
             --text-main: #ffffff;
@@ -1172,5 +1173,10 @@ body.tab-transaksi .nav-tabs {
 #app-content {
     padding-bottom: 80px !important; /* Memberi jarak agar konten tidak tertutup footer */
     min-height: calc(100vh - 250px);
+}
+
+/* Sembunyikan header internal secara agresif saat di dalam frame admin */
+body.is-iframe-admin #header-section {
+    display: none !important;
 }
 

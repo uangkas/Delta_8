@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg/exec';
+﻿﻿﻿﻿const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg/exec';
         const DEFAULT_FCM_CONFIG = {
             apiKey: 'AIzaSyAIZx9jjiW1uUdXmG-P7ZqQRloFuo4L7G8',
             authDomain: 'kas-delta-8.firebaseapp.com',
@@ -584,7 +584,7 @@
                 '#install-app-btn',
                 '#btn-enable-notif',
                 '.banner-bar',      
-                '.judul-utama',     // Hilangkan header internal sepenuhnya
+                '.judul-utama',
                 '#ptr-indicator'    // Sembunyikan pull-to-refresh di dalam iframe
             ];
             hideSelectors.forEach((selector) => {
