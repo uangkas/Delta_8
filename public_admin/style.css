@@ -56,7 +56,7 @@ body::before {
     display: flex;
     flex-direction: column;
     flex: 1;
-    overflow: hidden; /* Konten utama tidak scroll, tapi view di dalamnya */
+    overflow: hidden; 
 }
 
 .admin-topbar {
@@ -146,7 +146,7 @@ body::before {
 .admin-view {
     display: none;
     flex: 1;
-    overflow: hidden; /* Iframe di dalamnya yang akan menangani scroll */
+    overflow: hidden; 
     padding: 0;
 }
 
