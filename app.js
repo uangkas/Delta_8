@@ -575,10 +575,13 @@
             if (status) status.innerText = 'ADMIN CONTROL PANEL';
 
             const hideSelectors = [
-                '#header-section', // Sembunyikan judul utama & logo di dalam iframe
+                '#header-section', // Sembunyikan Logo & Judul Utama di dalam iframe
                 '.footer-app',
                 '.theme-container',
-                '#btn-enable-notif'
+                '#install-app-btn',
+                '#btn-enable-notif',
+                '.banner-bar',      // Sembunyikan banner teks laporan yang besar
+                '.judul-utama'
             ];
             hideSelectors.forEach((selector) => {
                 document.querySelectorAll(selector).forEach((el) => {
@@ -586,10 +589,11 @@
                 });
             });
 
-            // Pastikan toolbar (Search & Tahun) tetap ada namun lebih rapat
+            // Perkecil jarak atas toolbar agar rapat ke topbar admin
             const toolbar = document.getElementById('member-toolbar');
             if (toolbar) {
                 toolbar.style.marginTop = '0';
+                toolbar.style.paddingTop = '5px';
             }
 
             // Sembunyikan panel verifikasi internal agar tidak double dengan menu Admin luar
