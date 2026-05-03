@@ -867,7 +867,16 @@
             touchDiff = 0;
         });
 
-        function setTheme(t) { document.body.setAttribute('data-theme', t); localStorage.setItem('delta8_theme', t); document.querySelectorAll('.theme-dot').forEach(d => d.classList.remove('active')); if (document.getElementById('dot-' + t)) document.getElementById('dot-' + t).classList.add('active'); }
+        function setTheme(t) { 
+            document.body.setAttribute('data-theme', t); 
+            localStorage.setItem('delta8_theme', t); 
+            document.querySelectorAll('.theme-dot').forEach(d => d.classList.remove('active')); 
+            if (document.getElementById('dot-' + t)) document.getElementById('dot-' + t).classList.add('active'); 
+            // Beritahu parent (admin panel) jika ada perubahan tema
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'delta8-theme-change', theme: t }, '*');
+            }
+        }
         function toggleCol(id) { const el = document.getElementById(id); el.classList.toggle('show'); document.getElementById(id.split('-')[0] + '-icon').innerText = el.classList.contains('show') ? '▲' : '▼'; }
 
         window.onclick = function(e) {
