@@ -1,4 +1,4 @@
-﻿﻿const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg/exec';
+﻿﻿﻿﻿const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg/exec';
         const DEFAULT_FCM_CONFIG = {
             apiKey: 'AIzaSyAIZx9jjiW1uUdXmG-P7ZqQRloFuo4L7G8',
             authDomain: 'kas-delta-8.firebaseapp.com',
@@ -606,6 +606,10 @@
                 if (!data || data.type !== 'delta8-admin-action') return;
 
                 const action = String(data.action || '').trim().toLowerCase();
+                if (action === 'refresh_data') {
+                    await loadFromCloudSmart(CURRENT_YEAR, { forceRender: true });
+                    return;
+                }
                 if (action === 'tambah') {
                     askAuth('tambah');
                     return;
@@ -2258,51 +2262,6 @@
                 return;
             }
             askAuth('bayar_member', params);
-        }
-
-        function submitQrisPaymentDirect(proofBase64 = null) {
-            console.log('submitQrisPaymentDirect called, pendingPaymentContext:', pendingPaymentContext);
-            if (!pendingPaymentContext) {
-                console.error('pendingPaymentContext is null');
-                showNotif('Data pembayaran tidak ditemukan. Silakan mulai lagi.', 'error');
-                return;
-            }
-            const params = { ...pendingPaymentContext };
-            const targetList = params.kat === 'Driver' ? DB_DRIVER : DB_HELPER;
-            const person = targetList.find(x => x.id == params.id);
-            if (!person) {
-                showNotif('Data anggota tidak ditemukan.', 'error');
-                return;
-            }
-            if (!person.status) person.status = {};
-            if (!person.status[params.y]) person.status[params.y] = {};
-            const months = Array.isArray(params.selectedMonths)
-                ? Array.from(new Set(params.selectedMonths.map(Number).filter(month => month >= 1 && month <= 12))).sort((a, b) => a - b)
-                : [];
-            if (!months.length) {
-                showNotif('Pilih bulan pembayaran terlebih dahulu.', 'error');
-                return;
-            }
-            months.forEach(month => {
-                person.status[params.y][month] = 'pending';
-            });
-
-            if (proofBase64) {
-                person.pendingProofs = person.pendingProofs || {};
-                person.pendingProofs[params.y] = person.pendingProofs[params.y] || {};
-                months.forEach(month => {
-                    person.pendingProofs[params.y][month] = proofBase64;
-                });
-            }
-            const monthText = months.map(month => `${String(month).padStart(2, '0')}/${params.y}`).join(', ');
-            addLog(
-                "Iuran",
-                `${String(params.kat || '').toUpperCase()} - ${String(params.nama || '').toUpperCase()} - ${monthText} - [â³ - PENDING VERIFIKASI QRIS]`
-            );
-            hideModalSafely('modalQrisPayment');
-            syncAll();
-            showNotif('Pembayaran QRIS berhasil masuk verifikasi. Admin akan segera memproses.', 'success');
-            pendingPaymentContext = null;
         }
 
         async function submitQrisPaymentDirect(proofBase64 = null) {

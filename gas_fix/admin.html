@@ -1085,6 +1085,7 @@
                 }
 
                 applyPendingPaymentState(snapshot);
+                postAdminAction('refresh_data');
                 showNotif(
                     normalizedDecision === 'verify'
                         ? 'Pembayaran berhasil dilunaskan.'
@@ -1241,7 +1242,8 @@
             setMenuOpen(false);
         });
         if (refreshPaymentsButton) {
-            refreshPaymentsButton.addEventListener('click', () => requestPendingSnapshot(true));
+            refreshPaymentsButton.addEventListener('click', () => 
+            });
         }
         if (paymentListCard) {
             paymentListCard.addEventListener('click', (event) => {
