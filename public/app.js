@@ -575,16 +575,26 @@
             if (status) status.innerText = 'ADMIN CONTROL PANEL';
 
             const hideSelectors = [
-                '#member-toolbar',
+                '#header-section', // Sembunyikan judul utama & logo di dalam iframe
                 '.footer-app',
                 '.theme-container',
                 '#btn-enable-notif'
             ];
             hideSelectors.forEach((selector) => {
                 document.querySelectorAll(selector).forEach((el) => {
-                    el.style.display = 'none';
+                    el.style.setProperty('display', 'none', 'important');
                 });
             });
+
+            // Pastikan toolbar (Search & Tahun) tetap ada namun lebih rapat
+            const toolbar = document.getElementById('member-toolbar');
+            if (toolbar) {
+                toolbar.style.marginTop = '0';
+            }
+
+            // Sembunyikan panel verifikasi internal agar tidak double dengan menu Admin luar
+            const innerVerifyTrigger = document.querySelector('.luxe-dropdown[onclick*="payment-verify-col"]');
+            if (innerVerifyTrigger) innerVerifyTrigger.style.display = 'none';
 
             const systemArea = document.getElementById('system-area');
             if (systemArea) systemArea.style.display = '';
