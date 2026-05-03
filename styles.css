@@ -51,6 +51,7 @@
         body {
             background-color: var(--bg-body);
             color: var(--text-main);
+            min-height: 100vh;
             margin: 0;
             padding: 0;
             overflow-x: hidden; /* Mencegah scroll horizontal karena footer full-width */
@@ -111,7 +112,7 @@
             background: var(--accent-color);
             border-radius: 12px;
             border: 1px solid var(--accent-color);
-            margin-bottom: 15px;
+            margin-bottom: 25px; /* Jarak antar tabel */
             overflow: auto;
             max-height: 70vh;
             -webkit-overflow-scrolling: touch;
@@ -150,7 +151,6 @@
             vertical-align: middle;
             text-align: center !important;
             border-radius: 6px !important;
-            height: 40px !important;
             padding-top: 5px !important;
         }
 
@@ -799,7 +799,7 @@
     border: none !important;
     gap: 10px;
     margin-top: 15px;
-    margin-bottom: 15px; /* Memberi ruang antara tab dan konten di bawahnya */
+    margin-bottom: 25px; /* Memberi ruang agar tidak menempel ke toolbar */
 }
 
 .nav-tabs .nav-item {
@@ -840,7 +840,7 @@
 
         @media (max-width: 576px) {
             body {
-                padding-bottom: 20px;
+                padding-bottom: 40px; /* Tambahan ruang di mobile */
             }
             .judul-utama {
                 font-size: 0.85rem;
@@ -1170,6 +1170,6 @@ body.tab-transaksi .nav-tabs {
 
 /* Fix Overlap on App Content (Pengganti class pb-5 di index.html) */
 #app-content {
-    padding-bottom: 100px !important; /* Memberi jarak agar konten tidak tertutup footer */
+    padding-bottom: 80px !important; /* Memberi jarak agar konten tidak tertutup footer */
     min-height: calc(100vh - 250px);
 }
