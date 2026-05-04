@@ -15,7 +15,6 @@ $syncMap = @(
         Source = "admin.html"
         Destinations = @(
             "gas_fix\admin.html"
-            "public_admin\admin.html"
         )
     },
     @{
@@ -86,6 +85,15 @@ $stylesSource = Get-Content -LiteralPath $stylesSourcePath -Raw
 $publicIndexPath = Join-Path $repoRoot "public\index.html"
 $publicAppJsPath = Join-Path $repoRoot "public\app.js"
 $publicStylesPath = Join-Path $repoRoot "public\styles.css"
+$publicAdminHtmlPath = Join-Path $repoRoot "public_admin\admin.html"
+$publicAdminAppJsPath = Join-Path $repoRoot "public_admin\app.js"
+$publicAdminStylesPath = Join-Path $repoRoot "public_admin\styles.css"
+$publicAdminManifestPath = Join-Path $repoRoot "public_admin\manifest.webmanifest"
+$publicAdminMessagingSwPath = Join-Path $repoRoot "public_admin\firebase-messaging-sw.js"
+$publicAdminAppSwPath = Join-Path $repoRoot "public_admin\app-sw.js"
+$publicAdminIconPath = Join-Path $repoRoot "public_admin\notification-icon.svg"
+$publicAdminBadgePath = Join-Path $repoRoot "public_admin\notification-badge.svg"
+$publicAdminQrisPath = Join-Path $repoRoot "public_admin\QRIS.jpg"
 $gasIndexPath = Join-Path $repoRoot "gas_fix\index.html"
 $gasAppJsIncludePath = Join-Path $repoRoot "gas_fix\app_js.html"
 $gasStylesIncludePath = Join-Path $repoRoot "gas_fix\styles_css.html"
@@ -93,6 +101,15 @@ $gasStylesIncludePath = Join-Path $repoRoot "gas_fix\styles_css.html"
 Ensure-DirectoryForFile -Path $publicIndexPath
 Ensure-DirectoryForFile -Path $publicAppJsPath
 Ensure-DirectoryForFile -Path $publicStylesPath
+Ensure-DirectoryForFile -Path $publicAdminHtmlPath
+Ensure-DirectoryForFile -Path $publicAdminAppJsPath
+Ensure-DirectoryForFile -Path $publicAdminStylesPath
+Ensure-DirectoryForFile -Path $publicAdminManifestPath
+Ensure-DirectoryForFile -Path $publicAdminMessagingSwPath
+Ensure-DirectoryForFile -Path $publicAdminAppSwPath
+Ensure-DirectoryForFile -Path $publicAdminIconPath
+Ensure-DirectoryForFile -Path $publicAdminBadgePath
+Ensure-DirectoryForFile -Path $publicAdminQrisPath
 Ensure-DirectoryForFile -Path $gasIndexPath
 Ensure-DirectoryForFile -Path $gasAppJsIncludePath
 Ensure-DirectoryForFile -Path $gasStylesIncludePath
@@ -106,6 +123,33 @@ Write-Host "Synced app.js -> public\\app.js"
 $publicStylesSource = $stylesSource
 Set-Content -LiteralPath $publicStylesPath -Value $publicStylesSource -Encoding UTF8
 Write-Host "Synced styles.css -> public\\styles.css"
+
+Set-Content -LiteralPath $publicAdminHtmlPath -Value $indexSource -Encoding UTF8
+Write-Host "Synced index.html -> public_admin\\admin.html"
+
+Set-Content -LiteralPath $publicAdminAppJsPath -Value $appJsSource -Encoding UTF8
+Write-Host "Synced app.js -> public_admin\\app.js"
+
+Set-Content -LiteralPath $publicAdminStylesPath -Value $publicStylesSource -Encoding UTF8
+Write-Host "Synced styles.css -> public_admin\\styles.css"
+
+Copy-Item -LiteralPath (Join-Path $repoRoot "manifest.webmanifest") -Destination $publicAdminManifestPath -Force
+Write-Host "Synced manifest.webmanifest -> public_admin\\manifest.webmanifest"
+
+Copy-Item -LiteralPath (Join-Path $repoRoot "firebase-messaging-sw.js") -Destination $publicAdminMessagingSwPath -Force
+Write-Host "Synced firebase-messaging-sw.js -> public_admin\\firebase-messaging-sw.js"
+
+Copy-Item -LiteralPath (Join-Path $repoRoot "app-sw.js") -Destination $publicAdminAppSwPath -Force
+Write-Host "Synced app-sw.js -> public_admin\\app-sw.js"
+
+Copy-Item -LiteralPath (Join-Path $repoRoot "public\notification-icon.svg") -Destination $publicAdminIconPath -Force
+Write-Host "Synced notification-icon.svg -> public_admin\\notification-icon.svg"
+
+Copy-Item -LiteralPath (Join-Path $repoRoot "public\notification-badge.svg") -Destination $publicAdminBadgePath -Force
+Write-Host "Synced notification-badge.svg -> public_admin\\notification-badge.svg"
+
+Copy-Item -LiteralPath (Join-Path $repoRoot "public\QRIS.jpg") -Destination $publicAdminQrisPath -Force
+Write-Host "Synced QRIS.jpg -> public_admin\\QRIS.jpg"
 
 $gasIndexSource = $indexSource.Replace('<link rel="stylesheet" href="./styles.css">', '<?!= include("styles_css"); ?>')
 $gasIndexSource = $gasIndexSource.Replace('<script src="./app.js"></script>', '<?!= include("app_js"); ?>')

@@ -557,6 +557,11 @@
 
         function isAdminMode() {
             try {
+                if (window.DELTA8_FORCE_ADMIN_MODE === true) return true;
+                const host = String(window.location.hostname || '').toLowerCase();
+                if (host === 'admin-kas.web.app' || host === 'admin-kas.firebaseapp.com') {
+                    return true;
+                }
                 const params = new URLSearchParams(window.location.search);
                 return params.get('mode') === 'admin';
             } catch (err) {
