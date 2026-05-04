@@ -630,7 +630,12 @@
         window.addEventListener('message', async (event) => {
             try {
                 const data = event && event.data ? event.data : null;
-                if (!data || data.type !== 'delta8-admin-action') return;
+                if (!data) return;
+                if (data.type === 'delta8-theme-change') {
+                    setTheme(data.theme);
+                    return;
+                }
+                if (data.type !== 'delta8-admin-action') return;
 
                 const action = String(data.action || '').trim().toLowerCase();
                 if (action === 'refresh_data') {

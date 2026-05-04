@@ -213,7 +213,123 @@
             display: flex;
             align-items: center;
             justify-content: flex-end;
+            gap: 12px;
             flex-shrink: 0;
+        }
+
+        .admin-theme-switcher {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 7px 12px;
+            border: 1px solid rgba(24, 33, 43, 0.08);
+            border-radius: 999px;
+            background: rgba(255,255,255,0.9);
+        }
+
+        .admin-theme-label {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .admin-theme-dots {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .admin-theme-dot {
+            width: 18px;
+            height: 18px;
+            padding: 0;
+            border-radius: 999px;
+            border: 2px solid rgba(24, 33, 43, 0.15);
+            background: transparent;
+            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+            transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+        }
+
+        .admin-theme-dot:hover {
+            transform: translateY(-1px) scale(1.06);
+            border-color: rgba(24, 33, 43, 0.35);
+        }
+
+        .admin-theme-dot.active {
+            transform: scale(1.08);
+            border-color: var(--text);
+            box-shadow: 0 0 0 4px rgba(24, 33, 43, 0.08);
+        }
+
+        body[data-theme="emerald"] {
+            --bg: #ecf8f1;
+            --bg-soft: #d8efe1;
+            --panel: rgba(247, 255, 250, 0.88);
+            --panel-strong: rgba(255, 255, 255, 0.96);
+            --text: #0f2b20;
+            --muted: #557568;
+            --line: rgba(15, 43, 32, 0.09);
+            --accent: #18a566;
+            --accent-strong: #11794b;
+            --accent-soft: rgba(24, 165, 102, 0.12);
+            --blue: #1d7a67;
+            --blue-soft: rgba(29, 122, 103, 0.1);
+            --shadow: 0 28px 80px rgba(17, 121, 75, 0.12);
+        }
+
+        body[data-theme="platinum"] {
+            --bg: #eef2f7;
+            --bg-soft: #dde5ef;
+            --panel: rgba(248, 251, 255, 0.88);
+            --panel-strong: rgba(255, 255, 255, 0.96);
+            --text: #162334;
+            --muted: #5f7186;
+            --line: rgba(22, 35, 52, 0.1);
+            --accent: #6a7f96;
+            --accent-strong: #495d73;
+            --accent-soft: rgba(106, 127, 150, 0.12);
+            --blue: #3f668d;
+            --blue-soft: rgba(63, 102, 141, 0.1);
+            --shadow: 0 28px 80px rgba(73, 93, 115, 0.13);
+        }
+
+        body[data-theme="crystal"] {
+            --bg: #edf9ff;
+            --bg-soft: #d8eef8;
+            --panel: rgba(246, 253, 255, 0.9);
+            --panel-strong: rgba(255, 255, 255, 0.97);
+            --text: #123145;
+            --muted: #547589;
+            --line: rgba(18, 49, 69, 0.09);
+            --accent: #1294d8;
+            --accent-strong: #0d73a7;
+            --accent-soft: rgba(18, 148, 216, 0.12);
+            --blue: #0f87bf;
+            --blue-soft: rgba(15, 135, 191, 0.1);
+            --shadow: 0 28px 80px rgba(13, 115, 167, 0.12);
+        }
+
+        body[data-theme="emerald"] {
+            background:
+                radial-gradient(circle at 0% 0%, rgba(24, 165, 102, 0.16), transparent 28%),
+                radial-gradient(circle at 100% 0%, rgba(29, 122, 103, 0.12), transparent 24%),
+                linear-gradient(180deg, #f4fbf7 0%, #e1f2e9 100%);
+        }
+
+        body[data-theme="platinum"] {
+            background:
+                radial-gradient(circle at 0% 0%, rgba(106, 127, 150, 0.16), transparent 28%),
+                radial-gradient(circle at 100% 0%, rgba(63, 102, 141, 0.11), transparent 24%),
+                linear-gradient(180deg, #f5f8fc 0%, #e4ebf3 100%);
+        }
+
+        body[data-theme="crystal"] {
+            background:
+                radial-gradient(circle at 0% 0%, rgba(18, 148, 216, 0.16), transparent 28%),
+                radial-gradient(circle at 100% 0%, rgba(15, 135, 191, 0.11), transparent 24%),
+                linear-gradient(180deg, #f4fbff 0%, #e0f1f8 100%);
         }
 
         .admin-menu-button {
@@ -701,11 +817,17 @@
             }
 
             .admin-topbar-actions {
-                justify-content: stretch;
+                justify-content: space-between;
+                flex-wrap: wrap;
             }
 
             .admin-menu-button {
                 width: 100%;
+            }
+
+            .admin-theme-switcher {
+                width: 100%;
+                justify-content: space-between;
             }
 
             .admin-menu-dropdown {
@@ -740,6 +862,15 @@
                     <p class="admin-topbar-copy" id="admin-view-caption">Panel ini memuat <strong>ceklis anggota</strong>, tabel lengkap, transaksi, dan aksi admin harian.</p>
                 </div>
                 <div class="admin-topbar-actions">
+                    <div class="admin-theme-switcher" aria-label="Pilihan tema admin">
+                        <span class="admin-theme-label">TEMA</span>
+                        <div class="admin-theme-dots">
+                            <button type="button" class="admin-theme-dot" id="dot-luxury" data-theme="luxury" style="background:#d4af37;" aria-label="Tema Luxury"></button>
+                            <button type="button" class="admin-theme-dot" id="dot-emerald" data-theme="emerald" style="background:#10b981;" aria-label="Tema Emerald"></button>
+                            <button type="button" class="admin-theme-dot" id="dot-platinum" data-theme="platinum" style="background:#64748b;" aria-label="Tema Platinum"></button>
+                            <button type="button" class="admin-theme-dot" id="dot-crystal" data-theme="crystal" style="background:#0ea5e9;" aria-label="Tema Crystal"></button>
+                        </div>
+                    </div>
                     <button type="button" class="admin-menu-button" id="admin-menu-button" aria-expanded="false" aria-controls="admin-menu-dropdown">MENU ADMIN</button>
                     <div class="admin-menu-dropdown" id="admin-menu-dropdown">
                         <button type="button" class="admin-menu-item active" id="dashboard-link">
@@ -825,13 +956,15 @@
         </div>
     </div>
     <script>
-        const USER_SITE_URL = '/index.html';
-        const ADMIN_PANEL_URL = `/index.html?mode=admin&v=${Date.now()}`;
+        const USER_SITE_URL = 'https://kas-delta-8.web.app/index.html';
+        const ADMIN_PANEL_URL = `${USER_SITE_URL}?mode=admin&v=${Date.now()}`;
         const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg/exec';
         const PAYMENT_MONTH_NAMES = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
         const MONTHLY_IURAN_AMOUNT = 25000;
         const ADMIN_DEVICE_ID_KEY = 'delta8_admin_device_id';
         const ADMIN_AUTH_SESSION_KEY = 'delta8_admin_auth_session';
+        const THEME_STORAGE_KEY = 'delta8_theme';
+        const AVAILABLE_THEMES = ['luxury', 'emerald', 'platinum', 'crystal'];
 
         const frame = document.getElementById('admin-frame');
         const dashboardButton = document.getElementById('dashboard-link');
@@ -862,6 +995,32 @@
         let pendingPaymentState = { count: 0, totalNominal: 0, items: [], year: new Date().getFullYear() };
         let activePaymentDetail = null;
         let pendingActionInFlight = false;
+
+        function normalizeTheme(theme) {
+            return AVAILABLE_THEMES.includes(theme) ? theme : 'luxury';
+        }
+
+        function syncThemeDots(theme) {
+            document.querySelectorAll('.admin-theme-dot').forEach((button) => {
+                button.classList.toggle('active', button.getAttribute('data-theme') === theme);
+            });
+        }
+
+        function syncThemeToFrame(theme) {
+            if (!frame || !frame.contentWindow) return;
+            frame.contentWindow.postMessage({
+                type: 'delta8-theme-change',
+                theme
+            }, '*');
+        }
+
+        function setAdminTheme(theme, options = {}) {
+            const normalizedTheme = normalizeTheme(theme);
+            document.body.setAttribute('data-theme', normalizedTheme);
+            localStorage.setItem(THEME_STORAGE_KEY, normalizedTheme);
+            syncThemeDots(normalizedTheme);
+            if (!options.skipFrameSync) syncThemeToFrame(normalizedTheme);
+        }
 
         function formatCurrency(value) {
             return `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
@@ -1306,8 +1465,18 @@
             });
         }
 
+        document.querySelectorAll('.admin-theme-dot').forEach((button) => {
+            button.addEventListener('click', () => {
+                setAdminTheme(button.getAttribute('data-theme'));
+            });
+        });
+
         window.addEventListener('message', (event) => {
             const data = event && event.data ? event.data : null;
+            if (data && data.type === 'delta8-theme-change') {
+                setAdminTheme(data.theme, { skipFrameSync: true });
+                return;
+            }
             if (!data || data.type !== 'delta8-admin-pending-state') return;
 
             // Snapshot verifikasi harus mengikuti backend terbaru agar tidak
@@ -1322,11 +1491,13 @@
 
         if (frame) {
             frame.addEventListener('load', () => {
+                syncThemeToFrame(localStorage.getItem(THEME_STORAGE_KEY) || 'luxury');
                 window.setTimeout(requestPendingSnapshot, 600);
             });
             frame.src = ADMIN_PANEL_URL;
         }
 
+        setAdminTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'luxury', { skipFrameSync: true });
         switchView('dashboard');
         renderPendingPaymentsPanel();
     </script>
