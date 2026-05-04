@@ -98,7 +98,7 @@
           ]
         },
         {
-          "source": "/index.html",
+          "source": "/admin.html",
           "headers": [
             {
               "key": "Cache-Control",
@@ -110,7 +110,7 @@
       "rewrites": [
         {
           "source": "**",
-          "destination": "/index.html"
+          "destination": "/admin.html"
         }
       ]
     }
