@@ -8,11 +8,16 @@
         /** 
          * Frame-busting Protection (Secure Version)
          * Mencegah aplikasi dimuat di iframe situs luar untuk menghindari Clickjacking.
-         * Tetap mengizinkan framing jika berasal dari origin yang sama (diperlukan untuk Panel Admin).
+         * Tetap mengizinkan framing jika berasal dari origin yang diizinkan untuk Panel Admin.
          */
+        const ALLOWED_FRAME_PARENTS = [
+            window.self.location.origin,
+            'https://admin-kas.web.app',
+            'https://admin-kas.firebaseapp.com'
+        ];
         if (window.top !== window.self) {
             try {
-                if (window.top.location.origin !== window.self.location.origin) {
+                if (!ALLOWED_FRAME_PARENTS.includes(window.top.location.origin)) {
                     window.top.location = window.self.location;
                 }
             } catch (e) {
