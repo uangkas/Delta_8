@@ -1,5 +1,5 @@
 ﻿<script>
-﻿﻿﻿﻿﻿const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg/exec';
+﻿﻿﻿﻿﻿﻿﻿const CLOUD_URL = 'https://script.google.com/macros/s/AKfycbzY63DzQTu_RP106fQoI2q0joumt_vJhhesMufpJN1iTZQtBoZRYWNs7wfb88xRp2PBsg/exec';
         const DEFAULT_FCM_CONFIG = {
             apiKey: 'AIzaSyAIZx9jjiW1uUdXmG-P7ZqQRloFuo4L7G8',
             authDomain: 'kas-delta-8.firebaseapp.com',
@@ -367,12 +367,107 @@
             return data;
         }
 
-        async function fetchVerifyAuth(url) {
-            const timeouts = [1000, 3000, 7000];
+        function getAppsScriptAllowedOrigins() {
+            const origins = new Set();
+            try {
+                const url = new URL(CLOUD_URL);
+                if (url.origin) origins.add(url.origin);
+            } catch (err) {}
+            origins.add('https://script.google.com');
+            origins.add('https://script.googleusercontent.com');
+            return origins;
+        }
+
+        function postToAppsScriptForResponse(payload, timeoutMs = 12000) {
+            return new Promise((resolve, reject) => {
+                const messageId = `delta8_post_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                const frameName = `delta8_post_frame_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                const iframe = document.createElement('iframe');
+                iframe.name = frameName;
+                iframe.style.display = 'none';
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = CLOUD_URL;
+                form.target = frameName;
+                form.style.display = 'none';
+
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'payload';
+                input.value = JSON.stringify({
+                    ...payload,
+                    responseTransport: 'web_message',
+                    messageId,
+                    parentOrigin: window.location.origin
+                });
+                form.appendChild(input);
+
+                const allowedOrigins = getAppsScriptAllowedOrigins();
+                let settled = false;
+
+                const cleanup = () => {
+                    window.removeEventListener('message', handleMessage);
+                    clearTimeout(timer);
+                    setTimeout(() => {
+                        iframe.remove();
+                        form.remove();
+                    }, 0);
+                };
+
+                const finishError = (message) => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+                    reject(new Error(message));
+                };
+
+                const finishSuccess = (data) => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+                    resolve(data);
+                };
+
+                const handleMessage = (event) => {
+                    if (allowedOrigins.size && !allowedOrigins.has(event.origin)) return;
+                    const data = event.data;
+                    if (!data || data.source !== 'delta8_apps_script' || data.messageId !== messageId) return;
+                    const payloadData = data.payload || {};
+                    if (!payloadData || payloadData.ok === false) {
+                        finishError((payloadData && payloadData.error) || 'Request gagal.');
+                        return;
+                    }
+                    finishSuccess(payloadData);
+                };
+
+                const timer = setTimeout(() => {
+                    finishError('Backend tidak merespons.');
+                }, timeoutMs);
+
+                window.addEventListener('message', handleMessage);
+                document.body.appendChild(iframe);
+                document.body.appendChild(form);
+
+                try {
+                    form.submit();
+                } catch (err) {
+                    finishError((err && err.message) || 'Gagal mengirim request.');
+                }
+            });
+        }
+
+        async function verifyAuthViaPost(payload) {
+            const timeouts = [4000, 8000, 15000];
             let lastError = null;
             for (const timeoutMs of timeouts) {
                 try {
-                    return await fetchJson(url, timeoutMs);
+                    return await postToAppsScriptForResponse({
+                        action: 'verifyAuth',
+                        pin: payload.pin,
+                        editor: payload.editor,
+                        deviceId: payload.deviceId
+                    }, timeoutMs);
                 } catch (err) {
                     lastError = err;
                     const message = String((err && err.message) || '').toLowerCase();
@@ -558,11 +653,6 @@
 
         function isAdminMode() {
             try {
-                if (window.DELTA8_FORCE_ADMIN_MODE === true) return true;
-                const host = String(window.location.hostname || '').toLowerCase();
-                if (host === 'admin-kas.web.app' || host === 'admin-kas.firebaseapp.com') {
-                    return true;
-                }
                 const params = new URLSearchParams(window.location.search);
                 return params.get('mode') === 'admin';
             } catch (err) {
@@ -635,12 +725,7 @@
         window.addEventListener('message', async (event) => {
             try {
                 const data = event && event.data ? event.data : null;
-                if (!data) return;
-                if (data.type === 'delta8-theme-change') {
-                    setTheme(data.theme);
-                    return;
-                }
-                if (data.type !== 'delta8-admin-action') return;
+                if (!data || data.type !== 'delta8-admin-action') return;
 
                 const action = String(data.action || '').trim().toLowerCase();
                 if (action === 'refresh_data') {
@@ -877,7 +962,12 @@
             touchDiff = 0;
         });
 
+        function normalizeTheme(t) {
+            return ['emerald', 'platinum', 'crystal'].includes(t) ? t : 'emerald';
+        }
+
         function setTheme(t) { 
+            t = normalizeTheme(t);
             document.body.setAttribute('data-theme', t); 
             localStorage.setItem('delta8_theme', t); 
             document.querySelectorAll('.theme-dot').forEach(d => d.classList.remove('active')); 
@@ -1043,8 +1133,7 @@
                 }
 
                 const deviceId = getDeviceId();
-                const url = `${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`;
-                const data = await fetchVerifyAuth(url);
+                const data = await verifyAuthViaPost({ pin, editor, deviceId });
                 if (!data || !data.ok || !data.writeToken) {
                     if (optimisticToggle) {
                         executeAction(action, params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
@@ -1080,6 +1169,7 @@
                     executeAction(action, params);
                 }
             } catch (err) {
+                console.error('Authentication submission error:', err);
                 if (optimisticToggle) {
                     executeAction(action, params, { sync: false, log: false, nextValue: optimisticToggle.previousValue });
                 }
@@ -3502,7 +3592,7 @@ async function syncAll() {
             showPdfPreview(pdfBlob, fileName);
         }
         window.onload = () => {
-    setTheme(localStorage.getItem('delta8_theme') || 'luxury');
+    setTheme(localStorage.getItem('delta8_theme') || 'emerald');
     applyAdminMode();
     syncPaymentOptionAvailability();
     initTahun();

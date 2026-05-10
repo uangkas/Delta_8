@@ -865,7 +865,6 @@
                     <div class="admin-theme-switcher" aria-label="Pilihan tema admin">
                         <span class="admin-theme-label">TEMA</span>
                         <div class="admin-theme-dots">
-                            <button type="button" class="admin-theme-dot" id="dot-luxury" data-theme="luxury" style="background:#d4af37;" aria-label="Tema Luxury"></button>
                             <button type="button" class="admin-theme-dot" id="dot-emerald" data-theme="emerald" style="background:#10b981;" aria-label="Tema Emerald"></button>
                             <button type="button" class="admin-theme-dot" id="dot-platinum" data-theme="platinum" style="background:#64748b;" aria-label="Tema Platinum"></button>
                             <button type="button" class="admin-theme-dot" id="dot-crystal" data-theme="crystal" style="background:#0ea5e9;" aria-label="Tema Crystal"></button>
@@ -964,7 +963,7 @@
         const ADMIN_DEVICE_ID_KEY = 'delta8_admin_device_id';
         const ADMIN_AUTH_SESSION_KEY = 'delta8_admin_auth_session';
         const THEME_STORAGE_KEY = 'delta8_theme';
-        const AVAILABLE_THEMES = ['luxury', 'emerald', 'platinum', 'crystal'];
+        const AVAILABLE_THEMES = ['emerald', 'platinum', 'crystal'];
 
         const frame = document.getElementById('admin-frame');
         const dashboardButton = document.getElementById('dashboard-link');
@@ -997,7 +996,7 @@
         let pendingActionInFlight = false;
 
         function normalizeTheme(theme) {
-            return AVAILABLE_THEMES.includes(theme) ? theme : 'luxury';
+            return AVAILABLE_THEMES.includes(theme) ? theme : 'emerald';
         }
 
         function syncThemeDots(theme) {
@@ -1171,6 +1170,123 @@
             return data;
         }
 
+        function getAppsScriptAllowedOrigins() {
+            try {
+                const url = new URL(CLOUD_URL);
+                const origins = new Set([url.origin]);
+                if (url.hostname === 'script.google.com') {
+                    origins.add('https://script.googleusercontent.com');
+                } else if (url.hostname === 'script.googleusercontent.com') {
+                    origins.add('https://script.google.com');
+                }
+                return origins;
+            } catch (err) {
+                return new Set();
+            }
+        }
+
+        function postToAppsScriptForResponse(payload, timeoutMs = 12000) {
+            return new Promise((resolve, reject) => {
+                const messageId = `delta8_admin_post_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                const frameName = `delta8_admin_post_frame_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                const iframe = document.createElement('iframe');
+                iframe.name = frameName;
+                iframe.style.display = 'none';
+
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = CLOUD_URL;
+                form.target = frameName;
+                form.style.display = 'none';
+
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'payload';
+                input.value = JSON.stringify({
+                    ...payload,
+                    responseTransport: 'web_message',
+                    messageId,
+                    parentOrigin: window.location.origin
+                });
+                form.appendChild(input);
+
+                const allowedOrigins = getAppsScriptAllowedOrigins();
+                let settled = false;
+
+                const cleanup = () => {
+                    window.removeEventListener('message', handleMessage);
+                    clearTimeout(timer);
+                    setTimeout(() => {
+                        iframe.remove();
+                        form.remove();
+                    }, 0);
+                };
+
+                const finishError = (message) => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+                    reject(new Error(message));
+                };
+
+                const finishSuccess = (data) => {
+                    if (settled) return;
+                    settled = true;
+                    cleanup();
+                    resolve(data);
+                };
+
+                const handleMessage = (event) => {
+                    if (allowedOrigins.size && !allowedOrigins.has(event.origin)) return;
+                    const data = event.data;
+                    if (!data || data.source !== 'delta8_apps_script' || data.messageId !== messageId) return;
+                    const payloadData = data.payload || {};
+                    if (!payloadData || payloadData.ok === false) {
+                        finishError((payloadData && payloadData.error) || 'Request gagal.');
+                        return;
+                    }
+                    finishSuccess(payloadData);
+                };
+
+                const timer = setTimeout(() => {
+                    finishError('Backend tidak merespons.');
+                }, timeoutMs);
+
+                window.addEventListener('message', handleMessage);
+                document.body.appendChild(iframe);
+                document.body.appendChild(form);
+
+                try {
+                    form.submit();
+                } catch (err) {
+                    finishError((err && err.message) || 'Gagal mengirim request.');
+                }
+            });
+        }
+
+        async function verifyAuthViaPost(payload) {
+            const timeouts = [4000, 8000, 15000];
+            let lastError = null;
+            for (const timeoutMs of timeouts) {
+                try {
+                    return await postToAppsScriptForResponse({
+                        action: 'verifyAuth',
+                        pin: payload.pin,
+                        editor: payload.editor,
+                        deviceId: payload.deviceId
+                    }, timeoutMs);
+                } catch (err) {
+                    lastError = err;
+                    const message = String((err && err.message) || '').toLowerCase();
+                    const isTransient =
+                        message.includes('backend tidak merespons') ||
+                        message.includes('gagal menghubungi backend');
+                    if (!isTransient) throw err;
+                }
+            }
+            throw lastError || new Error('Backend tidak merespons.');
+        }
+
         async function ensureAdminAuth(forcePrompt = false) {
             const current = getAuthSession();
             if (!forcePrompt && current && current.writeToken && (!current.expiresAt || current.expiresAt > Date.now())) {
@@ -1188,7 +1304,7 @@
             }
 
             const deviceId = getDeviceId();
-            const data = await fetchJson(`${CLOUD_URL}?action=verifyAuth&pin=${encodeURIComponent(pin)}&editor=${encodeURIComponent(editor)}&deviceId=${encodeURIComponent(deviceId)}`, 12000);
+            const data = await verifyAuthViaPost({ pin, editor, deviceId });
             const session = saveAuthSession({
                 editor: data.editor || editor.toUpperCase(),
                 writeToken: data.writeToken || '',
@@ -1491,13 +1607,13 @@
 
         if (frame) {
             frame.addEventListener('load', () => {
-                syncThemeToFrame(localStorage.getItem(THEME_STORAGE_KEY) || 'luxury');
+                syncThemeToFrame(localStorage.getItem(THEME_STORAGE_KEY) || 'emerald');
                 window.setTimeout(requestPendingSnapshot, 600);
             });
             frame.src = ADMIN_PANEL_URL;
         }
 
-        setAdminTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'luxury', { skipFrameSync: true });
+        setAdminTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'emerald', { skipFrameSync: true });
         switchView('dashboard');
         renderPendingPaymentsPanel();
     </script>
